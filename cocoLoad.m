@@ -110,30 +110,32 @@ fprintf('DONE! (t=%0.2fs)\n',etime(clock,start));
     
     % get filtering parameters
     dfs = { 'imageIds',[], 'categoryId',[], 'areaRange',[] };
-    filters = getPrmDflt(varargin,dfs,1);
+    p = getPrmDflt(varargin,dfs,1);
     
     % all ids
-    ids = coco.indexes.instanceIds; idsAll = ids;
+    ids = coco.indexes.instanceIds;
+    imgIds = coco.indexes.instanceImageIds;
+    catIds = coco.indexes.instanceCategoryIds;
+    keep = true(1,length(ids));
     
-    % filter by categoryIds
-    cIds = coco.indexes.instanceCategoryIds;
-    ids = intersect(ids,idsAll(filters.categoryId==cIds));
+    % filter by categoryId
+    if(~isempty(p.categoryId)), keep=keep & p.categoryId==catIds; end
     
     % filter by imageIds
-    fIds = filters.imageIds; n = length(fIds);
-    if( n>0 )
-      iIds = coco.indexes.instanceImageIds;
-      keep=false(1,length(iIds)); for i=1:n, keep=keep|iIds==fIds(i); end
-      ids = intersect(ids,idsAll(keep));
+    if( ~isempty(p.imageIds) )
+      kp = false(1,length(imgIds));
+      for i=1:length(p.imageIds), kp=kp|imgIds==p.imageIds(i); end
+      keep = keep & kp;
     end
     
     % filter by areaRange
-    if( ~isempty(filters.areaRange) )
-      areas = coco.indexes.instanceAreas;
-      keep = areas>=filters.areaRange(1) & areas<=filters.areaRange(2);
-      ids = intersect(ids,idsAll(keep));
+    if(~isempty(p.areaRange)), keep = keep ...
+        & coco.indexes.instanceAreas>=p.areaRange(1) ...
+        & coco.indexes.instanceAreas<=p.areaRange(2);
     end
     
+    % return kept subset of ids
+    ids=ids(keep);
   end
 
   function anns = loadAnns( ids )
@@ -143,5 +145,3 @@ fprintf('DONE! (t=%0.2fs)\n',etime(clock,start));
   end
 
 end
-
-
