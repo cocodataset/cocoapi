@@ -11,30 +11,33 @@ function json = gason( varargin )
 % resulting parser is blazingly fast. Large JSON structs (100MB+) take only
 % a few seconds to parse (compared to hours for pure Matlab parsers).
 %
-% Gason require C++11 to compile (for GCC this requires version 4.7 or
+% Gason requires C++11 to compile (for GCC this requires version 4.7 or
 % later). The following command compiles the parser (may require tweaking):
 %   mex('CXXFLAGS="\$CXXFLAGS -std=c++11"','private/gason.cpp', ...
 %     'private/gasonMex.cpp','-output',['private/gasonMex.' mexext]);
 % Note the use of the "-std=c++11" flag. Precompiled binaries for Linux and
 % Mac are included. Please do not contact us for help with compiling.
 %
-% Note that by default all JSON arrays are stored as Matlab cell arrays. If
-% flatten=1 than JSON arrays which contain only numbers are stored as
-% regular arrays. This is much faster and can use considerably less memory.
+% Note that by default JSON arrays that contain only numbers are stored as
+% regular Matlab arrays. Likewise, JSON arrays that contain only objects of
+% the same type are stored as Matlab struct arrays. This is much faster and
+% can use considerably less memory than always using Matlab cell arrays.
+% Instead if 'flatten'=0 then all JSON arrays are always stored as cell
+% arrays (useful for compatibility with other Matlab json parsers).
 %
 % USAGE
 %  json = gason( string, [flatten] )
 %
 % INPUTS
 %  string     - JSON string to be parsed
-%  flatten    - [0] if 1 flatten arrays of numbers to regular arrays
+%  flatten    - [1] if 0 store all arrays as cell arrays
 %
 % OUTPUTS
 %  json       - parsed JSON object
 %
 % EXAMPLE
-%  s = '{"first":"piotr","last":"dollar"}';
-%  json = gason( s );
+%  s = '[{"first":"piotr","last":"dollar"},{"first":"ty","last":"lin"}]';
+%  json = gason( s )
 %
 % See also
 %
