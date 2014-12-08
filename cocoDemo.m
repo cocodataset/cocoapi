@@ -2,11 +2,11 @@
 coco=cocoLoad('data/instances_val2014.json','data/val2014');
 
 %% get all images containging first 4 categories
-imgIds = coco.getImgIds( 'catIds',1:4 ); length(imgIds)
-for i=1:4, disp(coco.categories(i).name); end
+catIds = coco.getCatIds({'person','dog','bicycle','skateboard'});
+imgIds = coco.getImgIds( 'catIds',catIds ); length(imgIds)
 
 %% get annotations for first such image
-annIds = coco.getAnnIds( 'imgIds',imgIds(1) );
+annIds = coco.getAnnIds( 'imgIds',imgIds(1),'catIds',catIds );
 
 %% load image and annotations
 I = coco.loadImg( imgIds(1) );
