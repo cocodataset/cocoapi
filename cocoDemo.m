@@ -1,14 +1,14 @@
 %% initialize coco data structure
-coco=cocoLoad('data/instances_val2014.json','data/val2014');
+coco=cocoApi('initialize','data/instances_val2014.json','data/val2014');
 
 %% get all images containging first 4 categories
-catIds = coco.getCatIds({'person','dog','bicycle','skateboard'});
-imgIds = coco.getImgIds( 'catIds',catIds ); length(imgIds)
+catIds = cocoApi('getCatIds',coco,{'person','dog','skateboard'});
+imgIds = cocoApi('getImgIds',coco','catIds',catIds); length(imgIds)
 
 %% get annotations for first such image
-annIds = coco.getAnnIds( 'imgIds',imgIds(1),'catIds',catIds );
+annIds = cocoApi('getAnnIds',coco,'imgIds',imgIds(1),'catIds',catIds);
 
 %% load image and annotations
-I = coco.loadImg( imgIds(1) );
-anns = coco.loadAnns( annIds );
+I = cocoApi('loadImg',coco,imgIds(1) );
+anns = cocoApi('loadAnns',coco,annIds );
 figure(1); im(I);
