@@ -100,20 +100,31 @@ coco.indexes.annAreas   = [coco.instances.area];
 i=coco.indexes.imgIds; coco.maps.imgIds=containers.Map(i,1:length(i));
 i=coco.indexes.annIds; coco.maps.annIds=containers.Map(i,1:length(i));
 coco.maps.catIds=containers.Map(getCats(coco),[coco.categories.id]);
+% bind functions (don't use "coco.getCats=@()getCats(coco)", is slow!)
+coco.getCats    = bind('getCats');
+coco.getCatIds  = bind('getCatIds');
+coco.getImgIds  = bind('getImgIds');
+coco.getAnnIds  = bind('getAnnIds');
+coco.loadImg    = bind('loadImg');
+coco.loadAnns   = bind('loadAnns');
 fprintf('DONE! (t=%0.2fs)\n',etime(clock,t));
+end
+
+function f = bind( action )
+% Helper function for binding, absolutely necessary to define explicitly.
+f = @(varargin) cocoApi(action,varargin{:});
 end
 
 function cats = getCats( coco )
 % Get list of all category names.
 %
 % USAGE
-%  cats = cocoApi( 'getCats' );
+%  cats = coco.getCats();
 %
 % INPUTS
 %
 % OUTPUTS
 %  cats       - string array of category names
-
 cats={coco.categories.name};
 end
 
@@ -121,7 +132,7 @@ function ids = getCatIds( coco, cats )
 % Get category ids corresponding to category names.
 %
 % USAGE
-%  ids = cocoApi( 'getCatIds', cats )
+%  ids = coco.getCatIds( cats )
 %
 % INPUTS
 %  cats       - cell array of category names
@@ -135,7 +146,7 @@ function ids = getImgIds( coco, varargin )
 % Get image ids that satisfy given filter conditions.
 %
 % USAGE
-%  ids = cocoApi( 'getImgIds', params );
+%  ids = coco.getImgIds( params )
 %
 % INPUTS
 %  params     - filtering parameters (struct or name/value pairs)
@@ -155,7 +166,7 @@ function ids = getAnnIds( coco, varargin )
 % Get annotation ids that satisfy given filter conditions.
 %
 % USAGE
-%  ids = cocoApi( 'getAnnIds', params );
+%  ids = coco.getAnnIds( params )
 %
 % INPUTS
 %  params     - filtering parameters (struct or name/value pairs)
@@ -190,7 +201,7 @@ function I = loadImg( coco, id )
 % Load image with the specified id.
 %
 % USAGE
-%  I = cocoApi( 'loadImg', id );
+%  I = coco.loadImg( id )
 %
 % INPUTS
 %  id         - integer id specifying image
@@ -205,7 +216,7 @@ function anns = loadAnns( coco, ids )
 % Load anns with the specified ids.
 %
 % USAGE
-%  anns = cocoApi( 'loadAnns', ids );
+%  anns = coco.loadAnns( ids );
 %
 % INPUTS
 %  ids        - integer id specifying annotations
