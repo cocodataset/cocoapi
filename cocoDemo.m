@@ -1,5 +1,5 @@
 %% initialize coco data structure
-coco=cocoApi('initialize','data/instances_val2014.json','data/val2014');
+coco = CocoApi('data/instances_val2014.json','data/val2014');
 
 %% get all images containging first 4 categories
 catIds = coco.getCatIds({'person','dog','skateboard'});
