@@ -1,8 +1,8 @@
-function coco = cocoLoad( annName, imageDir )
+function coco = cocoLoad( annName, imgDir )
 % Load JSON annotation file and prepare image index.
 %
 % USAGE
-%  data = cocoLoad( annName, imageDir );
+%  data = cocoLoad( annName, imgDir );
 %
 % INPUTS
 %  annName   - string specifying annotation file name
@@ -13,7 +13,7 @@ function coco = cocoLoad( annName, imageDir )
 % EXAMPLE
 %  coco = cocoLoad('data/instances_val2014.json','data/val2014');
 %
-% See also cocoLoad>getImageIds
+% See also
 %
 % Microsoft COCO Toolbox.      Version 0.90
 % Data, paper, and tutorials available at:  http://mscoco.org/
@@ -25,71 +25,59 @@ fprintf('loading annotations... '); start=clock;
 coco = gason(fileread(annName));
 fprintf('DONE! (t=%0.2fs)\n',etime(clock,start));
 
-% starting initialization
-fprintf('initializing data structures... '); start=clock;
-
 % store image directory and get type
+fprintf('initializing data structures... '); start=clock;
 coco.annName = annName;
-coco.imageDir = imageDir;
+coco.imgDir = imgDir;
 
 % create useful indexes
-coco.indexes.imageIds             = [coco.images.id];
-coco.indexes.instanceIds          = [coco.instances.id];
-coco.indexes.instanceImageIds     = [coco.instances.image_id];
-coco.indexes.instanceCategoryIds  = [coco.instances.category_id];
-coco.indexes.instanceAreas        = [coco.instances.area];
+coco.indexes.imgIds     = [coco.images.id];
+coco.indexes.annIds     = [coco.instances.id];
+coco.indexes.annImgIds  = [coco.instances.image_id];
+coco.indexes.annCatIds  = [coco.instances.category_id];
+coco.indexes.annAreas   = [coco.instances.area];
 
 % create mappings from ids to inds
-t=coco.indexes.imageIds;
-coco.maps.imageIds=containers.Map(t,1:length(t));
-t=coco.indexes.instanceIds;
-coco.maps.instanceIds=containers.Map(t,1:length(t));
-
-% create functions handles
-coco.getImageIds = @getImageIds;
-coco.loadImage   = @loadImage;
-coco.getAnnIds   = @getAnnIds;
-coco.loadAnns    = @loadAnns;
-
-% done with initialization
+t=coco.indexes.imgIds; coco.maps.imgIds=containers.Map(t,1:length(t));
+t=coco.indexes.annIds; coco.maps.annIds=containers.Map(t,1:length(t));
 fprintf('DONE! (t=%0.2fs)\n',etime(clock,start));
 
-  function ids = getImageIds( varargin )
+% create functions handles
+coco.getImgIds  = @getImgIds;
+coco.getAnnIds  = @getAnnIds;
+coco.loadImg    = @loadImg;
+coco.loadAnns   = @loadAnns;
+
+  function ids = getImgIds( varargin )
     % Get image ids that satisfy the filter conditions.
     %
     % USAGE
-    %  ids = getImageIds( params );
+    %  ids = getImgIds( params );
     %
     % INPUTS
     %  params       - filtering parameters (struct or name/value pairs)
-    %   .imageIds     - [] select images with given ids (if [] keeps all)
-    %   .categoryIds  - [] select images that contain all given categories
+    %   .imgIds       - [] select images with given ids (if [] keeps all)
+    %   .catIds       - [] select images that contain all given categories
     %
     % OUTPUTS
     %  ids          - an array of image ids satisfying filter conditions
     
     % get filtering parameters
-    dfs = { 'imageIds',[], 'categoryIds',[] };
+    dfs = { 'imgIds',[], 'catIds',[] };
     filters = getPrmDflt(varargin,dfs,1);
     
     % get list of all image ids
-    ids = coco.indexes.imageIds;
+    ids = coco.indexes.imgIds;
     
-    % filter by imageIds
-    fIds = filters.imageIds;
+    % filter by imgIds
+    fIds = filters.imgIds;
     if(~isempty(fIds)), ids=intersect(ids,fIds); end
     
-    % filter by categoryIds
-    fIds = filters.categoryIds; n = length(fIds);
-    iIds = coco.indexes.instanceImageIds;
-    cIds = coco.indexes.instanceCategoryIds;
+    % filter by catIds
+    fIds = filters.catIds; n = length(fIds);
+    iIds = coco.indexes.annImgIds;
+    cIds = coco.indexes.annCatIds;
     for i=1:n, ids=intersect(ids,unique(iIds(cIds==fIds(i)))); end
-  end
-
-  function I = loadImage( id )
-    % Load image with specified id.
-    img = coco.images(coco.maps.imageIds(id));
-    I = imread([coco.imageDir filesep img.file_name]);
   end
 
   function ids = getAnnIds( varargin )
@@ -101,46 +89,52 @@ fprintf('DONE! (t=%0.2fs)\n',etime(clock,start));
     % INPUTS
     %  coco         - data structure containing loaded COCO annotations
     %  params       - filtering parameters (struct or name/value pairs)
-    %   .imageIds     - [] select anns for given images (if [] keeps all)
-    %   .categoryId   - [] select anns for given category (e.g. 0)
+    %   .imgIds       - [] select anns for given images (if [] keeps all)
+    %   .catId        - [] select anns for given category (e.g. 0)
     %   .areaRange    - [] select anns in given area range (e.g. [0 inf])
     %
     % OUTPUTS
     %  anns         - an array of anns satisfying filter conditions
     
     % get filtering parameters
-    dfs = { 'imageIds',[], 'categoryId',[], 'areaRange',[] };
+    dfs = { 'imgIds',[], 'catId',[], 'areaRange',[] };
     p = getPrmDflt(varargin,dfs,1);
     
     % all ids
-    ids = coco.indexes.instanceIds;
-    imgIds = coco.indexes.instanceImageIds;
-    catIds = coco.indexes.instanceCategoryIds;
+    ids = coco.indexes.annIds;
+    imgIds = coco.indexes.annImgIds;
+    catIds = coco.indexes.annCatIds;
     keep = true(1,length(ids));
     
-    % filter by categoryId
-    if(~isempty(p.categoryId)), keep=keep & p.categoryId==catIds; end
+    % filter by catId
+    if(~isempty(p.catId)), keep=keep & p.catId==catIds; end
     
-    % filter by imageIds
-    if( ~isempty(p.imageIds) )
+    % filter by imgIds
+    if( ~isempty(p.imgIds) )
       kp = false(1,length(imgIds));
-      for i=1:length(p.imageIds), kp=kp|imgIds==p.imageIds(i); end
+      for i=1:length(p.imgIds), kp=kp|imgIds==p.imgIds(i); end
       keep = keep & kp;
     end
     
     % filter by areaRange
     if(~isempty(p.areaRange)), keep = keep ...
-        & coco.indexes.instanceAreas>=p.areaRange(1) ...
-        & coco.indexes.instanceAreas<=p.areaRange(2);
+        & coco.indexes.annAreas>=p.areaRange(1) ...
+        & coco.indexes.annAreas<=p.areaRange(2);
     end
     
     % return kept subset of ids
     ids=ids(keep);
   end
 
+  function I = loadImg( id )
+    % Load image with specified id.
+    img = coco.images(coco.maps.imgIds(id));
+    I = imread([coco.imgDir filesep img.file_name]);
+  end
+
   function anns = loadAnns( ids )
     % Load anns with specified id.
-    inds=values(coco.maps.instanceIds,num2cell(ids));
+    inds=values(coco.maps.annIds,num2cell(ids));
     anns = coco.instances([inds{:}]);
   end
 
