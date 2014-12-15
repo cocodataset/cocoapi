@@ -16,20 +16,13 @@ classdef CocoApi
   % Using the API provides additional utility functions.
   %
   % The following utility functions are provided:
-  %  Load annotation file and prepare data structures:
-  %   coco = CocoApi( annName, imgDir );
-  %  Get list of all category names:
-  %   cats = coco.getCats();
-  %  Get category ids corresponding to category names:
-  %   ids = coco.getCatIds( cats )
-  %  Get imgage ids that satisfy given filter conditions:
-  %   ids = coco.getImgIds( params );
-  %  Get annotation ids that satisfy given filter conditions:
-  %   ids = coco.getAnnIds( params );
-  %  Load image with the specified id:
-  %   I = coco.loadImg( id );
-  %  Load anns with the specified ids:
-  %   anns = coco.loadAnns( ids );
+  %  CocoApi    - Load annotation file and prepare data structures.
+  %  getAnnIds  - Get annotation ids that satisfy given filter conditions.
+  %  getCatIds  - Get category ids corresponding to category names.
+  %  getCats    - Get list of all category names.
+  %  getImgIds  - Get image ids that satisfy given filter conditions.
+  %  loadAnns   - Load anns with the specified ids.
+  %  loadImg    - Load image with the specified id.
   % Help on each functions can be accessed by: "help CocoApi>function".
   %
   % See also cocoDemo, CocoApi>CocoApi, CocoApi>getCats, CocoApi>getCatIds
@@ -52,7 +45,7 @@ classdef CocoApi
       % Load annotation file and prepare data structures.
       %
       % USAGE
-      %  coco = CocoApi( 'initialize', annName, imgDir );
+      %  coco = CocoApi( annName, imgDir )
       %
       % INPUTS
       %  annName   - string specifying annotation file name
@@ -60,32 +53,27 @@ classdef CocoApi
       %
       % OUTPUTS
       %  coco      - initialized coco object
-      
-      % load annotations
       fprintf('loading annotations... '); t=clock;
-      coco.data = gason(fileread(annName));
-      coco.data.annName=annName; coco.data.imgDir=imgDir;
+      C=coco; C.data = gason(fileread(annName));
+      C.data.annName=annName; C.data.imgDir=imgDir;
       fprintf('DONE! (t=%0.2fs)\n',etime(clock,t));
-      % create useful indexes
       fprintf('initializing data structures... '); t=clock;
-      coco.indexes.imgIds     = [coco.data.images.id];
-      coco.indexes.annIds     = [coco.data.instances.id];
-      coco.indexes.annImgIds  = [coco.data.instances.image_id];
-      coco.indexes.annCatIds  = [coco.data.instances.category_id];
-      coco.indexes.annAreas   = [coco.data.instances.area];
-      % create mappings from ids to inds
-      i=coco.indexes.imgIds; coco.maps.imgIds=containers.Map(i,1:length(i));
-      i=coco.indexes.annIds; coco.maps.annIds=containers.Map(i,1:length(i));
-      coco.maps.catIds=containers.Map({coco.data.categories.name},...
-        [coco.data.categories.id]);
-      fprintf('DONE! (t=%0.2fs)\n',etime(clock,t));
+      C.indexes.imgIds     = [C.data.images.id];
+      C.indexes.annIds     = [C.data.instances.id];
+      C.indexes.annImgIds  = [C.data.instances.image_id];
+      C.indexes.annCatIds  = [C.data.instances.category_id];
+      C.indexes.annAreas   = [C.data.instances.area];
+      i=C.indexes.imgIds;  C.maps.imgIds=containers.Map(i,1:length(i));
+      i=C.indexes.annIds;  C.maps.annIds=containers.Map(i,1:length(i));
+      i=C.data.categories; C.maps.catIds=containers.Map({i.name},[i.id]);
+      fprintf('DONE! (t=%0.2fs)\n',etime(clock,t)); coco=C;
     end
     
     function cats = getCats( coco )
       % Get list of all category names.
       %
       % USAGE
-      %  cats = coco.getCats();
+      %  cats = coco.getCats()
       %
       % INPUTS
       %
@@ -116,8 +104,9 @@ classdef CocoApi
       %
       % INPUTS
       %  params     - filtering parameters (struct or name/value pairs)
-      %   .imgIds     - [] select images with given ids (if [] keeps all)
-      %   .catIds     - [] select images that contain all given categories
+      %               setting any filter to [] skips that filter
+      %   .imgIds     - [] get imgs for given ids
+      %   .catIds     - [] get imgs with all given cats
       %
       % OUTPUTS
       %  ids        - integer array of img ids
@@ -136,9 +125,10 @@ classdef CocoApi
       %
       % INPUTS
       %  params     - filtering parameters (struct or name/value pairs)
-      %   .imgIds     - [] select anns for given images (if [] keeps all)
-      %   .catIds     - [] select anns for given category (e.g. 0)
-      %   .areaRange  - [] select anns in given area range (e.g. [0 inf])
+      %               setting any filter to [] skips that filter
+      %   .imgIds     - [] get anns for given imgs
+      %   .catIds     - [] get anns for given cats
+      %   .areaRange  - [] get anns for given area range (e.g. [0 inf])
       %
       % OUTPUTS
       %  anns       - integer array of ann ids
@@ -180,7 +170,7 @@ classdef CocoApi
       % Load anns with the specified ids.
       %
       % USAGE
-      %  anns = coco.loadAnns( ids );
+      %  anns = coco.loadAnns( ids )
       %
       % INPUTS
       %  ids        - integer id specifying annotations
