@@ -133,22 +133,14 @@ classdef CocoApi
       % OUTPUTS
       %  anns       - integer array of ann ids
       p = getPrmDflt(varargin,{'imgIds',[],'catIds',[],'areaRange',[]},1);
-      ids = coco.indexes.annIds; keep = true(1,length(ids));
-      if(~isempty(p.catIds))
-        catIds=coco.indexes.annCatIds; k=false(1,length(catIds));
-        for i=1:length(p.catIds), k=k|catIds==p.catIds(i); end
-        keep = keep & k;
-      end
-      if(~isempty(p.imgIds))
-        imgIds=coco.indexes.annImgIds; k=false(1,length(imgIds));
-        for i=1:length(p.imgIds), k=k|imgIds==p.imgIds(i); end
-        keep = keep & k;
-      end
-      if(~isempty(p.areaRange)), keep = keep ...
-          & coco.indexes.annAreas>=p.areaRange(1) ...
-          & coco.indexes.annAreas<=p.areaRange(2);
-      end
-      ids=ids(keep);
+      ids = coco.indexes.annIds; K = true(1,length(ids));
+      if( ~isempty(p.imgIds) ), K = K & ...
+          ismember( coco.indexes.annImgIds, p.imgIds ); end
+      if( ~isempty(p.catIds) ), K = K & ...
+          ismember( coco.indexes.annCatIds, p.catIds ); end
+      if( ~isempty(p.areaRange) ), v=coco.indexes.annAreas; K = K & ...
+          v>=p.areaRange(1) & v<=p.areaRange(2); end
+      ids=ids(K);
     end
     
     function I = loadImg( coco, id )
