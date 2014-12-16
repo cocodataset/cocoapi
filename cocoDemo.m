@@ -1,3 +1,5 @@
+%% Demo for the CocoApi (see CocoApi.m)
+
 %% initialize coco data structure
 coco = CocoApi('data/instances_val2014.json','data/val2014');
 
@@ -5,10 +7,12 @@ coco = CocoApi('data/instances_val2014.json','data/val2014');
 catIds = coco.getCatIds({'person','dog','skateboard'});
 imgIds = coco.getImgIds('catIds',catIds); length(imgIds)
 
-%% get annotations for first such image
-annIds = coco.getAnnIds('imgIds',imgIds(1),'catIds',catIds);
+%% get annotations for one such image
+annIds = coco.getAnnIds('imgIds',imgIds(2),'catIds',catIds);
 
 %% load image and annotations
-I = coco.loadImg( imgIds(1) );
+I = coco.loadImg( imgIds(2) );
 anns = coco.loadAnns( annIds );
-figure(1); im(I);
+
+%% display annotation
+figure(1); coco.showAnns( anns );

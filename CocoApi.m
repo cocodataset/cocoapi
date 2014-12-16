@@ -23,10 +23,12 @@ classdef CocoApi
   %  getImgIds  - Get image ids that satisfy given filter conditions.
   %  loadAnns   - Load anns with the specified ids.
   %  loadImg    - Load image with the specified id.
+  %  showAnns   - Display the specified anns for a single image.
   % Help on each functions can be accessed by: "help CocoApi>function".
   %
-  % See also cocoDemo, CocoApi>CocoApi, CocoApi>getCats, CocoApi>getCatIds
-  % CocoApi>getImgIds, CocoApi>getAnnIds, CocoApi>loadImg, CocoApi>loadAnns
+  % See also cocoDemo, CocoApi>CocoApi, CocoApi>getAnnIds,
+  % CocoApi>getCatIds, CocoApi>getCats, CocoApi>getImgIds,
+  % CocoApi>loadAnns, CocoApi>loadImg, CocoApi>showAnns
   %
   % Microsoft COCO Toolbox.      Version 0.90
   % Data, paper, and tutorials available at:  http://mscoco.org/
@@ -171,6 +173,28 @@ classdef CocoApi
       %  anns       - loaded annotations
       inds = values(coco.maps.annIds,num2cell(ids));
       anns = coco.data.instances([inds{:}]);
+    end
+    
+    function showAnns( coco, anns )
+      % Display the specified anns for a single image.
+      %
+      % USAGE
+      %  anns = coco.showAnns( anns )
+      %
+      % INPUTS
+      %  anns       - annotations to display (must belong to same image)
+      %
+      % OUTPUTS
+      if(isempty(anns)), return; end
+      id=anns(1).image_id; assert(all([anns.image_id]==id));
+      cs=(1:256)'; cs=max(.3,mod([cs*78 cs*121 cs*42],256)/256);
+      cs=cs(randperm(256),:); I=coco.loadImg(id); im(I,[],0);
+      for i=1:length(anns), seg=anns(i).segmentation;
+        for j=1:length(seg)
+          hold on; fill(seg{j}(1:2:end),seg{j}(2:2:end),cs(i,:),...
+            'FaceAlpha',.6,'LineStyle','none'); hold off;
+        end
+      end
     end
   end
   
