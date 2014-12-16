@@ -12,22 +12,24 @@ classdef CocoApi
   %
   % An alternative to using the API is to load the annotations directly
   % into a Matlab struct. This can be achieved via:
-  %  data = gason(fileread(annName));
-  % Using the API provides additional utility functions.
+  %  data = gason(fileread(annFile));
+  % Using the API provides additional utility functions. Note that this API
+  % supports both *instance* and *caption* annotations. In the case of
+  % captions not all functions are defined (e.g. categories are undefined).
   %
   % The following utility functions are provided:
   %  CocoApi    - Load annotation file and prepare data structures.
   %  getAnnIds  - Get annotation ids that satisfy given filter conditions.
   %  getCatIds  - Get category ids corresponding to category names.
-  %  getCats    - Get list of all category names.
+  %  getCatNms  - Get category names corresponding to category ids.
   %  getImgIds  - Get image ids that satisfy given filter conditions.
-  %  loadAnns   - Load anns with the specified ids.
+  %  loadAnns   - Load annotations with the specified ids.
   %  loadImg    - Load image with the specified id.
-  %  showAnns   - Display the specified anns for a single image.
+  %  showAnns   - Display the specified annotations.
   % Help on each functions can be accessed by: "help CocoApi>function".
   %
   % See also cocoDemo, CocoApi>CocoApi, CocoApi>getAnnIds,
-  % CocoApi>getCatIds, CocoApi>getCats, CocoApi>getImgIds,
+  % CocoApi>getCatIds, CocoApi>getCatNms, CocoApi>getImgIds,
   % CocoApi>loadAnns, CocoApi>loadImg, CocoApi>showAnns
   %
   % Microsoft COCO Toolbox.      Version 0.90
@@ -36,66 +38,74 @@ classdef CocoApi
   % Licensed under the Simplified BSD License [see private/bsd.txt]
   
   properties
-    data      % COCO annotation data
-    indexes   % indexes for fast access
-    maps      % mapping for fast access
+    imgDir  % directory containing images
+    data    % COCO annotation data
+    type    % annotation type
+    inds    % data structures for fast access
   end
   
   methods
-    
-    function coco = CocoApi( annName, imgDir )
+    function coco = CocoApi( imgDir, annFile )
       % Load annotation file and prepare data structures.
       %
       % USAGE
-      %  coco = CocoApi( annName, imgDir )
+      %  coco = CocoApi( imgDir, annFile )
       %
       % INPUTS
-      %  annName   - string specifying annotation file name
       %  imgDir    - directory containing images
+      %  annFile   - string specifying annotation file name
       %
       % OUTPUTS
       %  coco      - initialized coco object
-      fprintf('loading annotations... '); t=clock;
-      C=coco; C.data = gason(fileread(annName));
-      C.data.annName=annName; C.data.imgDir=imgDir;
-      fprintf('DONE! (t=%0.2fs)\n',etime(clock,t));
-      fprintf('initializing data structures... '); t=clock;
-      C.indexes.imgIds     = [C.data.images.id];
-      C.indexes.annIds     = [C.data.instances.id];
-      C.indexes.annImgIds  = [C.data.instances.image_id];
-      C.indexes.annCatIds  = [C.data.instances.category_id];
-      C.indexes.annAreas   = [C.data.instances.area];
-      i=C.indexes.imgIds;  C.maps.imgIds=containers.Map(i,1:length(i));
-      i=C.indexes.annIds;  C.maps.annIds=containers.Map(i,1:length(i));
-      i=C.data.categories; C.maps.catIds=containers.Map({i.name},[i.id]);
-      fprintf('DONE! (t=%0.2fs)\n',etime(clock,t)); coco=C;
+      fprintf('Loading and preparing annotations... '); clk=clock;
+      c=coco; c.imgDir=imgDir; c.data=gason(fileread(annFile));
+      t={'instances','sentences'}; c.type=find(isfield(c.data,t));
+      assert(length(c.type)==1); c.type=t{c.type};
+      if( strcmp(c.type,'instances') )
+        anns = c.data.instances; cats = c.data.categories;
+        c.inds.annCatIds = [anns.category_id];
+        c.inds.annAreas = [anns.area];
+        c.inds.catNmsToIds = containers.Map({cats.name},[cats.id]);
+        c.inds.catIdsToNms = containers.Map([cats.id],{cats.name});
+      elseif( strcmp(c.type,'sentences') )
+        anns = c.data.sentences;
+      end
+      c.inds.imgIds = [c.data.images.id]; t=c.inds.imgIds;
+      c.inds.imgIdsMap = containers.Map(t,1:length(t));
+      c.inds.annIds = [anns.id]; t=c.inds.annIds;
+      c.inds.annIdsMap = containers.Map(t,1:length(t));
+      c.inds.annImgIds = [anns.image_id];
+      fprintf('DONE (t=%0.2fs).\n',etime(clock,clk)); coco=c;
     end
     
-    function cats = getCats( coco )
-      % Get list of all category names.
+    function cats = getCatNms( coco, ids )
+      % Get category names corresponding to category ids.
       %
       % USAGE
-      %  cats = coco.getCats()
+      %  cats = coco.getCatNms( [ids] )
       %
       % INPUTS
+      %  ids        - [optional] integer ids specifying category
       %
       % OUTPUTS
       %  cats       - string array of category names
-      cats={coco.data.categories.name};
+      if(nargin<=1), cats=values(coco.inds.catIdsToNms);
+      else cats=values(coco.inds.catIdsToNms,num2cell(ids)); end
     end
     
     function ids = getCatIds( coco, cats )
       % Get category ids corresponding to category names.
       %
       % USAGE
-      %  ids = coco.getCatIds( cats )
+      %  ids = coco.getCatIds( [cats] )
       %
       % INPUTS
-      %  cats       - cell array of category names
+      %  cats       - [optional] cell array of category names
       %
       % OUTPUTS
-      %  ids        - integer array of img ids
-      ids=cell2mat(values(coco.maps.catIds,cats));
+      %  ids        - integer array of category ids
+      if(nargin<=1), ids=cell2mat(values(coco.inds.catNmsToIds));
+      else ids=cell2mat(values(coco.inds.catNmsToIds,cats)); end
     end
     
     function ids = getImgIds( coco, varargin )
@@ -111,12 +121,12 @@ classdef CocoApi
       %   .catIds     - [] get imgs with all given cats
       %
       % OUTPUTS
-      %  ids        - integer array of img ids
+      %  ids        - integer array of image ids
       p = getPrmDflt(varargin,{'imgIds',[],'catIds',[]},1);
-      ids = coco.indexes.imgIds; n = length(p.catIds);
+      ids = coco.inds.imgIds;
       if(~isempty(p.imgIds)), ids=intersect(ids,p.imgIds); end
-      iIds = coco.indexes.annImgIds; cIds = coco.indexes.annCatIds;
-      for i=1:n, ids=intersect(ids,unique(iIds(cIds==p.catIds(i)))); end
+      for i=1:length(p.catIds), ids=intersect(ids,unique(...
+          coco.inds.annImgIds(coco.inds.annCatIds==p.catIds(i)))); end
     end
     
     function ids = getAnnIds( coco, varargin )
@@ -133,14 +143,14 @@ classdef CocoApi
       %   .areaRange  - [] get anns for given area range (e.g. [0 inf])
       %
       % OUTPUTS
-      %  anns       - integer array of ann ids
+      %  ids        - integer array of annotation ids
       p = getPrmDflt(varargin,{'imgIds',[],'catIds',[],'areaRange',[]},1);
-      ids = coco.indexes.annIds; K = true(1,length(ids));
+      ids = coco.inds.annIds; K = true(1,length(ids));
       if( ~isempty(p.imgIds) ), K = K & ...
-          ismember( coco.indexes.annImgIds, p.imgIds ); end
+          ismember( coco.inds.annImgIds, p.imgIds ); end
       if( ~isempty(p.catIds) ), K = K & ...
-          ismember( coco.indexes.annCatIds, p.catIds ); end
-      if( ~isempty(p.areaRange) ), v=coco.indexes.annAreas; K = K & ...
+          ismember( coco.inds.annCatIds, p.catIds ); end
+      if( ~isempty(p.areaRange) ), v=coco.inds.annAreas; K = K & ...
           v>=p.areaRange(1) & v<=p.areaRange(2); end
       ids=ids(K);
     end
@@ -156,12 +166,12 @@ classdef CocoApi
       %
       % OUTPUTS
       %  I          - loaded image
-      img = coco.data.images(coco.maps.imgIds(id));
-      I = imread([coco.data.imgDir filesep img.file_name]);
+      img = coco.data.images(coco.inds.imgIdsMap(id));
+      I = imread([coco.imgDir filesep img.file_name]);
     end
     
     function anns = loadAnns( coco, ids )
-      % Load anns with the specified ids.
+      % Load annotations with the specified ids.
       %
       % USAGE
       %  anns = coco.loadAnns( ids )
@@ -171,30 +181,39 @@ classdef CocoApi
       %
       % OUTPUTS
       %  anns       - loaded annotations
-      inds = values(coco.maps.annIds,num2cell(ids));
-      anns = coco.data.instances([inds{:}]);
+      ids = values(coco.inds.annIdsMap,num2cell(ids));
+      if( strcmp(coco.type,'instances') )
+        anns = coco.data.instances([ids{:}]);
+      elseif(strcmp( coco.type,'sentences') )
+        anns = coco.data.sentences([ids{:}]);
+      end
     end
     
-    function showAnns( coco, anns )
-      % Display the specified anns for a single image.
+    function hs = showAnns( coco, anns )
+      % Display the specified annotations.
       %
       % USAGE
-      %  anns = coco.showAnns( anns )
+      %  hs = coco.showAnns( anns )
       %
       % INPUTS
-      %  anns       - annotations to display (must belong to same image)
+      %  anns       - annotations to display
       %
       % OUTPUTS
-      if(isempty(anns)), return; end
-      id=anns(1).image_id; assert(all([anns.image_id]==id));
-      cs=(1:256)'; cs=max(.3,mod([cs*78 cs*121 cs*42],256)/256);
-      cs=cs(randperm(256),:); I=coco.loadImg(id); im(I,[],0);
-      for i=1:length(anns), seg=anns(i).segmentation;
-        for j=1:length(seg)
-          hold on; fill(seg{j}(1:2:end),seg{j}(2:2:end),cs(i,:),...
-            'FaceAlpha',.6,'LineStyle','none'); hold off;
-        end
+      %  hs         - handles to segment graphic objects
+      n=length(anns); if(n==0), return; end
+      if( strcmp(coco.type,'instances') )
+        cs=(1:256)'; cs=max(.3,mod([cs*78 cs*121 cs*42],256)/256);
+        cs=cs(randperm(256),:); S={anns.segmentation};
+        hs=zeros(10000,1); k=0; hold on;
+        for i=1:n, for j=1:length(S{i}), k=k+1; hs(k)=...
+              fill(S{i}{j}(1:2:end),S{i}{j}(2:2:end),cs(i,:)); end; end
+        hs=hs(1:k); set(hs,'FaceAlpha',.6,'LineStyle','none'); hold off;
+      elseif( strcmp(coco.type,'sentences') )
+        S={anns.sentence};
+        for i=1:n, S{i}=[int2str(i) ') ' S{i} '\newline']; end
+        S=[S{:}]; title(S,'FontSize',12);
       end
+      hold off;
     end
   end
   
