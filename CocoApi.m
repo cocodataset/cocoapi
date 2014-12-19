@@ -72,7 +72,18 @@ classdef CocoApi
       c.inds.annIds = [anns.id]; t=c.inds.annIds;
       c.inds.annIdsMap = containers.Map(t,1:length(t));
       c.inds.annImgIds = [anns.image_id];
+      c.inds.imgAnnIdsMap = makeImgAnnIdsMap( c.inds );
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk)); coco=c;
+      
+      function map = makeImgAnnIdsMap( inds )
+        % Find map from imgIds to annIds associated with each imgId.
+        is = values(inds.imgIdsMap,num2cell(inds.annImgIds));
+        is=[is{:}]; m=length(is); n=length(inds.imgIds); k=zeros(1,n);
+        for i=1:m, j=is(i); k(j)=k(j)+1; end; a=zeros(n,max(k)); k(:)=0;
+        for i=1:m, j=is(i); k(j)=k(j)+1; a(j,k(j))=inds.annIds(i); end
+        map = containers.Map('KeyType','double','ValueType','any');
+        for j=1:n, map(inds.imgIds(j))=a(j,1:k(j)); end
+      end
     end
     
     function cats = getCatNms( coco, ids )
@@ -137,18 +148,27 @@ classdef CocoApi
       %               setting any filter to [] skips that filter
       %   .imgIds     - [] get anns for given imgs
       %   .catIds     - [] get anns for given cats
-      %   .areaRange  - [] get anns for given area range (e.g. [0 inf])
+      %   .areaRng    - [] get anns for given area range (e.g. [0 inf])
       %
       % OUTPUTS
       %  ids        - integer array of annotation ids
-      p = getPrmDflt(varargin,{'imgIds',[],'catIds',[],'areaRange',[]},1);
-      ids = coco.inds.annIds; K = true(1,length(ids));
-      if( ~isempty(p.imgIds) ), K = K & ...
-          ismember( coco.inds.annImgIds, p.imgIds ); end
-      if( ~isempty(p.catIds) ), K = K & ...
-          ismember( coco.inds.annCatIds, p.catIds ); end
-      if( ~isempty(p.areaRange) ), v=coco.inds.annAreas; K = K & ...
-          v>=p.areaRange(1) & v<=p.areaRange(2); end
+      p = getPrmDflt(varargin,{'imgIds',[],'catIds',[],'areaRng',[]},1);
+      if( length(p.imgIds)==1 )
+        ids = coco.inds.imgAnnIdsMap(p.imgIds); K = true(1,length(ids));
+        anns = coco.loadAnns(ids); if(isempty(anns)), return; end
+        if(~isempty(p.catIds)), K = K & ...
+            ismember( [anns.category_id], p.catIds ); end
+        if(~isempty(p.areaRng)), areas=[anns.area]; K = K & ...
+            areas>=p.areaRng(1) & areas<=p.areaRng(2); end
+      else
+        ids = coco.inds.annIds; K = true(1,length(ids));
+        if(~isempty(p.imgIds)), K = K & ...
+            ismember( coco.inds.annImgIds, p.imgIds ); end
+        if(~isempty(p.catIds)), K = K & ...
+            ismember( coco.inds.annCatIds, p.catIds ); end
+        if(~isempty(p.areaRng)), areas=coco.inds.annAreas; K = K & ...
+            areas>=p.areaRng(1) & areas<=p.areaRng(2); end
+      end
       ids=ids(K);
     end
     
