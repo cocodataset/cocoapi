@@ -58,31 +58,43 @@ classdef CocoApi
       % OUTPUTS
       %  coco      - initialized coco object
       fprintf('Loading and preparing annotations... '); clk=clock;
-      c=coco; c.imgDir=imgDir; c.data=gason(fileread(annFile));
-      if( strcmp(c.data.type,'instances') )
-        anns = c.data.instances; t = [c.data.categories.id]';
-        c.inds.catIdsMap = containers.Map(t,1:length(t));
-        c.inds.annCatIds = [anns.category_id]';
-        c.inds.annAreas = [anns.area]';
-      elseif( strcmp(c.data.type,'captions') )
-        anns = c.data.captions;
+      coco.imgDir=imgDir; coco.data=gason(fileread(annFile));
+      if( strcmp(coco.data.type,'instances') )
+        anns = coco.data.instances;
+        is.annCatIds = [anns.category_id]';
+        is.annAreas = [anns.area]';
+      elseif( strcmp(coco.data.type,'captions') )
+        anns = coco.data.captions;
       end
-      c.inds.annIds = [anns.id]'; t=c.inds.annIds;
-      c.inds.annIdsMap = containers.Map(t,1:length(t));
-      c.inds.annImgIds = [anns.image_id]';
-      c.inds.imgIds = [c.data.images.id]'; t=c.inds.imgIds;
-      c.inds.imgIdsMap = containers.Map(t,1:length(t));
-      c.inds.imgAnnIdsMap = makeImgAnnIdsMap( c.inds );
-      fprintf('DONE (t=%0.2fs).\n',etime(clock,clk)); coco=c;
+      is.annIds = [anns.id]';
+      is.annIdsMap = makeMap(is.annIds);
+      is.annImgIds = [anns.image_id]';
+      is.imgIds = [coco.data.images.id]';
+      is.imgIdsMap = makeMap(is.imgIds);
+      is.imgAnnIdsMap = makeMultiMap(is.imgIds,...
+        is.imgIdsMap,is.annImgIds,is.annIds,0);
+      if( strcmp(coco.data.type,'instances') )
+        is.catIds = [coco.data.categories.id]';
+        is.catIdsMap = makeMap(is.catIds);
+        is.catImgIdsMap = makeMultiMap(is.catIds,...
+          is.catIdsMap,is.annCatIds,is.annImgIds,1);
+      end
+      coco.inds=is; fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
       
-      function map = makeImgAnnIdsMap( inds )
-        % Find map from imgIds to annIds associated with each imgId.
-        is = values(inds.imgIdsMap,num2cell(inds.annImgIds));
-        is=[is{:}]; m=length(is); n=length(inds.imgIds); k=zeros(1,n);
-        for i=1:m, j=is(i); k(j)=k(j)+1; end; a=zeros(n,max(k)); k(:)=0;
-        for i=1:m, j=is(i); k(j)=k(j)+1; a(j,k(j))=inds.annIds(i); end
+      function map = makeMap( keys )
+        % Make map from key to integer id associated with key.
+        map=containers.Map(keys,1:length(keys));
+      end
+      
+      function map = makeMultiMap( keys, keysMap, keysAll, valsAll, sqz )
+        % Make map from keys to set of vals associated with each key.
+        js=values(keysMap,num2cell(keysAll)); js=[js{:}];
+        m=length(js); n=length(keys); k=zeros(1,n);
+        for i=1:m, j=js(i); k(j)=k(j)+1; end; vs=zeros(n,max(k)); k(:)=0;
+        for i=1:m, j=js(i); k(j)=k(j)+1; vs(j,k(j))=valsAll(i); end
         map = containers.Map('KeyType','double','ValueType','any');
-        for j=1:n, map(inds.imgIds(j))=a(j,1:k(j)); end
+        if(sqz), for j=1:n, map(keys(j))=unique(vs(j,1:k(j))); end
+        else for j=1:n, map(keys(j))=vs(j,1:k(j)); end; end
       end
     end
     
@@ -123,11 +135,11 @@ classdef CocoApi
       %
       % OUTPUTS
       %  ids        - integer array of img ids
-      def = {'imgIds',[],'catIds',[]};
-      p = getPrmDflt(varargin,def,1); ids = coco.inds.imgIds;
-      if(~isempty(p.imgIds)), ids=intersect(ids,p.imgIds); end
-      for i=1:length(p.catIds), ids=intersect(ids,unique(...
-          coco.inds.annImgIds(coco.inds.annCatIds==p.catIds(i)))); end
+      def={'imgIds',[],'catIds',[]}; ids=coco.inds.imgIds;
+      [imgIds,catIds] = getPrmDflt(varargin,def,1);
+      if(~isempty(imgIds)), ids=intersect(ids,imgIds); end
+      t=values(coco.inds.catImgIdsMap,num2cell(catIds));
+      for i=1:length(t), ids=intersect(ids,t{i}); end
     end
     
     function ids = getAnnIds( coco, varargin )
