@@ -26,7 +26,7 @@ classdef CocoApi
   %  loadCats   - Load cats with the specified ids.
   %  loadImgs   - Load imgs with the specified ids.
   %  showAnns   - Display the specified annotations.
-  % Throught the API "ann"=annotation, "cat"=category, and "img"=image.
+  % Throughout the API "ann"=annotation, "cat"=category, and "img"=image.
   % Help on each functions can be accessed by: "help CocoApi>function".
   %
   % See also cocoDemo, CocoApi>CocoApi, CocoApi>getAnnIds,

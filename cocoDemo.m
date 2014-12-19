@@ -1,10 +1,17 @@
 %% Demo for the CocoApi (see CocoApi.m)
 
-%% initialize coco api for instance annotations
+%% initialize COCO api for instance annotations
 imgDir = 'data/val2014';
 annFile = 'data/instances_val2014.json';
 if(~exist('coco','var'))
   coco = CocoApi( imgDir, annFile ); end
+
+%% display COCO categories and supercategories
+cats = coco.loadCats( coco.getCatIds() );
+nms={cats.name}; fprintf('COCO categories: ');
+fprintf('%s ',nms{:}); fprintf('\n');
+nms=unique({cats.supercategory}); fprintf('COCO supercategories: ');
+fprintf('%s ',nms{:}); fprintf('\n');
 
 %% get all images containging given categories, select one at random
 catIds = coco.getCatIds( 'catNms', {'person','dog','skateboard'} );
@@ -21,7 +28,7 @@ annIds = coco.getAnnIds( 'imgIds',imgId, 'catIds',catIds );
 anns = coco.loadAnns( annIds );
 coco.showAnns( anns );
 
-%% initialize coco api for caption annotations
+%% initialize COCO api for caption annotations
 annFile = 'data/captions_val2014.json';
 if(~exist('cocoCap','var'))
   cocoCap = CocoApi( imgDir, annFile ); end
