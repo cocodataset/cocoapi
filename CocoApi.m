@@ -40,7 +40,6 @@ classdef CocoApi
   properties
     imgDir  % directory containing images
     data    % COCO annotation data
-    type    % annotation type
     inds    % data structures for fast access
   end
   
@@ -59,16 +58,14 @@ classdef CocoApi
       %  coco      - initialized coco object
       fprintf('Loading and preparing annotations... '); clk=clock;
       c=coco; c.imgDir=imgDir; c.data=gason(fileread(annFile));
-      t={'instances','sentences'}; c.type=find(isfield(c.data,t));
-      assert(length(c.type)==1); c.type=t{c.type};
-      if( strcmp(c.type,'instances') )
+      if( strcmp(c.data.type,'instances') )
         anns = c.data.instances; cats = c.data.categories;
         c.inds.annCatIds = [anns.category_id];
         c.inds.annAreas = [anns.area];
         c.inds.catNmsToIds = containers.Map({cats.name},[cats.id]);
         c.inds.catIdsToNms = containers.Map([cats.id],{cats.name});
-      elseif( strcmp(c.type,'sentences') )
-        anns = c.data.sentences;
+      elseif( strcmp(c.data.type,'captions') )
+        anns = c.data.captions;
       end
       c.inds.imgIds = [c.data.images.id]; t=c.inds.imgIds;
       c.inds.imgIdsMap = containers.Map(t,1:length(t));
@@ -182,10 +179,10 @@ classdef CocoApi
       % OUTPUTS
       %  anns       - loaded annotations
       ids = values(coco.inds.annIdsMap,num2cell(ids));
-      if( strcmp(coco.type,'instances') )
+      if( strcmp(coco.data.type,'instances') )
         anns = coco.data.instances([ids{:}]);
-      elseif(strcmp( coco.type,'sentences') )
-        anns = coco.data.sentences([ids{:}]);
+      elseif(strcmp( coco.data.type,'captions') )
+        anns = coco.data.captions([ids{:}]);
       end
     end
     
@@ -201,15 +198,13 @@ classdef CocoApi
       % OUTPUTS
       %  hs         - handles to segment graphic objects
       n=length(anns); if(n==0), return; end
-      if( strcmp(coco.type,'instances') )
-        cs=(1:256)'; cs=max(.3,mod([cs*78 cs*121 cs*42],256)/256);
-        cs=cs(randperm(256),:); S={anns.segmentation};
-        hs=zeros(10000,1); k=0; hold on;
-        for i=1:n, for j=1:length(S{i}), k=k+1; hs(k)=...
-              fill(S{i}{j}(1:2:end),S{i}{j}(2:2:end),cs(i,:)); end; end
-        hs=hs(1:k); set(hs,'FaceAlpha',.6,'LineStyle','none'); hold off;
-      elseif( strcmp(coco.type,'sentences') )
-        S={anns.sentence};
+      if( strcmp(coco.data.type,'instances') )
+        S={anns.segmentation}; hs=zeros(10000,1); k=0; hold on;
+        for i=1:n, clr=rand(1,3); for j=1:length(S{i}), k=k+1; ...
+              hs(k)=fill(S{i}{j}(1:2:end),S{i}{j}(2:2:end),clr); end; end
+        hs=hs(1:k); set(hs,'FaceAlpha',.4,'LineWidth',3); hold off;
+      elseif( strcmp(coco.data.type,'captions') )
+        S={anns.caption};
         for i=1:n, S{i}=[int2str(i) ') ' S{i} '\newline']; end
         S=[S{:}]; title(S,'FontSize',12);
       end

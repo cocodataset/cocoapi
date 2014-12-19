@@ -21,7 +21,7 @@ anns = coco.loadAnns( annIds );
 coco.showAnns( anns );
 
 %% initialize coco api for caption annotations
-annFile = 'data/sentences_val2014.json';
+annFile = 'data/captions_val2014.json';
 if(~exist('cocoCap','var'))
   cocoCap = CocoApi( imgDir, annFile ); end
 
