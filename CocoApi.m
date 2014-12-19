@@ -17,20 +17,21 @@ classdef CocoApi
   % supports both *instance* and *caption* annotations. In the case of
   % captions not all functions are defined (e.g. categories are undefined).
   %
-  % The following utility functions are provided:
-  %  CocoApi    - Load annotation file and prepare data structures.
-  %  getAnnIds  - Get annotation ids that satisfy given filter conditions.
-  %  getCatIds  - Get category ids corresponding to category names.
-  %  getCatNms  - Get category names corresponding to category ids.
-  %  getImgIds  - Get image ids that satisfy given filter conditions.
-  %  loadAnns   - Load annotations with the specified ids.
-  %  loadImg    - Load image with the specified id.
+  % The following API functions are defined:
+  %  CocoApi    - Load COCO annotation file and prepare data structures.
+  %  getAnnIds  - Get ann ids that satisfy given filter conditions.
+  %  getCatIds  - Get cat ids that satisfy given filter conditions.
+  %  getImgIds  - Get img ids that satisfy given filter conditions.
+  %  loadAnns   - Load anns with the specified ids.
+  %  loadCats   - Load cats with the specified ids.
+  %  loadImgs   - Load imgs with the specified ids.
   %  showAnns   - Display the specified annotations.
+  % Throught the API "ann"=annotation, "cat"=category, and "img"=image.
   % Help on each functions can be accessed by: "help CocoApi>function".
   %
   % See also cocoDemo, CocoApi>CocoApi, CocoApi>getAnnIds,
-  % CocoApi>getCatIds, CocoApi>getCatNms, CocoApi>getImgIds,
-  % CocoApi>loadAnns, CocoApi>loadImg, CocoApi>showAnns
+  % CocoApi>getCatIds, CocoApi>getImgIds, CocoApi>loadAnns,
+  % CocoApi>loadCats, CocoApi>loadImgs, CocoApi>showAnns
   %
   % Microsoft COCO Toolbox.      Version 0.90
   % Data, paper, and tutorials available at:  http://mscoco.org/
@@ -39,39 +40,38 @@ classdef CocoApi
   
   properties
     imgDir  % directory containing images
-    data    % COCO annotation data
-    inds    % data structures for fast access
+    data    % COCO annotation data structure
+    inds    % data structures for fast indexing
   end
   
   methods
     function coco = CocoApi( imgDir, annFile )
-      % Load annotation file and prepare data structures.
+      % Load COCO annotation file and prepare data structures.
       %
       % USAGE
       %  coco = CocoApi( imgDir, annFile )
       %
       % INPUTS
-      %  imgDir    - directory containing images
-      %  annFile   - string specifying annotation file name
+      %  imgDir    - directory containing imgs
+      %  annFile   - COCO annotation filename
       %
       % OUTPUTS
       %  coco      - initialized coco object
       fprintf('Loading and preparing annotations... '); clk=clock;
       c=coco; c.imgDir=imgDir; c.data=gason(fileread(annFile));
       if( strcmp(c.data.type,'instances') )
-        anns = c.data.instances; cats = c.data.categories;
-        c.inds.annCatIds = [anns.category_id];
-        c.inds.annAreas = [anns.area];
-        c.inds.catNmsToIds = containers.Map({cats.name},[cats.id]);
-        c.inds.catIdsToNms = containers.Map([cats.id],{cats.name});
+        anns = c.data.instances; t = [c.data.categories.id]';
+        c.inds.catIdsMap = containers.Map(t,1:length(t));
+        c.inds.annCatIds = [anns.category_id]';
+        c.inds.annAreas = [anns.area]';
       elseif( strcmp(c.data.type,'captions') )
         anns = c.data.captions;
       end
-      c.inds.imgIds = [c.data.images.id]; t=c.inds.imgIds;
-      c.inds.imgIdsMap = containers.Map(t,1:length(t));
-      c.inds.annIds = [anns.id]; t=c.inds.annIds;
+      c.inds.annIds = [anns.id]'; t=c.inds.annIds;
       c.inds.annIdsMap = containers.Map(t,1:length(t));
-      c.inds.annImgIds = [anns.image_id];
+      c.inds.annImgIds = [anns.image_id]';
+      c.inds.imgIds = [c.data.images.id]'; t=c.inds.imgIds;
+      c.inds.imgIdsMap = containers.Map(t,1:length(t));
       c.inds.imgAnnIdsMap = makeImgAnnIdsMap( c.inds );
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk)); coco=c;
       
@@ -86,38 +86,31 @@ classdef CocoApi
       end
     end
     
-    function cats = getCatNms( coco, ids )
-      % Get category names corresponding to category ids.
+    function ids = getCatIds( coco, varargin )
+      % Get cat ids that satisfy given filter conditions.
       %
       % USAGE
-      %  cats = coco.getCatNms( [ids] )
+      %  ids = coco.getCatIds( params )
       %
       % INPUTS
-      %  ids        - [optional] integer ids specifying category
+      %  params     - filtering parameters (struct or name/value pairs)
+      %               setting any filter to [] skips that filter
+      %   .catNms     - [] get cats for given cat names
+      %   .supNms     - [] get cats for given supercategory names
+      %   .catIds     - [] get cats for given cat ids
       %
       % OUTPUTS
-      %  cats       - string array of category names
-      if(nargin<=1), cats=values(coco.inds.catIdsToNms);
-      else cats=values(coco.inds.catIdsToNms,num2cell(ids)); end
-    end
-    
-    function ids = getCatIds( coco, cats )
-      % Get category ids corresponding to category names.
-      %
-      % USAGE
-      %  ids = coco.getCatIds( [cats] )
-      %
-      % INPUTS
-      %  cats       - [optional] cell array of category names
-      %
-      % OUTPUTS
-      %  ids        - integer array of category ids
-      if(nargin<=1), ids=cell2mat(values(coco.inds.catNmsToIds));
-      else ids=cell2mat(values(coco.inds.catNmsToIds,cats)); end
+      %  ids        - integer array of cat ids
+      def={'catNms',[],'supNms',[],'catIds',[]}; t=coco.data.categories;
+      [catNms,supNms,catIds] = getPrmDflt(varargin,def,1);
+      if(~isempty(catNms)), t = t(ismember({t.name},catNms)); end
+      if(~isempty(supNms)), t = t(ismember({t.supercategory},supNms)); end
+      if(~isempty(catIds)), t = t(ismember([t.ids],catIds)); end
+      ids = [t.id];
     end
     
     function ids = getImgIds( coco, varargin )
-      % Get image ids that satisfy given filter conditions.
+      % Get img ids that satisfy given filter conditions.
       %
       % USAGE
       %  ids = coco.getImgIds( params )
@@ -129,16 +122,16 @@ classdef CocoApi
       %   .catIds     - [] get imgs with all given cats
       %
       % OUTPUTS
-      %  ids        - integer array of image ids
-      p = getPrmDflt(varargin,{'imgIds',[],'catIds',[]},1);
-      ids = coco.inds.imgIds;
+      %  ids        - integer array of img ids
+      def = {'imgIds',[],'catIds',[]};
+      p = getPrmDflt(varargin,def,1); ids = coco.inds.imgIds;
       if(~isempty(p.imgIds)), ids=intersect(ids,p.imgIds); end
       for i=1:length(p.catIds), ids=intersect(ids,unique(...
           coco.inds.annImgIds(coco.inds.annCatIds==p.catIds(i)))); end
     end
     
     function ids = getAnnIds( coco, varargin )
-      % Get annotation ids that satisfy given filter conditions.
+      % Get ann ids that satisfy given filter conditions.
       %
       % USAGE
       %  ids = coco.getAnnIds( params )
@@ -151,53 +144,68 @@ classdef CocoApi
       %   .areaRng    - [] get anns for given area range (e.g. [0 inf])
       %
       % OUTPUTS
-      %  ids        - integer array of annotation ids
-      p = getPrmDflt(varargin,{'imgIds',[],'catIds',[],'areaRng',[]},1);
-      if( length(p.imgIds)==1 )
-        ids = coco.inds.imgAnnIdsMap(p.imgIds); K = true(1,length(ids));
-        anns = coco.loadAnns(ids); if(isempty(anns)), return; end
-        if(~isempty(p.catIds)), K = K & ...
-            ismember( [anns.category_id], p.catIds ); end
-        if(~isempty(p.areaRng)), areas=[anns.area]; K = K & ...
-            areas>=p.areaRng(1) & areas<=p.areaRng(2); end
+      %  ids        - integer array of ann ids
+      def = {'imgIds',[],'catIds',[],'areaRng',[]};
+      [imgIds,catIds,ar] = getPrmDflt(varargin,def,1);
+      if( length(imgIds)==1 )
+        t = coco.loadAnns(coco.inds.imgAnnIdsMap(imgIds));
+        if(~isempty(catIds)), t = t(ismember([t.category_id],catIds)); end
+        if(~isempty(ar)), a=[t.area]; t = t(a>=ar(1) & a<=ar(2)); end
+        ids = [t.id];
       else
-        ids = coco.inds.annIds; K = true(1,length(ids));
-        if(~isempty(p.imgIds)), K = K & ...
-            ismember( coco.inds.annImgIds, p.imgIds ); end
-        if(~isempty(p.catIds)), K = K & ...
-            ismember( coco.inds.annCatIds, p.catIds ); end
-        if(~isempty(p.areaRng)), areas=coco.inds.annAreas; K = K & ...
-            areas>=p.areaRng(1) & areas<=p.areaRng(2); end
+        ids=coco.inds.annIds; K = true(length(ids),1); t = coco.inds;
+        if(~isempty(imgIds)), K = K & ismember(t.annImgIds,imgIds); end
+        if(~isempty(catIds)), K = K & ismember(t.annCatIds,catIds); end
+        if(~isempty(ar)), a=t.annAreas; K = K & a>=ar(1) & a<=ar(2); end
+        ids=ids(K);
       end
-      ids=ids(K);
     end
     
-    function I = loadImg( coco, id )
-      % Load image with the specified id.
+    function cats = loadCats( coco, ids )
+      % Load cats with the specified ids.
       %
       % USAGE
-      %  I = coco.loadImg( id )
+      %  cats = coco.loadCats( ids )
       %
       % INPUTS
-      %  id         - integer id specifying image
+      %  ids        - integer ids specifying cats
       %
       % OUTPUTS
-      %  I          - loaded image
-      img = coco.data.images(coco.inds.imgIdsMap(id));
-      I = imread([coco.imgDir filesep img.file_name]);
+      %  cats       - loaded cat objects
+      ids = values(coco.inds.catIdsMap,num2cell(ids));
+      cats = coco.data.categories([ids{:}]);
+    end
+    
+    function imgs = loadImgs( coco, ids, readImg )
+      % Load imgs with the specified ids.
+      %
+      % USAGE
+      %  imgs = coco.loadImgs( ids, [readImg] )
+      %
+      % INPUTS
+      %  ids        - integer ids specifying imgs
+      %  readImg    - [false] if true load img data
+      %
+      % OUTPUTS
+      %  imgs       - loaded img objects
+      ids = values(coco.inds.imgIdsMap,num2cell(ids));
+      imgs = coco.data.images([ids{:}]);
+      if(nargin<=2 || readImg==0), return; end
+      for i=1:length(imgs), f=[coco.imgDir filesep imgs(i).file_name];
+        imgs(i).image = imread(f); end
     end
     
     function anns = loadAnns( coco, ids )
-      % Load annotations with the specified ids.
+      % Load anns with the specified ids.
       %
       % USAGE
       %  anns = coco.loadAnns( ids )
       %
       % INPUTS
-      %  ids        - integer id specifying annotations
+      %  ids        - integer ids specifying anns
       %
       % OUTPUTS
-      %  anns       - loaded annotations
+      %  anns       - loaded ann objects
       ids = values(coco.inds.annIdsMap,num2cell(ids));
       if( strcmp(coco.data.type,'instances') )
         anns = coco.data.instances([ids{:}]);

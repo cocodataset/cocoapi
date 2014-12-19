@@ -7,13 +7,14 @@ if(~exist('coco','var'))
   coco = CocoApi( imgDir, annFile ); end
 
 %% get all images containging given categories, select one at random
-catIds = coco.getCatIds( {'person','dog','skateboard'} );
+catIds = coco.getCatIds( 'catNms', {'person','dog','skateboard'} );
 imgIds = coco.getImgIds( 'catIds',catIds );
 imgId = imgIds( randi(length(imgIds)) );
 
 %% load and display image
-I = coco.loadImg(imgId);
-figure(1); im(I,[],0);
+imgs = coco.loadImgs( imgId, true );
+figure(1); imagesc( imgs(1).image );
+axis('image'); set(gca,'XTick',[],'YTick',[])
 
 %% load and display instance annotations
 annIds = coco.getAnnIds( 'imgIds',imgId, 'catIds',catIds );
