@@ -98,6 +98,37 @@ classdef CocoApi
       end
     end
     
+    function ids = getAnnIds( coco, varargin )
+      % Get ann ids that satisfy given filter conditions.
+      %
+      % USAGE
+      %  ids = coco.getAnnIds( params )
+      %
+      % INPUTS
+      %  params     - filtering parameters (struct or name/value pairs)
+      %               setting any filter to [] skips that filter
+      %   .imgIds     - [] get anns for given imgs
+      %   .catIds     - [] get anns for given cats
+      %   .areaRng    - [] get anns for given area range (e.g. [0 inf])
+      %
+      % OUTPUTS
+      %  ids        - integer array of ann ids
+      def = {'imgIds',[],'catIds',[],'areaRng',[]};
+      [imgIds,catIds,ar] = getPrmDflt(varargin,def,1);
+      if( length(imgIds)==1 )
+        t = coco.loadAnns(coco.inds.imgAnnIdsMap(imgIds));
+        if(~isempty(catIds)), t = t(ismember([t.category_id],catIds)); end
+        if(~isempty(ar)), a=[t.area]; t = t(a>=ar(1) & a<=ar(2)); end
+        ids = [t.id];
+      else
+        ids=coco.inds.annIds; K = true(length(ids),1); t = coco.inds;
+        if(~isempty(imgIds)), K = K & ismember(t.annImgIds,imgIds); end
+        if(~isempty(catIds)), K = K & ismember(t.annCatIds,catIds); end
+        if(~isempty(ar)), a=t.annAreas; K = K & a>=ar(1) & a<=ar(2); end
+        ids=ids(K);
+      end
+    end
+    
     function ids = getCatIds( coco, varargin )
       % Get cat ids that satisfy given filter conditions.
       %
@@ -142,34 +173,22 @@ classdef CocoApi
       for i=1:length(t), ids=intersect(ids,t{i}); end
     end
     
-    function ids = getAnnIds( coco, varargin )
-      % Get ann ids that satisfy given filter conditions.
+    function anns = loadAnns( coco, ids )
+      % Load anns with the specified ids.
       %
       % USAGE
-      %  ids = coco.getAnnIds( params )
+      %  anns = coco.loadAnns( ids )
       %
       % INPUTS
-      %  params     - filtering parameters (struct or name/value pairs)
-      %               setting any filter to [] skips that filter
-      %   .imgIds     - [] get anns for given imgs
-      %   .catIds     - [] get anns for given cats
-      %   .areaRng    - [] get anns for given area range (e.g. [0 inf])
+      %  ids        - integer ids specifying anns
       %
       % OUTPUTS
-      %  ids        - integer array of ann ids
-      def = {'imgIds',[],'catIds',[],'areaRng',[]};
-      [imgIds,catIds,ar] = getPrmDflt(varargin,def,1);
-      if( length(imgIds)==1 )
-        t = coco.loadAnns(coco.inds.imgAnnIdsMap(imgIds));
-        if(~isempty(catIds)), t = t(ismember([t.category_id],catIds)); end
-        if(~isempty(ar)), a=[t.area]; t = t(a>=ar(1) & a<=ar(2)); end
-        ids = [t.id];
-      else
-        ids=coco.inds.annIds; K = true(length(ids),1); t = coco.inds;
-        if(~isempty(imgIds)), K = K & ismember(t.annImgIds,imgIds); end
-        if(~isempty(catIds)), K = K & ismember(t.annCatIds,catIds); end
-        if(~isempty(ar)), a=t.annAreas; K = K & a>=ar(1) & a<=ar(2); end
-        ids=ids(K);
+      %  anns       - loaded ann objects
+      ids = values(coco.inds.annIdsMap,num2cell(ids));
+      if( strcmp(coco.data.type,'instances') )
+        anns = coco.data.instances([ids{:}]);
+      elseif(strcmp( coco.data.type,'captions') )
+        anns = coco.data.captions([ids{:}]);
       end
     end
     
@@ -205,25 +224,6 @@ classdef CocoApi
       if(nargin<=2 || readImg==0), return; end
       for i=1:length(imgs), f=[coco.imgDir filesep imgs(i).file_name];
         imgs(i).image = imread(f); end
-    end
-    
-    function anns = loadAnns( coco, ids )
-      % Load anns with the specified ids.
-      %
-      % USAGE
-      %  anns = coco.loadAnns( ids )
-      %
-      % INPUTS
-      %  ids        - integer ids specifying anns
-      %
-      % OUTPUTS
-      %  anns       - loaded ann objects
-      ids = values(coco.inds.annIdsMap,num2cell(ids));
-      if( strcmp(coco.data.type,'instances') )
-        anns = coco.data.instances([ids{:}]);
-      elseif(strcmp( coco.data.type,'captions') )
-        anns = coco.data.captions([ids{:}]);
-      end
     end
     
     function hs = showAnns( coco, anns )
