@@ -19,8 +19,8 @@ classdef CocoApi
   %
   % The following API functions are defined:
   %  CocoApi    - Load COCO annotation file and prepare data structures.
-  %  decodeMask - Decompress binary mask M encoded via run-length encoding.
-  %  encodeMask - Compress binary mask M using run-length encoding.
+  %  decodeMask - Decode binary mask M encoded via run-length encoding.
+  %  encodeMask - Encode binary mask M using run-length encoding.
   %  getAnnIds  - Get ann ids that satisfy given filter conditions.
   %  getCatIds  - Get cat ids that satisfy given filter conditions.
   %  getImgIds  - Get img ids that satisfy given filter conditions.
@@ -258,7 +258,7 @@ classdef CocoApi
   
   methods( Static )
     function M = decodeMask( R )
-      % Decompress binary mask M encoded via run-length encoding.
+      % Decode binary mask M encoded via run-length encoding.
       %
       % USAGE
       %  M = CocoApi.decodeMask( R )
@@ -268,12 +268,13 @@ classdef CocoApi
       %
       % OUTPUTS
       %  M          - decoded binary mask
-      M=zeros(R.size,'uint8'); k=1; n=length(R.vals);
-      for i=1:n, for p=1:R.counts(i), M(k)=R.vals(i); k=k+1; end; end
+      M=zeros(R.size,'uint8'); k=1; n=length(R.counts);
+      for i=2:2:n, for j=1:R.counts(i-1), k=k+1; end;
+        for j=1:R.counts(i), M(k)=1; k=k+1; end; end
     end
     
     function R = encodeMask( M )
-      % Compress binary mask M using run-length encoding.
+      % Encode binary mask M using run-length encoding.
       %
       % USAGE
       %  R = CocoApi.encodeMask( M )
@@ -283,9 +284,9 @@ classdef CocoApi
       %
       % OUTPUTS
       %  R          - run-length encoding of binary mask
-      R.size=size(M); if(isempty(M)), R.counts=[]; R.vals=[]; return; end
+      R.size=size(M); if(isempty(M)), R.counts=[]; return; end
       D=M(2:end)~=M(1:end-1); is=uint32([find(D) numel(M)]);
-      R.counts=[is(1) diff(is)]; R.vals=M(is);
+      R.counts=[is(1) diff(is)]; if(M(1)==1), R.counts=[0 R.counts]; end
     end
     
     function M = segToMask( S, h, w )
@@ -296,8 +297,8 @@ classdef CocoApi
       %
       % INPUTS
       %  S          - polygon segmentation mask
-      %  h          - image height
-      %  w          - image width
+      %  h          - target mask height
+      %  w          - target mask width
       %
       % OUTPUTS
       %  M          - binary mask
