@@ -24,7 +24,7 @@ figure(1); imagesc( imgs(1).image );
 axis('image'); set(gca,'XTick',[],'YTick',[])
 
 %% load and display instance annotations
-annIds = coco.getAnnIds( 'imgIds',imgId, 'catIds',catIds );
+annIds = coco.getAnnIds( 'imgIds',imgId, 'catIds',catIds, 'iscrowd',0 );
 anns = coco.loadAnns( annIds );
 coco.showAnns( anns );
 

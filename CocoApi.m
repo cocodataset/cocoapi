@@ -63,12 +63,11 @@ classdef CocoApi
       %  coco      - initialized coco object
       fprintf('Loading and preparing annotations... '); clk=clock;
       coco.imgDir=imgDir; coco.data=gason(fileread(annFile));
+      anns = coco.data.annotations;
       if( strcmp(coco.data.type,'instances') )
-        anns = coco.data.instances;
         is.annCatIds = [anns.category_id]';
         is.annAreas = [anns.area]';
-      elseif( strcmp(coco.data.type,'captions') )
-        anns = coco.data.captions;
+        is.annIscrowd = [anns.iscrowd]';
       end
       is.annIds = [anns.id]';
       is.annIdsMap = makeMap(is.annIds);
@@ -117,18 +116,20 @@ classdef CocoApi
       %
       % OUTPUTS
       %  ids        - integer array of ann ids
-      def = {'imgIds',[],'catIds',[],'areaRng',[]};
-      [imgIds,catIds,ar] = getPrmDflt(varargin,def,1);
+      def = {'imgIds',[],'catIds',[],'areaRng',[],'iscrowd',[]};
+      [imgIds,catIds,ar,iscrowd] = getPrmDflt(varargin,def,1);
       if( length(imgIds)==1 )
         t = coco.loadAnns(coco.inds.imgAnnIdsMap(imgIds));
         if(~isempty(catIds)), t = t(ismember([t.category_id],catIds)); end
         if(~isempty(ar)), a=[t.area]; t = t(a>=ar(1) & a<=ar(2)); end
+        if(~isempty(iscrowd)), t=t([t.iscrowd]==iscrowd); end
         ids = [t.id];
       else
         ids=coco.inds.annIds; K = true(length(ids),1); t = coco.inds;
         if(~isempty(imgIds)), K = K & ismember(t.annImgIds,imgIds); end
         if(~isempty(catIds)), K = K & ismember(t.annCatIds,catIds); end
         if(~isempty(ar)), a=t.annAreas; K = K & a>=ar(1) & a<=ar(2); end
+        if(~isempty(iscrowd)), K = K & t.annIscrowd==iscrowd; end
         ids=ids(K);
       end
     end
@@ -189,11 +190,7 @@ classdef CocoApi
       % OUTPUTS
       %  anns       - loaded ann objects
       ids = values(coco.inds.annIdsMap,num2cell(ids));
-      if( strcmp(coco.data.type,'instances') )
-        anns = coco.data.instances([ids{:}]);
-      elseif(strcmp( coco.data.type,'captions') )
-        anns = coco.data.captions([ids{:}]);
-      end
+      anns = coco.data.annotations([ids{:}]);
     end
     
     function cats = loadCats( coco, ids )
@@ -243,6 +240,7 @@ classdef CocoApi
       %  hs         - handles to segment graphic objects
       n=length(anns); if(n==0), return; end
       if( strcmp(coco.data.type,'instances') )
+        anns=anns(~[anns.iscrowd]); n=length(anns); % skip crowds
         S={anns.segmentation}; hs=zeros(10000,1); k=0; hold on;
         for i=1:n, clr=rand(1,3); for j=1:length(S{i}), k=k+1; ...
               hs(k)=fill(S{i}{j}(1:2:end),S{i}{j}(2:2:end),clr); end; end
