@@ -1,10 +1,9 @@
 %% Demo for the CocoApi (see CocoApi.m)
 
 %% initialize COCO api for instance annotations
-imgDir = 'data/val2014';
-annFile = 'data/instances_val2014.json';
-if(~exist('coco','var'))
-  coco = CocoApi( imgDir, annFile ); end
+dataDir='data'; dataType='val2014';
+annFile=sprintf('%s/instances_%s.json',dataDir,dataType);
+if(~exist('coco','var')), coco = CocoApi( annFile ); end
 
 %% display COCO categories and supercategories
 cats = coco.loadCats( coco.getCatIds() );
@@ -19,21 +18,18 @@ imgIds = coco.getImgIds( 'catIds',catIds );
 imgId = imgIds( randi(length(imgIds)) );
 
 %% load and display image
-imgs = coco.loadImgs( imgId, true );
-figure(1); imagesc( imgs(1).image );
-axis('image'); set(gca,'XTick',[],'YTick',[])
+imgs = coco.loadImgs( imgId );
+I = imread(sprintf('%s/%s/%s',dataDir,dataType,imgs(1).file_name));
+figure(1); imagesc(I); axis('image'); set(gca,'XTick',[],'YTick',[])
 
 %% load and display instance annotations
 annIds = coco.getAnnIds( 'imgIds',imgId, 'catIds',catIds, 'iscrowd',0 );
-anns = coco.loadAnns( annIds );
-coco.showAnns( anns );
+anns = coco.loadAnns( annIds ); coco.showAnns( anns );
 
 %% initialize COCO api for caption annotations
-annFile = 'data/captions_val2014.json';
-if(~exist('cocoCap','var'))
-  cocoCap = CocoApi( imgDir, annFile ); end
+annFile=sprintf('%s/captions_%s.json',dataDir,dataType);
+if(~exist('caps','var')), caps = CocoApi( annFile ); end
 
 %% load and display caption annotations
-annIds = cocoCap.getAnnIds( 'imgIds',imgId );
-anns = cocoCap.loadAnns( annIds );
-cocoCap.showAnns( anns );
+annIds = caps.getAnnIds( 'imgIds',imgId );
+anns = caps.loadAnns( annIds ); caps.showAnns( anns );

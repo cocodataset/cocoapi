@@ -43,26 +43,24 @@ classdef CocoApi
   % Licensed under the Simplified BSD License [see private/bsd.txt]
   
   properties
-    imgDir  % directory containing images
     data    % COCO annotation data structure
     inds    % data structures for fast indexing
   end
   
   methods
-    function coco = CocoApi( imgDir, annFile )
+    function coco = CocoApi( annFile )
       % Load COCO annotation file and prepare data structures.
       %
       % USAGE
-      %  coco = CocoApi( imgDir, annFile )
+      %  coco = CocoApi( annFile )
       %
       % INPUTS
-      %  imgDir    - directory containing imgs
       %  annFile   - COCO annotation filename
       %
       % OUTPUTS
       %  coco      - initialized coco object
       fprintf('Loading and preparing annotations... '); clk=clock;
-      coco.imgDir=imgDir; coco.data=gason(fileread(annFile));
+      coco.data=gason(fileread(annFile));
       anns = coco.data.annotations;
       if( strcmp(coco.data.type,'instances') )
         is.annCatIds = [anns.category_id]';
@@ -113,6 +111,7 @@ classdef CocoApi
       %   .imgIds     - [] get anns for given imgs
       %   .catIds     - [] get anns for given cats
       %   .areaRng    - [] get anns for given area range (e.g. [0 inf])
+      %   .iscrowd    - [] get anns for given crowd label (0 or 1)
       %
       % OUTPUTS
       %  ids        - integer array of ann ids
@@ -122,7 +121,7 @@ classdef CocoApi
         t = coco.loadAnns(coco.inds.imgAnnIdsMap(imgIds));
         if(~isempty(catIds)), t = t(ismember([t.category_id],catIds)); end
         if(~isempty(ar)), a=[t.area]; t = t(a>=ar(1) & a<=ar(2)); end
-        if(~isempty(iscrowd)), t=t([t.iscrowd]==iscrowd); end
+        if(~isempty(iscrowd)), t = t([t.iscrowd]==iscrowd); end
         ids = [t.id];
       else
         ids=coco.inds.annIds; K = true(length(ids),1); t = coco.inds;
@@ -208,23 +207,19 @@ classdef CocoApi
       cats = coco.data.categories([ids{:}]);
     end
     
-    function imgs = loadImgs( coco, ids, readImg )
+    function imgs = loadImgs( coco, ids )
       % Load imgs with the specified ids.
       %
       % USAGE
-      %  imgs = coco.loadImgs( ids, [readImg] )
+      %  imgs = coco.loadImgs( ids )
       %
       % INPUTS
       %  ids        - integer ids specifying imgs
-      %  readImg    - [false] if true load img data
       %
       % OUTPUTS
       %  imgs       - loaded img objects
       ids = values(coco.inds.imgIdsMap,num2cell(ids));
       imgs = coco.data.images([ids{:}]);
-      if(nargin<=2 || readImg==0), return; end
-      for i=1:length(imgs), f=[coco.imgDir filesep imgs(i).file_name];
-        imgs(i).image = imread(f); end
     end
     
     function hs = showAnns( coco, anns )
