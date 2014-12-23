@@ -235,11 +235,16 @@ classdef CocoApi
       %  hs         - handles to segment graphic objects
       n=length(anns); if(n==0), return; end
       if( strcmp(coco.data.type,'instances') )
-        anns=anns(~[anns.iscrowd]); n=length(anns); % skip crowds
         S={anns.segmentation}; hs=zeros(10000,1); k=0; hold on;
-        for i=1:n, clr=rand(1,3); for j=1:length(S{i}), k=k+1; ...
-              hs(k)=fill(S{i}{j}(1:2:end),S{i}{j}(2:2:end),clr); end; end
-        hs=hs(1:k); set(hs,'FaceAlpha',.4,'LineWidth',3); hold off;
+        pFill={'FaceAlpha',.4,'LineWidth',3};
+        for i=1:n, C=rand(1,3);
+          if(anns(i).iscrowd), M=double(coco.decodeMask(S{i})); k=k+1;
+            hs(k)=imagesc(cat(3,M*C(1),M*C(2),M*C(3)),'Alphadata',M*.4);
+          else for j=1:length(S{i}), P=S{i}{j}+1; k=k+1;
+              hs(k)=fill(P(1:2:end),P(2:2:end),C,pFill{:}); end
+          end
+        end
+        hs=hs(1:k); hold off;
       elseif( strcmp(coco.data.type,'captions') )
         S={anns.caption};
         for i=1:n, S{i}=[int2str(i) ') ' S{i} '\newline']; end
@@ -295,8 +300,8 @@ classdef CocoApi
       %
       % OUTPUTS
       %  M          - binary mask
-      M = poly2mask(S{1}(1:2:end),S{1}(2:2:end),h,w); n = length(S);
-      for i=2:n, M = M | poly2mask(S{i}(1:2:end),S{i}(2:2:end),h,w); end
+      P=S{1}+1; M=poly2mask(P(1:2:end),P(2:2:end),h,w); n=length(S);
+      for i=2:n, P=S{i}+1; M=M | poly2mask(P(1:2:end),P(2:2:end),h,w); end
     end
   end
   
