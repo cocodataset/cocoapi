@@ -37,10 +37,10 @@ classdef CocoApi
   % CocoApi>getImgIds, CocoApi>loadAnns, CocoApi>loadCats,
   % CocoApi>loadImgs, CocoApi>segToMask, CocoApi>showAnns
   %
-  % Microsoft COCO Toolbox.      Version 0.90
+  % Microsoft COCO Toolbox.      Version 1.0
   % Data, paper, and tutorials available at:  http://mscoco.org/
-  % Code written by Piotr Dollar and Tsung-Yi Lin, 2014.
-  % Licensed under the Simplified BSD License [see private/bsd.txt]
+  % Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
+  % Licensed under the Simplified BSD License [see coco/license.txt]
   
   properties
     data    % COCO annotation data structure
@@ -239,7 +239,7 @@ classdef CocoApi
         pFill={'FaceAlpha',.4,'LineWidth',3};
         for i=1:n, C=rand(1,3);
           if(anns(i).iscrowd), M=double(coco.decodeMask(S{i})); k=k+1;
-            hs(k)=imagesc(cat(3,M*C(1),M*C(2),M*C(3)),'Alphadata',M*.4);
+            hs(k)=imagesc(cat(3,M/4,M/4,M/4),'Alphadata',M*.5);
           else for j=1:length(S{i}), P=S{i}{j}+1; k=k+1;
               hs(k)=fill(P(1:2:end),P(2:2:end),C,pFill{:}); end
           end
