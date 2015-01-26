@@ -1,0 +1,76 @@
+
+# coding: utf-8
+
+# In[1]:
+
+# get_ipython().magic(u'matplotlib inline')
+import pycocotools.coco as coco
+from pycocotools.coco import COCO
+import numpy as np
+import skimage.io as io
+import matplotlib.pyplot as plt
+import pylab
+
+
+# In[2]:
+
+dataDir='../../../coco'
+dataType='val2014'
+annFile='%s/annotations/instances_%s.json'%(dataDir,dataType)
+
+
+# In[3]:
+
+# initialize COCO api for instance annotations
+coco=COCO(annFile)
+
+
+# In[4]:
+
+# display COCO categories and supercategories
+cats = coco.loadCats(coco.getCatIds())
+nms=[cat['name'] for cat in cats]
+print 'COCO categories: \n', ' '.join(nms)
+print '\n'
+nms = set([cat['supercategory'] for cat in cats])
+print 'COCO supercategories: \n', ' '.join(nms)
+
+
+# In[5]:
+
+# load and display image
+catIds = coco.getCatIds(catNms=['person','dog','skateboard']);
+imgIds = coco.getImgIds(catIds=catIds );
+img = coco.loadImgs(imgIds[np.random.randint(0,len(imgIds))])[0]
+I = io.imread('%s/images/%s/%s'%(dataDir,dataType,img['file_name']))
+plt.figure()
+plt.imshow(I)
+plt.show()
+
+
+# In[6]:
+
+# load and display instance annotations
+plt.imshow(I)
+annIds = coco.getAnnIds(imgIds=img['id'], catIds=catIds)
+anns = coco.loadAnns(annIds)
+coco.showAnns(anns)
+plt.show()
+
+
+# In[7]:
+
+# initialize COCO api for caption annotations
+annFile = '%s/annotations/captions_%s.json'%(dataDir,dataType)
+caps=COCO(annFile)
+
+
+# In[8]:
+
+# load and display caption annotations
+annIds = caps.getAnnIds(imgIds=img['id']);
+anns = caps.loadAnns(annIds)
+caps.showAnns(anns)
+plt.imshow(I)
+plt.show()
+
