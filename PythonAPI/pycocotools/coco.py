@@ -219,30 +219,6 @@ class COCO:
         elif type(ids) == int:
             return [self.imgs[ids]]
 
-    def getImageIds(self, params={}):
-        """
-        Get image IDs from annotations.  One can use params to get filtered results.
-        :param params (dict): { 'cat_id': [int]}
-                            Filter images that contain specified object category.
-                            If params is empty, return all image IDs in the dataset.
-        :return: a list of image IDs
-        """
-        # load all images if no constraint specified
-        if params == {}:
-            return self.imgs.keys()
-        # get instances with filtering constraints
-        im_id_lists = []
-        # specific filtering for instances annotations
-        if self.ann_key == 'instances' and 'cat_id' in params.keys():
-            im_id_lists.append( [ann['image_id'] for ann_id, ann in self.annotations.items() if ann['category_id'] == params['cat_id']] )
-        # aggregate the queries by AND operation
-        if len(im_id_lists) == 0:
-            im_id_list = []
-        for i, l in enumerate(im_id_lists):
-            assert isinstance(l, list)
-            im_id_list = set(im_id_list) & set(l) if not i == 0 else set(l)
-        return list(im_id_list)
-
     def showAnns(self, anns):
         """
         Display the specified annotations.
@@ -268,6 +244,8 @@ class COCO:
                     mask = COCO.decodeMask(ann['segmentation'])
                     img = np.ones( (mask.shape[0], mask.shape[1], 3) )
                     img[:,:,:] = 64
+                    # for i in range(3):
+                        # img[:,:,i] *= c[i]*255
                     ax.imshow(np.dstack( (img, mask*0.5) ))
             p = PatchCollection(polygons, facecolors=color, edgecolors=(0,0,0,1), linewidths=3, alpha=0.4)
             ax.add_collection(p)
