@@ -3,7 +3,6 @@
 
 # In[1]:
 
-# get_ipython().magic(u'matplotlib inline')
 import pycocotools.coco as coco
 from pycocotools.coco import COCO
 import numpy as np
@@ -38,34 +37,37 @@ print 'COCO supercategories: \n', ' '.join(nms)
 
 # In[5]:
 
-# load and display image
+# get all images containing given categories, select one at random
 catIds = coco.getCatIds(catNms=['person','dog','skateboard']);
 imgIds = coco.getImgIds(catIds=catIds );
 img = coco.loadImgs(imgIds[np.random.randint(0,len(imgIds))])[0]
+
+
+# In[6]:
+
+# load and display image
 I = io.imread('%s/images/%s/%s'%(dataDir,dataType,img['file_name']))
 plt.figure()
 plt.imshow(I)
 plt.show()
 
-
-# In[6]:
+# In[7]:
 
 # load and display instance annotations
 plt.imshow(I)
-annIds = coco.getAnnIds(imgIds=img['id'], catIds=catIds)
+annIds = coco.getAnnIds(imgIds=img['id'], catIds=catIds, iscrowd=None)
 anns = coco.loadAnns(annIds)
 coco.showAnns(anns)
 plt.show()
 
-
-# In[7]:
+# In[8]:
 
 # initialize COCO api for caption annotations
 annFile = '%s/annotations/captions_%s.json'%(dataDir,dataType)
 caps=COCO(annFile)
 
 
-# In[8]:
+# In[9]:
 
 # load and display caption annotations
 annIds = caps.getAnnIds(imgIds=img['id']);
@@ -73,4 +75,3 @@ anns = caps.loadAnns(annIds)
 caps.showAnns(anns)
 plt.imshow(I)
 plt.show()
-

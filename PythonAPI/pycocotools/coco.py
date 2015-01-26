@@ -243,9 +243,9 @@ class COCO:
                     # mask
                     mask = COCO.decodeMask(ann['segmentation'])
                     img = np.ones( (mask.shape[0], mask.shape[1], 3) )
-                    img[:,:,:] = 64
-                    # for i in range(3):
-                        # img[:,:,i] *= c[i]*255
+                    light_green = np.array([2.0,166.0,101.0])/255
+                    for i in range(3):
+                        img[:,:,i] = light_green[i]
                     ax.imshow(np.dstack( (img, mask*0.5) ))
             p = PatchCollection(polygons, facecolors=color, edgecolors=(0,0,0,1), linewidths=3, alpha=0.4)
             ax.add_collection(p)
