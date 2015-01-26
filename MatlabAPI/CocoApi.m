@@ -239,7 +239,7 @@ classdef CocoApi
         pFill={'FaceAlpha',.4,'LineWidth',3};
         for i=1:n, C=rand(1,3);
           if(anns(i).iscrowd), M=double(coco.decodeMask(S{i})); k=k+1;
-            hs(k)=imagesc(cat(3,M/4,M/4,M/4),'Alphadata',M*.5);
+            hs(k)=imagesc(cat(3,M*.01,M*.65,M*.40),'Alphadata',M*.5);
           else for j=1:length(S{i}), P=S{i}{j}+1; k=k+1;
               hs(k)=fill(P(1:2:end),P(2:2:end),C,pFill{:}); end
           end
