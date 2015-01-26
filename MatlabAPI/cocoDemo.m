@@ -23,7 +23,7 @@ I = imread(sprintf('%s/images/%s/%s',dataDir,dataType,img.file_name));
 figure(1); imagesc(I); axis('image'); set(gca,'XTick',[],'YTick',[])
 
 %% load and display instance annotations
-annIds = coco.getAnnIds('imgIds',imgId,'catIds',catIds,'iscrowd',0);
+annIds = coco.getAnnIds('imgIds',imgId,'catIds',catIds,'iscrowd',[]);
 anns = coco.loadAnns(annIds); coco.showAnns(anns);
 
 %% initialize COCO api for caption annotations
