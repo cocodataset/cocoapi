@@ -3,17 +3,15 @@
 
 # In[1]:
 
-import pycocotools.coco as coco
 from pycocotools.coco import COCO
 import numpy as np
 import skimage.io as io
 import matplotlib.pyplot as plt
-import pylab
 
 
 # In[2]:
 
-dataDir='../../../coco'
+dataDir='..'
 dataType='val2014'
 annFile='%s/annotations/instances_%s.json'%(dataDir,dataType)
 

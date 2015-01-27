@@ -1684,12 +1684,10 @@ In&nbsp;[1]:
 <div class="inner_cell">
     <div class="input_area">
 <div class="highlight"><pre><span class="o">%</span><span class="k">matplotlib</span> <span class="n">inline</span>
-<span class="kn">import</span> <span class="nn">pycocotools.coco</span> <span class="kn">as</span> <span class="nn">coco</span>
 <span class="kn">from</span> <span class="nn">pycocotools.coco</span> <span class="kn">import</span> <span class="n">COCO</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">skimage.io</span> <span class="kn">as</span> <span class="nn">io</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
-<span class="kn">import</span> <span class="nn">pylab</span>
 <span class="n">pylab</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s">&#39;figure.figsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">)</span>
 </pre></div>
 
@@ -1705,7 +1703,7 @@ In&nbsp;[2]:
 </div>
 <div class="inner_cell">
     <div class="input_area">
-<div class="highlight"><pre><span class="n">dataDir</span><span class="o">=</span><span class="s">&#39;../../../coco&#39;</span>
+<div class="highlight"><pre><span class="n">dataDir</span><span class="o">=</span><span class="s">&#39;..&#39;</span>
 <span class="n">dataType</span><span class="o">=</span><span class="s">&#39;val2014&#39;</span>
 <span class="n">annFile</span><span class="o">=</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">/annotations/instances_</span><span class="si">%s</span><span class="s">.json&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">dataDir</span><span class="p">,</span><span class="n">dataType</span><span class="p">)</span>
 </pre></div>
