@@ -44,15 +44,11 @@ __version__ = 1.0
 
 import json
 import datetime
-import itertools
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import pylab
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 import numpy as np
 from skimage.draw import polygon
-import copy
 
 class COCO:
     def __init__(self, annotation_file='annotations/instances_val2014_1_0.json'):
