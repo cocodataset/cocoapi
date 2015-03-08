@@ -287,21 +287,24 @@ classdef CocoApi
       R.counts=[is(1) diff(is)]; if(M(1)==1), R.counts=[0 R.counts]; end
     end
     
-    function M = segToMask( S, h, w )
+    function M = segToMask( S, h, w, g )
       % Convert polygon segmentation to binary mask.
       %
       % USAGE
-      %  M = CocoApi.segToMask( S, h, w )
+      %  M = CocoApi.segToMask( S, h, w, [g] )
       %
       % INPUTS
       %  S          - polygon segmentation mask
       %  h          - target mask height
       %  w          - target mask width
+      %  g          - [1] controls mask granularity
       %
       % OUTPUTS
-      %  M          - binary mask
-      P=S{1}+1; M=poly2mask(P(1:2:end),P(2:2:end),h,w); n=length(S);
-      for i=2:n, P=S{i}+1; M=M | poly2mask(P(1:2:end),P(2:2:end),h,w); end
+      %  M          - binary mask (or continuous mask if g>0)
+      if(nargin<4), g=1; end; M=single(0); n=length(S);
+      for i=1:n, x=S{i}(1:2:end)+1; y=S{i}(2:2:end)+1;
+        M = M + poly2mask(x*g,y*g,h*g,w*g); end
+      if( g~=1 ), M=imresize(M,1/g,'bilinear'); end
     end
   end
   
