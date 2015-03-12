@@ -110,5 +110,5 @@ for split in ['train', 'val']:
 
        if query_yes_no("Do you want to download %s split for %s annotations [%sMB] under ./annotations?"%(split, anno, size), default='yes'):
            fname = '../annotations/%s_%s2014.json'%(anno, split)
-           url = 'http://msvocds.blob.core.windows.net/annotations-1-0-1/%s_%s2014.json'%(anno, split)
+           url = 'http://msvocds.blob.core.windows.net/annotations-1-0-2/%s_%s2014.json'%(anno, split)
            download(url, fname)
