@@ -29,6 +29,7 @@ classdef CocoApi
   %  loadImgs   - Load imgs with the specified ids.
   %  segToMask  - Convert polygon segmentation to binary mask.
   %  showAnns   - Display the specified annotations.
+  %  loadRes    - Load algorithm results and create API for accessing them.
   % Throughout the API "ann"=annotation, "cat"=category, and "img"=image.
   % Help on each functions can be accessed by: "help CocoApi>function".
   %
@@ -60,7 +61,8 @@ classdef CocoApi
       % OUTPUTS
       %  coco      - initialized coco object
       fprintf('Loading and preparing annotations... '); clk=clock;
-      coco.data=gason(fileread(annFile));
+      if(isstruct(annFile)), coco.data=annFile; else
+        coco.data=gason(fileread(annFile)); end
       anns = coco.data.annotations;
       if( strcmp(coco.data.type,'instances') )
         is.annCatIds = [anns.category_id]';
@@ -173,6 +175,7 @@ classdef CocoApi
       def={'imgIds',[],'catIds',[]}; ids=coco.inds.imgIds;
       [imgIds,catIds] = getPrmDflt(varargin,def,1);
       if(~isempty(imgIds)), ids=intersect(ids,imgIds); end
+      if(isempty(catIds)), return; end
       t=values(coco.inds.catImgIdsMap,num2cell(catIds));
       for i=1:length(t), ids=intersect(ids,t{i}); end
     end
@@ -237,9 +240,10 @@ classdef CocoApi
       if( strcmp(coco.data.type,'instances') )
         S={anns.segmentation}; hs=zeros(10000,1); k=0; hold on;
         pFill={'FaceAlpha',.4,'LineWidth',3};
-        for i=1:n, C=rand(1,3);
-          if(anns(i).iscrowd), M=double(coco.decodeMask(S{i})); k=k+1;
-            hs(k)=imagesc(cat(3,M*.01,M*.65,M*.40),'Alphadata',M*.5);
+        for i=1:n
+          if(anns(i).iscrowd), C=[.01 .65 .40]; else C=rand(1,3); end
+          if(isstruct(S{i})), M=double(coco.decodeMask(S{i})); k=k+1;
+            hs(k)=imagesc(cat(3,M*C(1),M*C(2),M*C(3)),'Alphadata',M*.5);
           else for j=1:length(S{i}), P=S{i}{j}+1; k=k+1;
               hs(k)=fill(P(1:2:end),P(2:2:end),C,pFill{:}); end
           end
@@ -251,6 +255,44 @@ classdef CocoApi
         S=[S{:}]; title(S,'FontSize',12);
       end
       hold off;
+    end
+    
+    function cocoRes = loadRes( coco, resFile )
+      % Load algorithm results and create API for accessing them.
+      %
+      % The API for accessing and viewing algorithm results is identical to
+      % the CocoApi for the ground truth. The single difference is that the
+      % ground truth results are replaced by the algorithm results.
+      %
+      % USAGE
+      %  cocoRes = coco.loadRes( resFile )
+      %
+      % INPUTS
+      %  resFile    - COCO results filename
+      %
+      % OUTPUTS
+      %  cocoRes    - initialized results API
+      fprintf('Loading and preparing results...     '); clk=clock;
+      cdata=coco.data; R=gason(fileread(resFile)); M=length(R);
+      if(~all(ismember(unique([R.image_id]),unique([cdata.images.id]))))
+        error('Results do not correspond to current coco set'); end
+      type={'segmentation','bbox','caption'}; type=type{isfield(R,type)};
+      if(strcmp(type,'caption'))
+        for i=1:M, R(i).id=i; end
+      elseif(strcmp(type,'bbox'))
+        for i=1:M, bb=R(i).bbox;
+          x1=bb(1); x2=bb(1)+bb(3); y1=bb(2); y2=bb(2)+bb(4);
+          R(i).segmentation = {[x1 y1 x1 y2 x2 y2 x2 y1]};
+          R(i).area=bb(3)*bb(4); R(i).id=i; R(i).iscrowd=0;
+        end
+      elseif(strcmp(type,'segmentation'))
+        for i=1:M
+          R(i).area=sum(R(i).segmentation.counts(2:2:end));
+          R(i).bbox=[]; R(i).id=i; R(i).iscrowd=0;
+        end
+      end
+      fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
+      cdata.annotations=R; cocoRes=CocoApi(cdata);
     end
   end
   
