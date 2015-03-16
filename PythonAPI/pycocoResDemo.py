@@ -20,7 +20,7 @@ type = ['segmentation','bbox','caption']
 type = type[1]
 
 # set appropriate files for given type of results
-dataDir='../'
+dataDir='..'
 if type == 'segmentation':
     annFile = 'instances_val2014'
     resFile = 'instances_val2014_fakeseg_results'
