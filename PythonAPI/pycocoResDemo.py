@@ -18,6 +18,7 @@ pylab.rcParams['figure.figsize'] = (10.0, 8.0)
 # select results type for demo
 type = ['segmentation','bbox','caption']
 type = type[1]
+print 'Running demo for %s results'%(type)
 
 # set appropriate files for given type of results
 dataDir='..'
@@ -79,5 +80,5 @@ print 'results structure have the following format:'
 print res[0].keys()
 
 # the following command can be used to save the results back to disk
-json.dump(res, open(resFile, 'w'))
+# json.dump(res, open(resFile, 'w'))
 
