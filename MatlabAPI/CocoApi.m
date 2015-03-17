@@ -278,7 +278,8 @@ classdef CocoApi
         error('Results do not correspond to current coco set'); end
       type={'segmentation','bbox','caption'}; type=type{isfield(R,type)};
       if(strcmp(type,'caption'))
-        for i=1:M, R(i).id=i; end
+        for i=1:M, R(i).id=i; end; imgs=cdata.images;
+        cdata.images=imgs(ismember([imgs.id],[R.image_id]));
       elseif(strcmp(type,'bbox'))
         for i=1:M, bb=R(i).bbox;
           x1=bb(1); x2=bb(1)+bb(3); y1=bb(2); y2=bb(2)+bb(4);
