@@ -29,7 +29,7 @@ __version__ = '1.0.1'
 #  loadImgs   - Load imgs with the specified ids.
 #  segToMask  - Convert polygon segmentation to binary mask.
 #  showAnns   - Display the specified annotations.
-#  loadRes    - Load result file and create result api object.
+#  loadRes    - Load algorithm results and create API for accessing them.
 # Throughout the API "ann"=annotation, "cat"=category, and "img"=image.
 # Help on each functions can be accessed by: "help COCO>function".
 
