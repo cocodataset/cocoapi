@@ -364,6 +364,7 @@ class COCO:
          M = np.zeros((h,w), dtype=np.bool)
          for s in S:
              N = len(s)
-             rr, cc = polygon(np.array(s[1:N:2]), np.array(s[0:N:2])) # (y, x)
+             rr, cc = polygon(np.array(s[1:N:2]).clip(max=h-1), \
+                              np.array(s[0:N:2]).clip(max=w-1)) # (y, x)
              M[rr, cc] = 1
          return M
