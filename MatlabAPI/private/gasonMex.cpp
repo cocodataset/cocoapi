@@ -72,7 +72,7 @@ mxArray* json( const JsonValue &o ) {
 template<class T, class C> ostrm& json( ostrm &S, T *A, int n ) {
   // convert numeric array to JSON string with casting
   if(n==0) { S<<"[]"; return S; } if(n==1) { S<<C(A[0]); return S; }
-  S<<"["; for(int i=0; i<n-1; i++) S<<C(A[i])<<", ";
+  S<<"["; for(int i=0; i<n-1; i++) S<<C(A[i])<<",";
   S<<C(A[n-1]); S<<"]"; return S;
 }
 
@@ -110,7 +110,7 @@ ostrm& json( ostrm& S, const mxArray *M ) {
     case mxLOGICAL_CLASS: return json<uint8_t,uint32_t>(S,(uint8_t*) A,n);
     case mxCHAR_CLASS:    return json(S,mxArrayToString(M));
     case mxCELL_CLASS:
-      S << "["; for(i=0; i<n-1; i++) json(S,mxGetCell(M,i)) << ", ";
+      S << "["; for(i=0; i<n-1; i++) json(S,mxGetCell(M,i)) << ",";
       if(n>0) json(S,mxGetCell(M,n-1)); S << "]"; return S;
     case mxSTRUCT_CLASS:
       if(n==0) { S<<"{}"; return S; } m=mxGetNumberOfFields(M);
@@ -119,8 +119,8 @@ ostrm& json( ostrm& S, const mxArray *M ) {
       for(j=0; j<m; j++) json(nms[j],mxGetFieldNameByNumber(M,j));
       for(i=0; i<n; i++) for(j=0; j<m; j++) {
         if(j==0) S << "{"; S << nms[j].str() << ": ";
-        json(S,mxGetFieldByNumber(M,i,j)) << ((j<m-1) ? ", " : "}");
-        if(j==m-1 && i<n-1) S<<", ";
+        json(S,mxGetFieldByNumber(M,i,j)) << ((j<m-1) ? "," : "}");
+        if(j==m-1 && i<n-1) S<<",";
       }
       if(n>1) S<<"]"; delete [] nms; return S;
     default:

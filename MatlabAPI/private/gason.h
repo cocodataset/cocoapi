@@ -1,4 +1,4 @@
-// https://github.com/vivkin/gason - pulled Nov 8, 2014
+// https://github.com/vivkin/gason - pulled May 29, 2015
 #pragma once
 
 #include <stdint.h>
@@ -31,7 +31,7 @@ union JsonValue {
     }
     JsonValue(JsonTag tag = JSON_NULL, void *payload = nullptr) {
         assert((uint64_t)payload <= JSON_VALUE_PAYLOAD_MASK);
-        ival = JSON_VALUE_NAN_MASK | ((uint64_t)tag << JSON_VALUE_TAG_SHIFT) | (uint64_t)payload;
+        ival = JSON_VALUE_NAN_MASK | ((uint64_t)tag << JSON_VALUE_TAG_SHIFT) | (uintptr_t)payload;
     }
     bool isDouble() const {
         return (int64_t)ival <= (int64_t)JSON_VALUE_NAN_MASK;
