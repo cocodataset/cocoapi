@@ -27,15 +27,15 @@ void RLE::decode( byte *mask ) const {
 void RLE::merge( const RLE &A, const RLE &B, bool intersect ) {
   counts.clear(); w=A.w; h=B.h;
   if( A.h!=B.h || A.w!=B.w ) { w=h=0; return; }
-  siz ka, kb, a, b; uint c, ca, cb, cc; bool p, v, va, vb;
+  siz ka, kb, a, b; uint c, ca, cb, cc, ct; bool v, va, vb, vp;
   ca=A.counts[0]; ka=A.counts.size(); v=va=vb=0;
-  cb=B.counts[0]; kb=B.counts.size(); a=b=1; cc=0;
-  while( ca>0 || cb>0 ) {
-    c=min(ca,cb); cc+=c;
-    ca-=c; if(!ca && a<ka) { ca=A.counts[a++]; va=!va; }
-    cb-=c; if(!cb && b<kb) { cb=B.counts[b++]; vb=!vb; }
-    p=v; if(intersect) v=va&&vb; else v=va||vb;
-    if( v!=p||(ca==0&&cb==0) ) { counts.push_back(cc); cc=0; }
+  cb=B.counts[0]; kb=B.counts.size(); a=b=1; cc=0; ct=1;
+  while( ct>0 ) {
+    c=min(ca,cb); cc+=c; ct=0;
+    ca-=c; if(!ca && a<ka) { ca=A.counts[a++]; va=!va; } ct+=ca;
+    cb-=c; if(!cb && b<kb) { cb=B.counts[b++]; vb=!vb; } ct+=cb;
+    vp=v; if(intersect) v=va&&vb; else v=va||vb;
+    if( v!=vp||ct==0 ) { counts.push_back(cc); cc=0; }
   }
 }
 
@@ -48,15 +48,16 @@ void RLE::merge( const RLES &Rs, bool intersect ) {
 
 double RLE::iou( RLE &dt, RLE &gt, byte iscrowd ) {
   if( dt.h!=gt.h || dt.w!=gt.w ) return -1;
-  siz ka, kb, a, b; uint c, ca, cb, i, u; bool va, vb;
+  siz ka, kb, a, b; uint c, ca, cb, ct, i, u; bool va, vb;
   ca=dt.counts[0]; ka=dt.counts.size(); va=vb=0;
-  cb=gt.counts[0]; kb=gt.counts.size(); a=b=1; i=u=0;
-  while( ca>0 || cb>0 ) {
-    c=min(ca,cb); if(va||vb) { u+=c; if(va&&vb) i+=c; }
-    ca-=c; if(!ca && a<ka) { ca=dt.counts[a++]; va=!va; }
-    cb-=c; if(!cb && b<kb) { cb=gt.counts[b++]; vb=!vb; }
+  cb=gt.counts[0]; kb=gt.counts.size(); a=b=1; i=u=0; ct=1;
+  while( ct>0 ) {
+    c=min(ca,cb); if(va||vb) { u+=c; if(va&&vb) i+=c; } ct=0;
+    ca-=c; if(!ca && a<ka) { ca=dt.counts[a++]; va=!va; } ct+=ca;
+    cb-=c; if(!cb && b<kb) { cb=gt.counts[b++]; vb=!vb; } ct+=cb;
   }
-  if(iscrowd) u=dt.area(); return double(i)/double(u);
+  if(i==0) return 0; if(iscrowd) u=dt.area();
+  return double(i)/double(u);
 }
 
 void RLE::iou( RLES &dt, RLES &gt, byte *iscrowd, double *o ) {
