@@ -12,13 +12,18 @@
 #include <sstream>
 typedef std::ostringstream ostrm;
 
+int length( const JsonValue &a ) {
+  // get number of elements in JSON_ARRAY or JSON_OBJECT
+  int k=0; auto n=a.toNode(); while(n) { k++; n=n->next; } return k;
+}
+
 bool isRegularObjArray( const JsonValue &a ) {
   // check if all JSON_OBJECTs in JSON_ARRAY have the same fields
-  JsonValue o=a.toNode()->value; int k, m, n; const char **keys;
-  n=0; for(auto j:o) n++; keys=new const char*[n];
+  JsonValue o=a.toNode()->value; int k, n; const char **keys;
+  n=length(o); keys=new const char*[n];
   k=0; for(auto j:o) keys[k++]=j->key;
   for( auto i:a ) {
-    m=0; for(auto j:i->value) m++; if(m!=n) return false; k=0;
+    if(length(i->value)!=n) return false; k=0;
     for(auto j:i->value) if(strcmp(j->key,keys[k++])) return false;
   }
   delete [] keys; return true;
@@ -35,10 +40,10 @@ mxArray* json( const JsonValue &o ) {
     case JSON_ARRAY: {
       if(!o.toNode()) return mxCreateCellMatrix(1,0);
       JsonValue o0=o.toNode()->value; JsonTag tag=o0.getTag();
-      n=0; for(auto i:o) n++; bool isRegular=true;
+      n=length(o); bool isRegular=true;
       for(auto i:o) isRegular=isRegular && i->value.getTag()==tag;
       if( isRegular && tag==JSON_OBJECT && isRegularObjArray(o) ) {
-        m=0; for(auto j:o0) m++; keys=new const char*[m];
+        m=length(o0); keys=new const char*[m];
         k=0; for(auto j:o0) keys[k++]=j->key;
         M = mxCreateStructMatrix(1,n,m,keys);
         k=0; for(auto i:o) { m=0; for(auto j:i->value)
@@ -55,7 +60,7 @@ mxArray* json( const JsonValue &o ) {
     }
     case JSON_OBJECT:
       if(!o.toNode()) return mxCreateStructMatrix(1,0,0,NULL);
-      n=0; for(auto i:o) n++; keys=new const char*[n];
+      n=length(o); keys=new const char*[n];
       k=0; for(auto i:o) keys[k++]=i->key;
       M = mxCreateStructMatrix(1,1,n,keys); k=0;
       for(auto i:o) mxSetFieldByNumber(M,0,k++,json(i->value));
@@ -66,6 +71,7 @@ mxArray* json( const JsonValue &o ) {
       return mxCreateDoubleScalar(0);
     case JSON_NULL:
       return mxCreateDoubleMatrix(0,0,mxREAL);
+    default: return NULL;
   }
 }
 
@@ -118,7 +124,7 @@ ostrm& json( ostrm& S, const mxArray *M ) {
       if(n>1) S<<"["; nms=new ostrm[m];
       for(j=0; j<m; j++) json(nms[j],mxGetFieldNameByNumber(M,j));
       for(i=0; i<n; i++) for(j=0; j<m; j++) {
-        if(j==0) S << "{"; S << nms[j].str() << ": ";
+        if(j==0) S << "{"; S << nms[j].str() << ":";
         json(S,mxGetFieldByNumber(M,i,j)) << ((j<m-1) ? "," : "}");
         if(j==m-1 && i<n-1) S<<",";
       }
