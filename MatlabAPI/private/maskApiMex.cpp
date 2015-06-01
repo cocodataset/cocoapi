@@ -16,12 +16,10 @@ void toMxArray( const RLES &Rs, mxArray *&M ) {
   const char *fs[] = {"size", "counts"};
   siz n=Rs.size(); M=mxCreateStructMatrix(1,n,2,fs);
   for( siz i=0; i<n; i++ ) {
-    siz j, k=Rs[i].counts.size();
     mxArray *S=mxCreateNumericMatrix(1,2,mxDOUBLE_CLASS,mxREAL);
-    mxArray *C=mxCreateNumericMatrix(1,k,mxUINT32_CLASS,mxREAL);
     mxSetFieldByNumber(M,i,0,S); double *s=mxGetPr(S);
-    mxSetFieldByNumber(M,i,1,C); uint *c=(uint*) mxGetPr(C);
-    s[0]=Rs[i].h; s[1]=Rs[i].w; for(j=0; j<k; j++) c[j]=Rs[i].counts[j];
+    s[0]=Rs[i].h; s[1]=Rs[i].w; std::string c; Rs[i].toString(c);
+    mxSetFieldByNumber(M,i,1,mxCreateString(c.c_str()));
   }
 }
 
@@ -43,6 +41,10 @@ void frMxArray( RLES &Rs, const mxArray *M ) {
       for(j=0; j<k; j++) Rs[i].counts[j]=uint(((double*)c)[j]);
     else if( mxGetClassID(C)==mxUINT32_CLASS )
       for(j=0; j<k; j++) Rs[i].counts[j]=((uint*)c)[j];
+    else if( mxGetClassID(C)==mxCHAR_CLASS ) {
+      char *c=new char[k+1]; mxGetString(C,c,k+1);
+      Rs[i].frString(c,Rs[i].h,Rs[i].w); delete [] c;
+    }
     else mexErrMsgTxt(err);
   }
 }

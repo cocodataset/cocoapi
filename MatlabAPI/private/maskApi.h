@@ -6,6 +6,7 @@
 **************************************************************************/
 #pragma once
 #include <vector>
+#include <string>
 class RLE;
 typedef unsigned int uint;
 typedef unsigned long siz;
@@ -50,6 +51,12 @@ public:
   
   // Convert polygon to encoded mask.
   void frPoly( double *x, double *y, siz k, siz h, siz w );
+  
+  // Get compressed string representation of encoded mask.
+  void toString( std::string &s ) const;
+  
+  // Convert from compressed string representation of encoded mask.
+  void frString( const std::string &s, siz h, siz w );
   
   // Data structure for (column-wise) run length encoding.
   std::vector<uint> counts;

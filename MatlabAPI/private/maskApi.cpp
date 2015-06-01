@@ -6,7 +6,6 @@
 **************************************************************************/
 #include "maskApi.h"
 #include <math.h>
-#include <string.h>
 #include <stdlib.h>
 #include <algorithm>
 
@@ -147,4 +146,29 @@ void RLE::frPoly( double *x0, double *y0, siz k, siz h0, siz w0 ) {
   vector<uint> c(counts); counts.clear(); counts.push_back(c[0]); i=1;
   while(i<k) if(c[i]>0) counts.push_back(c[i++]); else {
     i++; if(i<k) counts.back()+=c[i++]; }
+}
+
+void RLE::toString( string &s ) const {
+  // Similar to LEB128 but using 6 bits/char and ascii chars 48-111.
+  siz i, n=counts.size(); s.clear(); long x; bool more;
+  for( i=0; i<n; i++ ) {
+    x=long(counts[i]); if(i>2) x-=long(counts[i-2]); more=true;
+    while( more ) {
+      char c=x & 0x1f; x >>= 5; more=(c & 0x10) ? x!=-1 : x!=0;
+      if(more) c |= 0x20; c+=48; s.push_back(c);
+    }
+  }
+}
+
+void RLE::frString( const string &s, siz h0, siz w0 ) {
+  h=h0; w=w0; counts.clear(); siz i=0, k=0, m; long x; bool more;
+  while( s[k] ) {
+    x=0; m=0; more=true;
+    while( more ) {
+      char c=s[k]-48; x |= (c & 0x1f) << 5*m;
+      more = c & 0x20; k++; m++;
+      if(!more && (c & 0x10)) x |= -1 << 5*m;
+    }
+    if(i>2) x+=long(counts[i-2]); i++; counts.push_back(uint(x));
+  }
 }

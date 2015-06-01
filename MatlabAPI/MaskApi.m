@@ -6,7 +6,9 @@ classdef MaskApi
   % constant regions and then for each piece simply stores the length of
   % that piece. For example, given M=[0 0 1 1 1 0 1] the RLE counts would
   % be [2 3 1 1], or for M=[1 1 1 1 1 1 0] the counts would be [0 6 1]
-  % (note that the odd counts are always the numbers of zeros).
+  % (note that the odd counts are always the numbers of zeros). Instead of
+  % storing the counts directly, additional compression is achieved with a
+  % variable bitrate representation based on a common scheme called LEB128.
   %
   % Compression is greatest given large piecewise constant regions.
   % Specifically, the size of the RLE is proportional to the number of
