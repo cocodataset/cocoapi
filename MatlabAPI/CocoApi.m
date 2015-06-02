@@ -269,23 +269,25 @@ classdef CocoApi
       % OUTPUTS
       %  cocoRes    - initialized results API
       fprintf('Loading and preparing results...     '); clk=clock;
-      cdata=coco.data; R=gason(fileread(resFile)); M=length(R);
-      if(~all(ismember(unique([R.image_id]),unique([cdata.images.id]))))
-        error('Results do not correspond to current coco set'); end
+      cdata=coco.data; R=gason(fileread(resFile)); m=length(R);
+      [valid,imgIds]=ismember([R.image_id],[cdata.images.id]);
+      if(~all(valid)), error('Results provided for invalid images.'); end
       type={'segmentation','bbox','caption'}; type=type{isfield(R,type)};
       if(strcmp(type,'caption'))
-        for i=1:M, R(i).id=i; end; imgs=cdata.images;
+        assert(isfield(R,'caption'));
+        for i=1:m, R(i).id=i; end; imgs=cdata.images;
         cdata.images=imgs(ismember([imgs.id],[R.image_id]));
       elseif(strcmp(type,'bbox'))
-        for i=1:M, bb=R(i).bbox;
-          x1=bb(1); x2=bb(1)+bb(3); y1=bb(2); y2=bb(2)+bb(4);
-          R(i).segmentation = {[x1 y1 x1 y2 x2 y2 x2 y1]};
+        assert(all(isfield(R,{'category_id','bbox','score'})));
+        for i=1:m, bb=R(i).bbox; img=cdata.images(imgIds(i));
+          R(i).segmentation=MaskApi.frBbox(bb,img.height,img.width);
           R(i).area=bb(3)*bb(4); R(i).id=i; R(i).iscrowd=0;
         end
       elseif(strcmp(type,'segmentation'))
-        for i=1:M
-          R(i).area=sum(R(i).segmentation.counts(2:2:end));
-          R(i).bbox=[]; R(i).id=i; R(i).iscrowd=0;
+        assert(all(isfield(R,{'category_id','segmentation','score'})));
+        for i=1:m
+          S=R(i).segmentation; R(i).area=MaskApi.area(S);
+          R(i).bbox=MaskApi.toBbox(S); R(i).id=i; R(i).iscrowd=0;
         end
       end
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
