@@ -19,24 +19,20 @@ classdef CocoApi
   %
   % The following API functions are defined:
   %  CocoApi    - Load COCO annotation file and prepare data structures.
-  %  decodeMask - Decode binary mask M encoded via run-length encoding.
-  %  encodeMask - Encode binary mask M using run-length encoding.
   %  getAnnIds  - Get ann ids that satisfy given filter conditions.
   %  getCatIds  - Get cat ids that satisfy given filter conditions.
   %  getImgIds  - Get img ids that satisfy given filter conditions.
   %  loadAnns   - Load anns with the specified ids.
   %  loadCats   - Load cats with the specified ids.
   %  loadImgs   - Load imgs with the specified ids.
-  %  segToMask  - Convert polygon segmentation to binary mask.
   %  showAnns   - Display the specified annotations.
   %  loadRes    - Load algorithm results and create API for accessing them.
   % Throughout the API "ann"=annotation, "cat"=category, and "img"=image.
   % Help on each functions can be accessed by: "help CocoApi>function".
   %
-  % See also cocoDemo, CocoApi>CocoApi, CocoApi>decodeMask,
-  % CocoApi>encodeMask, CocoApi>getAnnIds, CocoApi>getCatIds,
-  % CocoApi>getImgIds, CocoApi>loadAnns, CocoApi>loadCats,
-  % CocoApi>loadImgs, CocoApi>segToMask, CocoApi>showAnns
+  % See also cocoDemo, CocoApi>CocoApi, CocoApi>getAnnIds,
+  % CocoApi>getCatIds, CocoApi>getImgIds, CocoApi>loadAnns,
+  % CocoApi>loadCats, CocoApi>loadImgs, CocoApi>showAnns, CocoApi>loadRes
   %
   % Microsoft COCO Toolbox.      Version 1.0
   % Data, paper, and tutorials available at:  http://mscoco.org/
@@ -294,60 +290,6 @@ classdef CocoApi
       end
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
       cdata.annotations=R; cocoRes=CocoApi(cdata);
-    end
-  end
-  
-  methods( Static )
-    function M = decodeMask( R )
-      % Decode binary mask M encoded via run-length encoding.
-      %
-      % USAGE
-      %  M = CocoApi.decodeMask( R )
-      %
-      % INPUTS
-      %  R          - run-length encoding of binary mask
-      %
-      % OUTPUTS
-      %  M          - decoded binary mask
-      M=zeros(R.size,'uint8'); k=1; n=length(R.counts);
-      for i=2:2:n, for j=1:R.counts(i-1), k=k+1; end;
-        for j=1:R.counts(i), M(k)=1; k=k+1; end; end
-    end
-    
-    function R = encodeMask( M )
-      % Encode binary mask M using run-length encoding.
-      %
-      % USAGE
-      %  R = CocoApi.encodeMask( M )
-      %
-      % INPUTS
-      %  M          - binary mask to encode
-      %
-      % OUTPUTS
-      %  R          - run-length encoding of binary mask
-      R.size=size(M); if(isempty(M)), R.counts=[]; return; end
-      D=M(2:end)~=M(1:end-1); is=uint32([find(D) numel(M)]);
-      R.counts=[is(1) diff(is)]; if(M(1)==1), R.counts=[0 R.counts]; end
-    end
-    
-    function M = segToMask( S, h, w, g )
-      % Convert polygon segmentation to binary mask.
-      %
-      % USAGE
-      %  M = CocoApi.segToMask( S, h, w, [g] )
-      %
-      % INPUTS
-      %  S          - polygon segmentation mask
-      %  h          - target mask height
-      %  w          - target mask width
-      %  g          - [1] controls mask granularity
-      %
-      % OUTPUTS
-      %  M          - binary mask (or continuous mask if g>0)
-      if(nargin<4), g=1; end; M=single(0); n=length(S);
-      for i=1:n, x=S{i}(1:2:end)+1; y=S{i}(2:2:end)+1;
-        M = M + poly2mask(x*g,y*g,h*g,w*g); end
-      if( g~=1 ), M=imresize(M,1/g,'bilinear'); end
     end
   end
   
