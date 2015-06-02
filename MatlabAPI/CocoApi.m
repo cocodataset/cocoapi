@@ -238,9 +238,9 @@ classdef CocoApi
         pFill={'FaceAlpha',.4,'LineWidth',3};
         for i=1:n
           if(anns(i).iscrowd), C=[.01 .65 .40]; else C=rand(1,3); end
-          if(isstruct(S{i})), M=double(coco.decodeMask(S{i})); k=k+1;
+          if(isstruct(S{i})), M=double(MaskApi.decode(S{i})); k=k+1;
             hs(k)=imagesc(cat(3,M*C(1),M*C(2),M*C(3)),'Alphadata',M*.5);
-          else for j=1:length(S{i}), P=S{i}{j}+1; k=k+1;
+          else for j=1:length(S{i}), P=S{i}{j}+.5; k=k+1;
               hs(k)=fill(P(1:2:end),P(2:2:end),C,pFill{:}); end
           end
         end
