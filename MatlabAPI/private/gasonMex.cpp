@@ -11,15 +11,17 @@
 #include <iomanip>
 #include <sstream>
 typedef std::ostringstream ostrm;
+typedef unsigned long siz;
+typedef unsigned short ushort;
 
-int length( const JsonValue &a ) {
+siz length( const JsonValue &a ) {
   // get number of elements in JSON_ARRAY or JSON_OBJECT
-  int k=0; auto n=a.toNode(); while(n) { k++; n=n->next; } return k;
+  siz k=0; auto n=a.toNode(); while(n) { k++; n=n->next; } return k;
 }
 
 bool isRegularObjArray( const JsonValue &a ) {
   // check if all JSON_OBJECTs in JSON_ARRAY have the same fields
-  JsonValue o=a.toNode()->value; int k, n; const char **keys;
+  JsonValue o=a.toNode()->value; siz k, n; const char **keys;
   n=length(o); keys=new const char*[n];
   k=0; for(auto j:o) keys[k++]=j->key;
   for( auto i:a ) {
@@ -31,7 +33,7 @@ bool isRegularObjArray( const JsonValue &a ) {
 
 mxArray* json( const JsonValue &o ) {
   // convert JsonValue to Matlab mxArray
-  int k, m, n; mxArray *M; const char **keys;
+  siz k, m, n; mxArray *M; const char **keys;
   switch( o.getTag() ) {
     case JSON_NUMBER:
       return mxCreateDoubleScalar(o.toNumber());
@@ -75,14 +77,14 @@ mxArray* json( const JsonValue &o ) {
   }
 }
 
-template<class T, class C> ostrm& json( ostrm &S, T *A, int n ) {
+template<class T, class C> ostrm& json( ostrm &S, T *A, siz n ) {
   // convert numeric array to JSON string with casting
   if(n==0) { S<<"[]"; return S; } if(n==1) { S<<C(A[0]); return S; }
-  S<<"["; for(int i=0; i<n-1; i++) S<<C(A[i])<<",";
+  S<<"["; for(siz i=0; i<n-1; i++) S<<C(A[i])<<",";
   S<<C(A[n-1]); S<<"]"; return S;
 }
 
-template<class T> ostrm& json( ostrm &S, T *A, int n ) {
+template<class T> ostrm& json( ostrm &S, T *A, siz n ) {
   // convert numeric array to JSON string without casting
   return json<T,T>(S,A,n);
 }
@@ -100,7 +102,7 @@ ostrm& json( ostrm &S, const char *A ) {
 
 ostrm& json( ostrm& S, const mxArray *M ) {
   // convert Matlab mxArray to JSON string
-  int i, j, m, n=mxGetNumberOfElements(M);
+  siz i, j, m, n=mxGetNumberOfElements(M);
   void *A=mxGetData(M); ostrm *nms;
   switch( mxGetClassID(M) ) {
     case mxDOUBLE_CLASS:  return json(S,(double*)   A,n);
@@ -140,7 +142,9 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
   if( nl>1 ) mexErrMsgTxt("One output expected.");
   if( mxGetClassID(pr[0])==mxCHAR_CLASS ) {
     // object = mexFunction( string )
-    char *str = mxArrayToString(pr[0]);
+    ushort *c=(ushort*) mxGetData(pr[0]); char* str; siz n;
+    n=mxGetNumberOfElements(pr[0]); str=(char*) mxMalloc(n+1);
+    for( siz i=0; i<n; i++ ) str[i]=c[i]; str[n]=0;
     char *endptr; JsonValue value; JsonAllocator allocator;
     int status = jsonParse(str, &endptr, &value, allocator);
     if( status != JSON_OK) mexErrMsgTxt(jsonStrError(status));
@@ -148,6 +152,8 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
   } else {
     // string = mexFunction( object )
     ostrm S; S << std::setprecision(10); json(S,pr[0]);
-    pl[0] = mxCreateString( S.str().c_str() );
+    std::string str=S.str(); mwSize n[2]={1,str.size()};
+    pl[0]=mxCreateCharArray(2,n); ushort *c=(ushort*) mxGetData(pl[0]);
+    for( siz i=0; i<n[1]; i++ ) c[i]=str[i];
   }
 }

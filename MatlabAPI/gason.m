@@ -18,8 +18,8 @@ function out = gason( in )
 %
 % Gason requires C++11 to compile (for GCC this requires version 4.7 or
 % later). The following command compiles the parser (may require tweaking):
-%   mex('CXXFLAGS=\$CXXFLAGS -std=c++11 -Wall','private/gasonMex.cpp', ...
-%     'private/gason.cpp','-outdir','private');
+%   mex('CXXFLAGS=\$CXXFLAGS -std=c++11 -Wall','-largeArrayDims',...
+%     'private/gasonMex.cpp','private/gason.cpp','-outdir','private');
 % Note the use of the "-std=c++11" flag. A number of precompiled binaries
 % are included, please do not contact us for help with compiling.
 %
