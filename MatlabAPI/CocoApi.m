@@ -285,10 +285,9 @@ classdef CocoApi
         end
       elseif(strcmp(type,'segmentation'))
         assert(all(isfield(R,{'category_id','segmentation','score'})));
-        for i=1:m
-          S=R(i).segmentation; R(i).area=MaskApi.area(S);
-          R(i).bbox=MaskApi.toBbox(S); R(i).id=i; R(i).iscrowd=0;
-        end
+        S=[R.segmentation]; a=MaskApi.area(S); bb=MaskApi.toBbox(S);
+        for i=1:m, R(i).area=a(i); R(i).bbox=bb(i,:);
+          R(i).id=i; R(i).iscrowd=0; end
       end
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
       cdata.annotations=R; cocoRes=CocoApi(cdata);
