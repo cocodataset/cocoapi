@@ -23,7 +23,7 @@ void toMxArray( const RLES &Rs, mxArray *&M ) {
   }
 }
 
-void frMxArray( RLES &Rs, const mxArray *M ) {
+void frMxArray( RLES &Rs, const mxArray *M, bool same=true ) {
   const char *fs[] = {"size", "counts"}; siz i, j, n, k, O[2];
   const char *err="Invalid RLE struct array.";
   n=mxGetNumberOfElements(M); Rs.resize(n); if(n==0) return;
@@ -34,7 +34,7 @@ void frMxArray( RLES &Rs, const mxArray *M ) {
   for( i=0; i<n; i++ ) {
     mxArray *S=mxGetFieldByNumber(M,i,O[0]); checkType(S,mxDOUBLE_CLASS);
     double *s=mxGetPr(S); Rs[i].h=siz(s[0]); Rs[i].w=siz(s[1]);
-    if(Rs[i].h!=Rs[0].h||Rs[i].w!=Rs[0].w) mexErrMsgTxt(err);
+    if( same && (Rs[i].h!=Rs[0].h||Rs[i].w!=Rs[0].w)) mexErrMsgTxt(err);
     mxArray *C=mxGetFieldByNumber(M,i,O[1]); void *c=mxGetData(C);
     k=mxGetNumberOfElements(C); Rs[i].counts.resize(k);
     if( mxGetClassID(C)==mxDOUBLE_CLASS )
@@ -75,7 +75,7 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
     R[0].merge(Rs,intersect); toMxArray(R,pl[0]);
     
   } else if(!strcmp(action,"area")) {
-    RLES Rs; frMxArray(Rs,pr[0]); siz n=Rs.size();
+    RLES Rs; frMxArray(Rs,pr[0],0); siz n=Rs.size();
     pl[0]=mxCreateNumericMatrix(1,n,mxUINT32_CLASS,mxREAL);
     uint *a=(uint*) mxGetPr(pl[0]);
     for(siz i=0; i<n; i++) a[i]=Rs[i].area();
@@ -97,7 +97,7 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
     }
     
   } else if(!strcmp(action,"toBbox")) {
-    RLES Rs; frMxArray(Rs,pr[0]); siz n=Rs.size();
+    RLES Rs; frMxArray(Rs,pr[0],0); siz n=Rs.size();
     pl[0]=mxCreateNumericMatrix(4,n,mxDOUBLE_CLASS,mxREAL);
     double *B=mxGetPr(pl[0]);
     for(siz i=0; i<n; i++) Rs[i].toBbox(B+4*i);
