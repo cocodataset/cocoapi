@@ -51,6 +51,7 @@ from matplotlib.patches import Polygon
 import numpy as np
 from skimage.draw import polygon
 import copy
+import itertools
 
 class COCO:
     def __init__(self, annotation_file=None):
@@ -131,7 +132,8 @@ class COCO:
             anns = self.dataset['annotations']
         else:
             if not len(imgIds) == 0:
-                anns = sum([self.imgToAnns[imgId] for imgId in imgIds if imgId in self.imgToAnns],[])
+                lists = [self.imgToAnns[imgId] for imgId in imgIds if imgId in self.imgToAnns]
+                anns = list(itertools.chain.from_iterable(lists))
             else:
                 anns = self.dataset['annotations']
             anns = anns if len(catIds)  == 0 else [ann for ann in anns if ann['category_id'] in catIds]
