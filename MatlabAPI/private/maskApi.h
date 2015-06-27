@@ -5,60 +5,51 @@
 * Licensed under the Simplified BSD License [see coco/license.txt]
 **************************************************************************/
 #pragma once
-#include <vector>
-#include <string>
-class RLE;
+#include <stdbool.h>
+
 typedef unsigned int uint;
 typedef unsigned long siz;
 typedef unsigned char byte;
-typedef std::vector<RLE> RLES;
 typedef double* BB;
+typedef struct { siz h, w, m; uint *cnts; } RLE;
 
-class RLE {
-public:
-  // Basic constructor.
-  RLE() { w=h=0; }
-  
-  // Encode binary mask using RLE.
-  void encode( const byte *mask, siz h, siz w );
-  
-  // Decode binary mask encoded via RLE.
-  void decode( byte *mask ) const;
-  
-  // Compute union or intersection of two encoded masks.
-  void merge( const RLE &A, const RLE &B, bool intersect );
-  
-  // Compute union or intersection of multiple encoded masks.
-  void merge( const RLES &Rs, bool intersect );
-  
-  // Compute intersection over union between two masks.
-  static double iou( RLE &dt, RLE &gt, byte iscrowd );
-  
-  // Compute intersection over union between two sets of masks.
-  static void iou( RLES &dt, RLES &gt, byte *iscrowd, double *o );
-  
-  // Compute intersection over union between two sets of bounding boxes.
-  static void iou( BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o );
-  
-  // Compute area of encoded mask.
-  uint area() const;
-  
-  // Get bounding box surrounding encoded mask.
-  void toBbox( BB bbox ) const;
-  
-  // Convert bounding box to encoded mask.
-  void frBbox( const BB bbox, siz h, siz w );
-  
-  // Convert polygon to encoded mask.
-  void frPoly( double *x, double *y, siz k, siz h, siz w );
-  
-  // Get compressed string representation of encoded mask.
-  void toString( std::string &s ) const;
-  
-  // Convert from compressed string representation of encoded mask.
-  void frString( const std::string &s, siz h, siz w );
-  
-  // Data structure for (column-wise) run length encoding.
-  std::vector<uint> counts;
-  siz h, w;
-};
+// Initialize/destroy RLE.
+void rleInit( RLE *R, siz h, siz w, siz m, uint *cnts );
+void rleFree( RLE *R );
+
+// Initialize/destroy RLE array.
+void rlesInit( RLE **R, siz n );
+void rlesFree( RLE **R, siz n );
+
+// Encode binary masks using RLE.
+void rleEncode( RLE *R, const byte *mask, siz h, siz w, siz n );
+
+// Decode binary masks encoded via RLE.
+void rleDecode( const RLE *R, byte *mask, siz n );
+
+// Compute union or intersection of encoded masks.
+void rleMerge( const RLE *R, RLE *M, siz n, bool intersect );
+
+// Compute area of encoded masks.
+void rleArea( const RLE *R, siz n, uint *a );
+
+// Compute intersection over union between masks.
+void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o );
+
+// Compute intersection over union between bounding boxes.
+void bbIou( BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o );
+
+// Get bounding boxes surrounding encoded masks.
+void rleToBbox( const RLE *R, BB bb, siz n );
+
+// Convert bounding boxes to encoded masks.
+void rleFrBbox( RLE *R, const BB bb, siz h, siz w, siz n );
+
+// Convert polygon to encoded mask.
+void rleFrPoly( RLE *R, const double *xy, siz k, siz h, siz w );
+
+// Get compressed string representation of encoded mask.
+char* rleToString( const RLE *R );
+
+// Convert from compressed string representation of encoded mask.
+void rleFrString( RLE *R, char *s, siz h, siz w );

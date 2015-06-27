@@ -63,8 +63,8 @@ classdef MaskApi
   % For crowd gt regions we use this modified criteria above for the iou.
   %
   % To compile use the following (some precompiled binaries are included):
-  %   mex('CXXFLAGS=\$CXXFLAGS -Wall','private/maskApi.cpp',...
-  %     'private/maskApiMex.cpp','-largeArrayDims','-outdir','private');
+  %   mex('CFLAGS=\$CFLAGS -Wall -std=c99','private/maskApi.c',...
+  %     'private/maskApiMex.c','-largeArrayDims','-outdir','private');
   % Please do not contact us for help with compiling.
   %
   % Microsoft COCO Toolbox.      Version 1.0
