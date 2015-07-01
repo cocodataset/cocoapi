@@ -40,7 +40,7 @@ mxArray* json( const JsonValue &o ) {
     case JSON_STRING:
       return mxCreateString(o.toString());
     case JSON_ARRAY: {
-      if(!o.toNode()) return mxCreateCellMatrix(1,0);
+      if(!o.toNode()) return mxCreateDoubleMatrix(1,0,mxREAL);
       JsonValue o0=o.toNode()->value; JsonTag tag=o0.getTag();
       n=length(o); bool isRegular=true;
       for(auto i:o) isRegular=isRegular && i->value.getTag()==tag;
