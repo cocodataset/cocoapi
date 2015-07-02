@@ -270,7 +270,7 @@ classdef CocoApi
       %  cocoRes    - initialized results API
       fprintf('Loading and preparing results...     '); clk=clock;
       cdata=coco.data; R=gason(fileread(resFile)); m=length(R);
-      [valid,imgIds]=ismember([R.image_id],[cdata.images.id]);
+      valid=ismember([R.image_id],[cdata.images.id]);
       if(~all(valid)), error('Results provided for invalid images.'); end
       type={'segmentation','bbox','caption'}; type=type{isfield(R,type)};
       if(strcmp(type,'caption'))
@@ -279,10 +279,8 @@ classdef CocoApi
         cdata.images=imgs(ismember([imgs.id],[R.image_id]));
       elseif(strcmp(type,'bbox'))
         assert(all(isfield(R,{'category_id','bbox','score'})));
-        for i=1:m, bb=R(i).bbox; img=cdata.images(imgIds(i));
-          R(i).segmentation=MaskApi.frBbox(bb,img.height,img.width);
-          R(i).area=bb(3)*bb(4); R(i).id=i; R(i).iscrowd=0;
-        end
+        for i=1:m, bb=R(i).bbox; R(i).area=bb(3)*bb(4);
+          R(i).segmentation=[]; R(i).id=i; R(i).iscrowd=0; end
       elseif(strcmp(type,'segmentation'))
         assert(all(isfield(R,{'category_id','segmentation','score'})));
         S=[R.segmentation]; a=MaskApi.area(S); bb=MaskApi.toBbox(S);
