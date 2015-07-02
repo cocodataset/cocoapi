@@ -83,35 +83,34 @@ classdef CocoEval < handle
       p=ev.params; if(~p.useCats), p.catIds=1; end
       p.imgIds=unique(p.imgIds); p.catIds=unique(p.catIds);
       ev.params=p; N=length(p.imgIds); K=length(p.catIds);
-      ev.evalImgs=cell(N,K); T=length(p.iouThrs); aRng=p.areaRng;
-      for k=1:K
-        % collect gts and dts for given category (and all images)
-        loadAnnPrm=struct('imgIds',p.imgIds);
-        if(p.useCats), loadAnnPrm.catIds=p.catIds(k); end
-        gts=ev.cocoGt.loadAnns(ev.cocoGt.getAnnIds(loadAnnPrm));
-        dts=ev.cocoDt.loadAnns(ev.cocoDt.getAnnIds(loadAnnPrm));
-        [~,gk]=ismember([gts.image_id],p.imgIds); nGts=zeros(N,1);
-        [~,dk]=ismember([dts.image_id],p.imgIds); nDts=zeros(N,1);
-        for j=1:length(gk), nGts(gk(j))=nGts(gk(j))+1; end
-        for j=1:length(dk), nDts(dk(j))=nDts(dk(j))+1; end
-        [~,gk]=sort(gk); gts=gts(gk); nGtsc=cumsum([0; nGts(:)]);
-        [~,dk]=sort(dk); dts=dts(dk); nDtsc=cumsum([0; nDts(:)]);
-        for i=find(nGts>0 | nDts>0)'
-          % perform evaluation for single category and image
-          gt=gts(nGtsc(i)+1:nGtsc(i+1)); G=length(gt);
-          dt=dts(nDtsc(i)+1:nDtsc(i+1)); D=length(dt);
-          % if using segmentations convert polygons to standard format
-          if( p.useSegm )
-            t=ev.cocoGt.loadImgs(p.imgIds(i)); t=[t.height,t.width];
-            for g=1:G, o=gt(g).segmentation; if(~isstruct(o)),
-                gt(g).segmentation=MaskApi.frPoly(o,t(1),t(2)); end; end
-          end
-          q=p; q.catIds=p.catIds(k); q.imgIds=p.imgIds(i);
-          ev.evalImgs{i,k}=CocoEval.evaluateImg(gt,dt,q);
+      [gts,nGt,cGt]=sortAnns(ev.cocoGt,p.imgIds,p.catIds,p.useCats);
+      [dts,nDt,cDt]=sortAnns(ev.cocoDt,p.imgIds,p.catIds,p.useCats);
+      [is,ks]=ndgrid(1:N,1:K); ev.evalImgs=cell(N*K,1);
+      for i=1:K*N, if(nGt(i)==0 && nDt(i)==0), continue; end
+        gt=gts(cGt(i)+1:cGt(i+1)); dt=dts(cDt(i)+1:cDt(i+1));
+        if( p.useSegm )
+          im=ev.cocoGt.loadImgs(p.imgIds(is(i))); h=im.height; w=im.width;
+          for g=1:nGt(i), s=gt(g).segmentation; if(~isstruct(s))
+              gt(g).segmentation=MaskApi.frPoly(s,h,w); end; end
+          for d=1:nDt(i), s=dt(d).segmentation; if(isempty(s))
+              dt(d).segmentation=MaskApi.frBbox(dt(d).bbox,h,w); end; end
         end
+        q=p; q.catIds=p.catIds(ks(i)); q.imgIds=p.imgIds(is(i));
+        ev.evalImgs{i}=CocoEval.evaluateImg(gt,dt,q);
       end
-      ev.evalImgs=[ev.evalImgs{:}];
+      ev.evalImgs=[ev.evalImgs{nGt>0|nDt>0}];
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
+      
+      function [anns,ns,cs] = sortAnns( coco, imgIds, catIds, useCats )
+        % Return all annotations sorted by catId then imgId.
+        a={'imgIds',imgIds}; if(useCats), a=[a,'catIds',catIds]; end
+        anns=coco.loadAnns(coco.getAnnIds(a));
+        ns=zeros(length(imgIds)*length(catIds),1); n=length(anns);
+        [~,a]=ismember([anns.image_id],imgIds); b=1;
+        if(useCats), [~,b]=ismember([anns.category_id],catIds); end
+        a=(b-1)*length(imgIds)+a; [~,o]=sort(a); anns=anns(o);
+        for b=1:n, ns(a(b))=ns(a(b))+1; end; cs=cumsum([0; ns]);
+      end
     end
     
     function accumulate( ev )
