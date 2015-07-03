@@ -59,15 +59,11 @@ classdef CocoApi
       fprintf('Loading and preparing annotations... '); clk=clock;
       if(isstruct(annFile)), coco.data=annFile; else
         coco.data=gason(fileread(annFile)); end
-      anns = coco.data.annotations;
-      if( strcmp(coco.data.type,'instances') )
-        is.annCatIds = [anns.category_id]';
-        is.annAreas = [anns.area]';
-        is.annIscrowd = [anns.iscrowd]';
-      end
-      is.annIds = [anns.id]';
+      ann = coco.data.annotations;
+      s={'category_id','area','iscrowd','id','image_id'};
+      t={'annCatIds','annAreas','annIscrowd','annIds','annImgIds'};
+      for f=1:5, if(isfield(ann,s{f})), is.(t{f})=[ann.(s{f})]'; end; end
       is.annIdsMap = makeMap(is.annIds);
-      is.annImgIds = [anns.image_id]';
       is.imgIds = [coco.data.images.id]';
       is.imgIdsMap = makeMap(is.imgIds);
       is.imgAnnIdsMap = makeMultiMap(is.imgIds,...
@@ -234,6 +230,10 @@ classdef CocoApi
       %  hs         - handles to segment graphic objects
       n=length(anns); if(n==0), return; end
       if( strcmp(coco.data.type,'instances') )
+        if(~isfield(anns,'iscrowd')), [anns(:).iscrowd]=deal(0); end
+        if(~isfield(anns,'segmentation')), S={anns.bbox}; %#ok<ALIGN>
+          for i=1:n, x=S{i}(1); w=S{i}(3); y=S{i}(2); h=S{i}(4);
+            anns(i).segmentation={[x,y,x,y+h,x+w,y+h,x+w,y]}; end; end
         S={anns.segmentation}; hs=zeros(10000,1); k=0; hold on;
         pFill={'FaceAlpha',.4,'LineWidth',3};
         for i=1:n
@@ -274,18 +274,13 @@ classdef CocoApi
       if(~all(valid)), error('Results provided for invalid images.'); end
       type={'segmentation','bbox','caption'}; type=type{isfield(R,type)};
       if(strcmp(type,'caption'))
-        assert(isfield(R,'caption'));
         for i=1:m, R(i).id=i; end; imgs=cdata.images;
         cdata.images=imgs(ismember([imgs.id],[R.image_id]));
-      elseif(strcmp(type,'bbox'))
-        assert(all(isfield(R,{'category_id','bbox','score'})));
-        for i=1:m, bb=R(i).bbox; R(i).area=bb(3)*bb(4);
-          R(i).segmentation=[]; R(i).id=i; R(i).iscrowd=0; end
-      elseif(strcmp(type,'segmentation'))
-        assert(all(isfield(R,{'category_id','segmentation','score'})));
-        S=[R.segmentation]; a=MaskApi.area(S); bb=MaskApi.toBbox(S);
-        for i=1:m, R(i).area=a(i); R(i).bbox=bb(i,:);
-          R(i).id=i; R(i).iscrowd=0; end
+      else
+        assert(all(isfield(R,{'category_id','score',type})));
+        s=cat(1,R.(type)); if(strcmp(type,'bbox'))
+          a=s(:,3).*s(:,4); else a=MaskApi.area(s); end
+        for i=1:m, R(i).area=a(i); R(i).id=i; end
       end
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
       cdata.annotations=R; cocoRes=CocoApi(cdata);

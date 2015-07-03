@@ -96,8 +96,13 @@ classdef CocoEval < handle
           im=ev.cocoGt.loadImgs(p.imgIds(is(i))); h=im.height; w=im.width;
           for g=1:nGt(i), s=gt(g).segmentation; if(~isstruct(s))
               gt(g).segmentation=MaskApi.frPoly(s,h,w); end; end
-          for d=1:nDt(i), s=dt(d).segmentation; if(isempty(s))
-              dt(d).segmentation=MaskApi.frBbox(dt(d).bbox,h,w); end; end
+          f='segmentation'; if(isempty(dt)), [dt(:).(f)]=deal(); end
+          if(~isfield(dt,f)), s=MaskApi.frBbox(cat(1,dt.bbox),h,w);
+            for d=1:nDt(i), dt(d).(f)=s(d); end; end
+        else
+          f='bbox'; if(isempty(dt)), [dt(:).(f)]=deal(); end
+          if(~isfield(dt,f)), s=MaskApi.toBbox([dt.segmentation]);
+            for d=1:nDt(i), dt(d).(f)=s(d,:); end; end
         end
         q=p; q.catIds=p.catIds(ks(i)); q.imgIds=p.imgIds(is(i));
         for j=1:A, q.areaRng=p.areaRng(j,:);
@@ -129,7 +134,7 @@ classdef CocoEval < handle
       K=length(p.catIds); A=size(p.areaRng,1); M=length(p.maxDets);
       precision=-ones(T,R,K,A,M); recall=-ones(T,K,A,M); Es=ev.evalImgs;
       [~,k]=ismember([Es.catId]',p.catIds);
-      [~,a]=ismember(reshape([Es.areaRng],2,[])',p.areaRng,'rows');
+      [~,a]=ismember(cat(1,Es.areaRng),p.areaRng,'rows');
       [~,m]=ismember([Es.maxDets]',p.maxDets); ks=(m-1)*K*A+(a-1)*K+k;
       for k=1:K*A*M
         E=Es(ks==k); dtm=[E.dtMatches]; dtIg=[E.dtIgnore];
@@ -166,8 +171,8 @@ classdef CocoEval < handle
       if(D>p.maxDets), D=p.maxDets; dt=dt(1:D); end
       % compute iou between each dt and gt region
       iscrowd = uint8([gt.iscrowd]); t=p.useSegm;
-      if(t), g=[gt.segmentation]; else g=reshape([gt.bbox],4,[])'; end
-      if(t), d=[dt.segmentation]; else d=reshape([dt.bbox],4,[])'; end
+      if(t), g=[gt.segmentation]; else g=cat(1,gt.bbox); end
+      if(t), d=[dt.segmentation]; else d=cat(1,dt.bbox); end
       ious=MaskApi.iou(d,g,iscrowd);
       % attempt to match each (sorted) dt to each (sorted) gt
       gtm=zeros(T,G); gtIds=[gt.id]; gtIg=[gt.ignore];
