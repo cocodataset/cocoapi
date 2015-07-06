@@ -87,11 +87,12 @@ classdef CocoEval < handle
       p.imgIds=unique(p.imgIds); p.catIds=unique(p.catIds);
       ev.params=p; N=length(p.imgIds); K=length(p.catIds);
       A=size(p.areaRng,1); M=length(p.maxDets);
-      [gts,nGt,cGt]=sortAnns(ev.cocoGt,p.imgIds,p.catIds,p.useCats);
-      [dts,nDt,cDt]=sortAnns(ev.cocoDt,p.imgIds,p.catIds,p.useCats);
-      [is,ks]=ndgrid(1:N,1:K); ev.evalImgs=cell(N*K,A,M);
+      [nGt,iGt]=getAnnCounts(ev.cocoGt,p.imgIds,p.catIds,p.useCats);
+      [nDt,iDt]=getAnnCounts(ev.cocoDt,p.imgIds,p.catIds,p.useCats);
+      [ks,is]=ndgrid(1:K,1:N); ev.evalImgs=cell(K*N,A,M);
       for i=1:K*N, if(nGt(i)==0 && nDt(i)==0), continue; end
-        gt=gts(cGt(i)+1:cGt(i+1)); dt=dts(cDt(i)+1:cDt(i+1));
+        gt=ev.cocoGt.data.annotations(iGt(i):iGt(i)+nGt(i)-1);
+        dt=ev.cocoDt.data.annotations(iDt(i):iDt(i)+nDt(i)-1);
         if( p.useSegm )
           im=ev.cocoGt.loadImgs(p.imgIds(is(i))); h=im.height; w=im.width;
           for g=1:nGt(i), s=gt(g).segmentation; if(~isstruct(s))
@@ -114,15 +115,15 @@ classdef CocoEval < handle
       ev.evalImgs=[ev.evalImgs{nGt>0|nDt>0,:,:}];
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
       
-      function [anns,ns,cs] = sortAnns( coco, imgIds, catIds, useCats )
-        % Return all annotations sorted by catId then imgId.
-        a={'imgIds',imgIds}; if(useCats), a=[a,'catIds',catIds]; end
-        anns=coco.loadAnns(coco.getAnnIds(a));
-        ns=zeros(length(imgIds)*length(catIds),1); n=length(anns);
-        [~,a]=ismember([anns.image_id],imgIds); b=1;
-        if(useCats), [~,b]=ismember([anns.category_id],catIds); end
-        a=(b-1)*length(imgIds)+a; [~,o]=sort(a); anns=anns(o);
-        for b=1:n, ns(a(b))=ns(a(b))+1; end; cs=cumsum([0; ns]);
+      function [ns,is] = getAnnCounts( coco, imgIds, catIds, useCats )
+        % Return ann counts and indices for given imgIds and catIds.
+        as=sort(coco.getCatIds()); [~,a]=ismember(coco.inds.annCatIds,as);
+        bs=sort(coco.getImgIds()); [~,b]=ismember(coco.inds.annImgIds,bs);
+        if(~useCats), a(:)=1; as=1; end; ns=zeros(length(as),length(bs));
+        for ind=1:length(a), ns(a(ind),b(ind))=ns(a(ind),b(ind))+1; end
+        is=reshape(cumsum([0 ns(1:end-1)])+1,size(ns));
+        [~,a]=ismember(catIds,as); [~,b]=ismember(imgIds,bs);
+        ns=ns(a,b); is=is(a,b);
       end
     end
     

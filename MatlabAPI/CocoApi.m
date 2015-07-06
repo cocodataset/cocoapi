@@ -59,7 +59,9 @@ classdef CocoApi
       fprintf('Loading and preparing annotations... '); clk=clock;
       if(isstruct(annFile)), coco.data=annFile; else
         coco.data=gason(fileread(annFile)); end
-      ann = coco.data.annotations;
+      ann=coco.data.annotations; o=[ann.image_id];
+      if(isfield(ann,'category_id')), o=o*1e10+[ann.category_id]; end
+      [~,o]=sort(o); ann=ann(o); coco.data.annotations=ann;
       s={'category_id','area','iscrowd','id','image_id'};
       t={'annCatIds','annAreas','annIscrowd','annIds','annImgIds'};
       for f=1:5, if(isfield(ann,s{f})), is.(t{f})=[ann.(s{f})]'; end; end
