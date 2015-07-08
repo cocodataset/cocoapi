@@ -1,12 +1,12 @@
 # distutils: language = c
 # distutils: sources = ../MatlabAPI/private/maskApi.c
 
-/**************************************************************************
-* Microsoft COCO Toolbox.      Version 1.0
-* Data, paper, and tutorials available at:  http://mscoco.org/
-* Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
-* Licensed under the Simplified BSD License [see coco/license.txt]
-**************************************************************************/
+#**************************************************************************
+# Microsoft COCO Toolbox.      Version 1.0
+# Data, paper, and tutorials available at:  http://mscoco.org/
+# Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
+# Licensed under the Simplified BSD License [see coco/license.txt]
+#**************************************************************************
 
 __author__ = 'tsungyi'
 
