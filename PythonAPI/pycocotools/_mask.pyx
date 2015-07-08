@@ -25,7 +25,7 @@ cdef extern from "numpy/arrayobject.h":
     void PyArray_ENABLEFLAGS(np.ndarray arr, int flags)
 
 # Declare the prototype of the C functions in MaskApi.h
-cdef extern from "/Users/tsungyi/PycharmProjects/coco/MatlabAPI/private/maskApi.h":
+cdef extern from "maskApi.h":
     ctypedef unsigned int uint
     ctypedef unsigned long siz
     ctypedef unsigned char byte

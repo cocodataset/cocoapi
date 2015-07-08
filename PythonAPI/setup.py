@@ -8,7 +8,7 @@ setup(name='pycocotools',
       packages=['pycocotools'],
       package_dir = {'pycocotools': 'pycocotools'},
       version='1.0.2',
-      include_dirs = [np.get_include()],
+      include_dirs = [np.get_include(), '../MatlabAPI/private'],
       ext_modules=
         cythonize('pycocotools/_mask.pyx',
                   sources=['../MatlabAPI/private/maskApi.c'],  # additional source file(s)
