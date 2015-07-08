@@ -10,8 +10,5 @@ setup(name='pycocotools',
       version='1.0.2',
       include_dirs = [np.get_include(), '../MatlabAPI/private'],
       ext_modules=
-        cythonize('pycocotools/_mask.pyx',
-                  sources=['../MatlabAPI/private/maskApi.c'],  # additional source file(s)
-                  language="c",                                # generate C++ code
-                  ),
+        cythonize('pycocotools/_mask.pyx'),
       )
