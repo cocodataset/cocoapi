@@ -43,8 +43,7 @@ import pycocotools._mask as _mask
 #  o      = iou( dt, gt, iscrowd )
 #  a      = area( Rs )
 #  bbs    = toBbox( Rs )
-#  Rs     = frBbox( bbs, h, w )
-#  R      = frPoly( poly, h, w )
+#  Rs     = frPyObjects( [pyObjects], h, w )
 #
 # In the API the following formats are used:
 #  Rs      - [dict] Run-length encoding of binary masks
