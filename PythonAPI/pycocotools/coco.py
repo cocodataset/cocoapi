@@ -52,6 +52,7 @@ import numpy as np
 from skimage.draw import polygon
 import copy
 import itertools
+import mask
 
 class COCO:
     def __init__(self, annotation_file=None):
@@ -66,8 +67,8 @@ class COCO:
         self.anns = []
         self.imgToAnns = {}
         self.catToImgs = {}
-        self.imgs = []
-        self.cats = []
+        self.imgs = {}
+        self.cats = {}
         if not annotation_file == None:
             print 'loading annotations into memory...'
             time_t = datetime.datetime.utcnow()
@@ -132,6 +133,7 @@ class COCO:
             anns = self.dataset['annotations']
         else:
             if not len(imgIds) == 0:
+                # this can be changed by defaultdict
                 lists = [self.imgToAnns[imgId] for imgId in imgIds if imgId in self.imgToAnns]
                 anns = list(itertools.chain.from_iterable(lists))
             else:
@@ -245,15 +247,17 @@ class COCO:
                         color.append(c)
                 else:
                     # mask
-                    mask = COCO.decodeMask(ann['segmentation'])
-                    img = np.ones( (mask.shape[0], mask.shape[1], 3) )
+                    t = self.imgs[ann['image_id']]
+                    rle = mask.frPyObjects([ann['segmentation']], t['height'], t['width'])
+                    m = mask.decode(rle)
+                    img = np.ones( (m.shape[0], m.shape[1], 3) )
                     if ann['iscrowd'] == 1:
                         color_mask = np.array([2.0,166.0,101.0])/255
                     if ann['iscrowd'] == 0:
                         color_mask = np.random.random((1, 3)).tolist()[0]
                     for i in range(3):
                         img[:,:,i] = color_mask[i]
-                    ax.imshow(np.dstack( (img, mask*0.5) ))
+                    ax.imshow(np.dstack( (img, m*0.5) ))
             p = PatchCollection(polygons, facecolors=color, edgecolors=(0,0,0,1), linewidths=3, alpha=0.4)
             ax.add_collection(p)
         if self.dataset['type'] == 'captions':
@@ -268,9 +272,9 @@ class COCO:
         """
         res = COCO()
         res.dataset['images'] = [img for img in self.dataset['images']]
-        res.dataset['info'] = copy.deepcopy(self.dataset['info'])
+        # res.dataset['info'] = copy.deepcopy(self.dataset['info'])
         res.dataset['type'] = copy.deepcopy(self.dataset['type'])
-        res.dataset['licenses'] = copy.deepcopy(self.dataset['licenses'])
+        # res.dataset['licenses'] = copy.deepcopy(self.dataset['licenses'])
 
         print 'Loading and preparing results...     '
         time_t = datetime.datetime.utcnow()
@@ -296,8 +300,9 @@ class COCO:
         elif 'segmentation' in anns[0]:
             res.dataset['categories'] = copy.deepcopy(self.dataset['categories'])
             for id, ann in enumerate(anns):
-                ann['area']=sum(ann['segmentation']['counts'][2:-1:2])
-                ann['bbox'] = []
+                # now only support compressed RLE format as segmentation results
+                ann['area'] = mask.area([ann['segmentation']])[0]
+                ann['bbox'] = mask.toBbox([ann['segmentation']])[0]
                 ann['id'] = id
                 ann['iscrowd'] = 0
         print 'DONE (t=%0.2fs)'%((datetime.datetime.utcnow() - time_t).total_seconds())
@@ -305,68 +310,3 @@ class COCO:
         res.dataset['annotations'] = anns
         res.createIndex()
         return res
-
-
-    @staticmethod
-    def decodeMask(R):
-        """
-        Decode binary mask M encoded via run-length encoding.
-        :param   R (object RLE)    : run-length encoding of binary mask
-        :return: M (bool 2D array) : decoded binary mask
-        """
-        N = len(R['counts'])
-        M = np.zeros( (R['size'][0]*R['size'][1], ))
-        n = 0
-        val = 1
-        for pos in range(N):
-            val = not val
-            for c in range(R['counts'][pos]):
-                R['counts'][pos]
-                M[n] = val
-                n += 1
-        return M.reshape((R['size']), order='F')
-
-    @staticmethod
-    def encodeMask(M):
-        """
-        Encode binary mask M using run-length encoding.
-        :param   M (bool 2D array)  : binary mask to encode
-        :return: R (object RLE)     : run-length encoding of binary mask
-        """
-        [h, w] = M.shape
-        M = M.flatten(order='F')
-        N = len(M)
-        counts_list = []
-        pos = 0
-        # counts
-        counts_list.append(1)
-        diffs = np.logical_xor(M[0:N-1], M[1:N])
-        for diff in diffs:
-            if diff:
-                pos +=1
-                counts_list.append(1)
-            else:
-                counts_list[pos] += 1
-        # if array starts from 1. start with 0 counts for 0
-        if M[0] == 1:
-            counts_list = [0] + counts_list
-        return {'size':      [h, w],
-               'counts':    counts_list ,
-               }
-
-    @staticmethod
-    def segToMask( S, h, w ):
-         """
-         Convert polygon segmentation to binary mask.
-         :param   S (float array)   : polygon segmentation mask
-         :param   h (int)           : target mask height
-         :param   w (int)           : target mask width
-         :return: M (bool 2D array) : binary mask
-         """
-         M = np.zeros((h,w), dtype=np.bool)
-         for s in S:
-             N = len(s)
-             rr, cc = polygon(np.array(s[1:N:2]).clip(max=h-1), \
-                              np.array(s[0:N:2]).clip(max=w-1)) # (y, x)
-             M[rr, cc] = 1
-         return M
