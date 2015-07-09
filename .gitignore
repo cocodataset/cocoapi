@@ -2,3 +2,10 @@ images/
 annotations/
 results/
 external/
+
+PythonAPI/pycocotools/__init__.pyc
+PythonAPI/pycocotools/_mask.c
+PythonAPI/pycocotools/_mask.so
+PythonAPI/pycocotools/coco.pyc
+PythonAPI/pycocotools/cocoeval.pyc
+PythonAPI/pycocotools/mask.pyc
