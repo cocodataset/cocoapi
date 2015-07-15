@@ -9,20 +9,22 @@ classdef CocoEval < handle
   %  disp( E.evalImgs )           % inspect per image results
   %  E.accumulate();              % accumulate per image results
   %  disp( E.eval )               % inspect accumulated results
+  %  E.summarize();               % display summary metrics of results
   % For example usage see evalDemo.m and http://mscoco.org/.
   %
   % The evaluation parameters are as follows (defaults in brackets):
   %  imgIds     - [all] N img ids to use for evaluation
   %  catIds     - [all] K cat ids to use for evaluation
-  %  iouThrs    - [1/T:1/T:1] T=20 IoU thresholds for evaluation
-  %  recThrs    - [1/R:1/R:1] R=1000 recall thresholds for evaluation
-  %  maxDets    - [100] max number of allowed detections per image
-  %  areaRng    - [0 1e10] object area range for evaluation
+  %  iouThrs    - [.5:.05:.95] T=10 IoU thresholds for evaluation
+  %  recThrs    - [0:.01:1] R=101 recall thresholds for evaluation
+  %  areaRng    - [...] A=4 object area ranges for evaluation
+  %  maxDets    - [1 10 100] M=3 thresholds on max detections per image
   %  useSegm    - [1] if true evaluate against ground-truth segments
   %  useCats    - [1] if true use category labels for evaluation
   % Note: if useSegm=0 the evaluation is run on bounding boxes.
   % Note: if useCats=0 category labels are ignored as in proposal scoring.
-  % Note: multiple areaRngs [Ax2] and maxDets [Mx1] can be specified.
+  % Note: by default areaRng=[0 1e5; 0 32; 32 96; 96 1e5].^2. These A=4
+  % settings correspond to all, small, medium, and large objects, resp.
   %
   % evaluate(): evaluates detections on every image and every category and
   % concats the results into the struct array "evalImgs" with fields:
@@ -46,8 +48,6 @@ classdef CocoEval < handle
   %  counts     - [T,R,K,A,M] parameter dimensions (see above)
   %  precision  - [TxRxKxAxM] precision for every evaluation setting
   %  recall     - [TxKxAxM] max recall for every evaluation setting
-  %  ap         - average across all non-negative precision values
-  %  ar         - average across all non-negative recall values
   % Note: precision and recall==-1 for settings with no gt objects.
   %
   % See also CocoApi, MaskApi, cocoDemo, evalDemo
@@ -63,6 +63,7 @@ classdef CocoEval < handle
     params      % evaluation parameters
     evalImgs    % per-image per-category evaluation results
     eval        % accumulated evaluation results
+    stats       % evaluation summary statistics
   end
   
   methods
@@ -72,10 +73,10 @@ classdef CocoEval < handle
       if(nargin>1), ev.cocoDt = cocoDt; end
       if(nargin>0), ev.params.imgIds = sort(ev.cocoGt.getImgIds()); end
       if(nargin>0), ev.params.catIds = sort(ev.cocoGt.getCatIds()); end
-      ev.params.iouThrs = .05:.05:1;
-      ev.params.recThrs = .001:.001:1;
-      ev.params.maxDets = 100;
-      ev.params.areaRng = [0 1e10];
+      ev.params.iouThrs = .5:.05:.95;
+      ev.params.recThrs = 0:.01:1;
+      ev.params.areaRng = [0 1e5; 0 32; 32 96; 96 1e5].^2;
+      ev.params.maxDets = [1 10 100];
       ev.params.useSegm = 1;
       ev.params.useCats = 1;
     end
@@ -156,10 +157,36 @@ classdef CocoEval < handle
               i=i+1; else q(r)=pr(i); r=r+1; end; end; precision(t,:,k)=q;
         end
       end
-      ap=precision; ap=mean(ap(ap>=0)); ar=recall; ar=mean(ar(ar>=0));
       ev.eval=struct('params',p,'date',date,'counts',[T R K A M],...
-        'precision',precision,'recall',recall,'ap',ap,'ar',ar);
+        'precision',precision,'recall',recall);
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
+    end
+    
+    function summarize( ev )
+      % Compute and display summary metrics for evaluation results.
+      if(isempty(ev.eval)), error('Please run accumulate() first'); end
+      ev.stats=zeros(1,9);
+      ev.stats(1) = summarize1(1,':','all',100);
+      ev.stats(2) = summarize1(1,.50,'all',100);
+      ev.stats(3) = summarize1(1,.75,'all',100);
+      ev.stats(4) = summarize1(1,':','small',100);
+      ev.stats(5) = summarize1(1,':','medium',100);
+      ev.stats(6) = summarize1(1,':','large',100);
+      ev.stats(7) = summarize1(0,':','all',1);
+      ev.stats(8) = summarize1(0,':','all',10);
+      ev.stats(9) = summarize1(0,':','all',100);
+      
+      function s = summarize1( ap, iouThr, areaRng, maxDets )
+        p=ev.params; i=iouThr; m=find(p.maxDets==maxDets);
+        if(i~=':'), iStr=sprintf('%.2f     ',i); i=find(p.iouThrs==i);
+        else iStr=sprintf('%.2f:%.2f',min(p.iouThrs),max(p.iouThrs)); end
+        as=[0 1e5; 0 32; 32 96; 96 1e5].^2; a=find(areaRng(1)=='asml');
+        a=find(p.areaRng(:,1)==as(a,1) & p.areaRng(:,2)==as(a,2));
+        if(ap), tStr='Precision (AP)'; s=ev.eval.precision(i,:,:,a,m);
+        else    tStr='Recall    (AR)'; s=ev.eval.recall(i,:,a,m); end
+        fStr=' Average %s @[ IoU=%s | area=%6s | maxDets=%3i ] = %.3f\n';
+        s=mean(s(s>=0)); fprintf(fStr,tStr,iStr,areaRng,maxDets,s);
+      end
     end
   end
   

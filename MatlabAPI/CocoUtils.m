@@ -155,8 +155,8 @@ classdef CocoUtils
       CocoUtils.convertPascalGt(dataDir,year,split,annFile);
       CocoUtils.convertPascalDt(sfs,resFile);
       D=CocoApi(annFile); R=D.loadRes(resFile); E=CocoEval(D,R);
-      p=E.params; p.recThrs=thrs; p.catIds=1:K; p.iouThrs=.5; p.useSegm=0;
-      p.maxDets=inf; E.params=p; E.evaluate(); E.accumulate();
+      p=E.params; p.recThrs=thrs; p.iouThrs=.5; p.areaRng=[0 inf];
+      p.useSegm=0; p.maxDets=inf; E.params=p; E.evaluate(); E.accumulate();
       apCoco=squeeze(mean(E.eval.precision,2)); deltas=abs(apCoco-ap);
       fprintf('AP delta: mean=%.2e median=%.2e max=%.2e\n',...
         mean(deltas),median(deltas),max(deltas))
@@ -188,8 +188,8 @@ classdef CocoUtils
       CocoUtils.convertImageNetDt(fs{1},resFile);
       CocoUtils.convertImageNetGt(dataDir,year,'val',annFile)
       D=CocoApi(annFile); R=D.loadRes(resFile); E=CocoEval(D,R);
-      p=E.params; p.recThrs=0:.0001:1; p.iouThrs=.5; p.useSegm=0;
-      p.maxDets=inf; E.params=p; E.evaluate(); E.accumulate();
+      p=E.params; p.recThrs=0:.0001:1; p.iouThrs=.5; p.areaRng=[0 inf];
+      p.useSegm=0; p.maxDets=inf; E.params=p; E.evaluate(); E.accumulate();
       apCoco=squeeze(mean(E.eval.precision,2)); deltas=abs(apCoco-ap);
       fprintf('AP delta: mean=%.2e median=%.2e max=%.2e\n',...
         mean(deltas),median(deltas),max(deltas))

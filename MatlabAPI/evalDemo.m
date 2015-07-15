@@ -36,5 +36,6 @@ if(0), f=fopen(resFile,'w'); fwrite(f,gason(res)); fclose(f); end
 cocoEval=CocoEval(cocoGt,cocoDt);
 cocoEval.params.imgIds=imgIds;
 cocoEval.params.useSegm=strcmp(type,'segm');
-cocoEval.evaluate(); cocoEval.accumulate();
-fprintf('AP of fake *%s* results is %.4f\n',type,cocoEval.eval.ap);
+cocoEval.evaluate();
+cocoEval.accumulate();
+cocoEval.summarize();
