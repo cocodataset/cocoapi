@@ -107,8 +107,12 @@ classdef CocoEval < handle
         end
         q=p; q.catIds=p.catIds(ks(i)); q.imgIds=p.imgIds(is(i));
         for j=1:A, q.areaRng=p.areaRng(j,:);
-          for k=1:M, q.maxDets=p.maxDets(k);
-            ev.evalImgs{i,j,k}=CocoEval.evaluateImg(gt,dt,q);
+          q.maxDets=max(p.maxDets); E0=CocoEval.evaluateImg(gt,dt,q);
+          for k=1:M, E=E0; m=p.maxDets(k); E.maxDets=m; m=min(nDt(i),m);
+            E.dtIds=E.dtIds(1:m); E.dtMatches=E.dtMatches(:,1:m);
+            E.dtScores=E.dtScores(1:m); E.dtIgnore=E.dtIgnore(:,1:m);
+            E.gtMatches=ismember(E.gtMatches,E.dtIds).*E.gtMatches;
+            E.ious=E.ious(1:m,:); ev.evalImgs{i,j,k}=E;
           end
         end
       end
