@@ -73,7 +73,7 @@ class COCO:
             print 'loading annotations into memory...'
             time_t = datetime.datetime.utcnow()
             dataset = json.load(open(annotation_file, 'r'))
-            print datetime.datetime.utcnow() - time_t
+            print 'Done (t=%0.2fs)'%(datetime.datetime.utcnow() - time_t).total_seconds()
             self.dataset = dataset
             self.createIndex()
 

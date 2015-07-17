@@ -51,8 +51,6 @@ class COCOeval:
     #  counts     - [T,R,K,A,M] parameter dimensions (see above)
     #  precision  - [TxRxKxAxM] precision for every evaluation setting
     #  recall     - [TxKxAxM] max recall for every evaluation setting
-    #  ap         - average across all non-negative precision values
-    #  ar         - average across all non-negative recall values
     # Note: precision and recall==-1 for settings with no gt objects.
     #
     # See also coco, mask, pycocoDemo, pycocoEvalDemo
@@ -75,7 +73,8 @@ class COCOeval:
         self.eval     = {}                  # accumulated evaluation results
         self._gts = defaultdict(list)       # gt for evaluation
         self._dts = defaultdict(list)       # dt for evaluation
-        self.params = Params()
+        self.params = Params()              # parameters
+        self.stats = []                     # result summarization
         if not cocoGt is None:
             self.params.imgIds = sorted(cocoGt.getImgIds())
             self.params.catIds = sorted(cocoGt.getCatIds())
@@ -123,6 +122,8 @@ class COCOeval:
             self._gts[gt['image_id'], gt['category_id']].append(gt)
         for dt in dts:
             self._dts[dt['image_id'], dt['category_id']].append(dt)
+        self.evalImgs = defaultdict(list)   # per-image per-category evaluation results
+        self.eval     = {}                  # accumulated evaluation results
 
     def evaluate(self):
         '''
@@ -282,16 +283,17 @@ class COCOeval:
         for a, maxDets in enumerate(p.maxDets):
             maxDetsToA[maxDets] = a
         indsToEvalImg = defaultdict(list)
-        for key, e in self.evalImgs.items():
+
+        keys = sorted(self.evalImgs.keys(), key=lambda x: x[0])
+        for key in keys:
+            e = self.evalImgs[key]
             k = catToK[key[1]]; a = areaRngToM[tuple(key[2])]; m = maxDetsToA[key[3]]
             if  k >-1 and m >-1 and a>-1:
                 indsToEvalImg[k, a, m].append(e)
-
         # retrieve E at each category, area range, and max number of detections
         for key, E in indsToEvalImg.items():
-            E = sorted(E, key=lambda x: x['imgId'])
             k = key[0]; a = key[1]; m = key[2]
-            dtScores = np.hstack( [e['dtScores']  for e in E] )
+            dtScores = np.hstack([e['dtScores'] for e in E])
 
             # different sorting method generates slightly different results.
             # mergesort is used to be consistent as Matlab implementation.
@@ -307,10 +309,11 @@ class COCOeval:
             tps = np.logical_and(               dtm,  np.logical_not(dtIg) )
             fps = np.logical_and(np.logical_not(dtm), np.logical_not(dtIg) )
 
-            for t in range(T):
-                tp = np.array(np.cumsum(tps[t,:]), dtype=np.float)
-                fp = np.array(np.cumsum(fps[t,:]), dtype=np.float)
-
+            tp_sum = np.cumsum(tps, axis=1).astype(dtype=np.float)
+            fp_sum = np.cumsum(fps, axis=1).astype(dtype=np.float)
+            for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum)):
+                tp = np.array(tp)
+                fp = np.array(fp)
                 nd = len(tp)
                 rc = tp / npig
                 pr = tp / (fp+tp+np.spacing(1))
@@ -320,19 +323,23 @@ class COCOeval:
                     recall[t,k,a,m] = rc[-1]
                 else:
                     recall[t,k,a,m] = 0
+
+                # numpy is slow without cython optimization for accessing elements
+                # use python array gets significant speed improvement
+                pr = pr.tolist(); rc = rc.tolist(); q = q.tolist()
+
                 for i in range(nd-1, 0, -1):
                     if pr[i] > pr[i-1]:
                         pr[i-1] = pr[i]
-                i = 0
-                r = 0
 
-                while r<R and i<nd:
-                    if rc[i] < p.recThrs[r]:
+                i = 0
+                for r, recThr in enumerate(p.recThrs):
+                    while i < nd and rc[i] < recThr:
                         i += 1
-                    else:
-                        q[r] = pr[i]
-                        r += 1
-                precision[t,:,k,a,m] = q
+                    if i >= nd:
+                        break
+                    q[r] = pr[i]
+                precision[t,:,k,a,m] = np.array(q)
         self.eval = {
             'params': p,
             'counts': [T, R, K, A, M],
@@ -345,12 +352,64 @@ class COCOeval:
         toc = datetime.datetime.utcnow()
         print 'DONE (t=%0.2fs).'%( (toc-tic).total_seconds() )
 
+    def summarize(self):
+        '''
+        Compute and display summary metrics for evaluation results.
+        Note this functin can *only* be applied on the default parameter setting
+        '''
+        def _summarize( ap=1, iouThr=None, areaRng='all', maxDets=100 ):
+            p = self.params
+            iStr        = ' {:<18} {} @[ IoU={:<9} | area={:>6} | maxDets={:>3} ] = {}'
+            titleStr    = 'Average Precision' if ap == 1 else 'Average Recall'
+            typeStr     = '(AP)' if ap==1 else '(AR)'
+            iouStr      = '%0.2f:%0.2f'%(p.iouThrs[0], p.iouThrs[-1]) if iouThr is None else '%0.2f'%(iouThr)
+            areaStr     = areaRng
+            maxDetsStr  = '%d'%(maxDets)
+
+            if ap == 1:
+                # dimension of precision: [TxRxKxAxM]
+                s = self.eval['precision']
+                # IoU
+                if iouThr is not None:
+                    t = np.where(iouThr == p.iouThrs)[0]
+                    s = s[t]
+                # areaRng
+                if areaRng == 'all':
+                    s = s[:,:,:,0,2]
+                elif areaRng == 'small':
+                    s = s[:,:,:,1,2]
+                elif areaRng == 'medium':
+                    s = s[:,:,:,2,2]
+                elif areaRng == 'large':
+                    s = s[:,:,:,3,2]
+            else:
+                # dimension of recall: [TxKxAxM]
+                s = self.eval['recall']
+                if maxDets == 1:
+                    s = s[:,:,0,0]
+                elif maxDets == 10:
+                    s = s[:,:,0,1]
+                elif maxDets == 100:
+                    s = s[:,:,0,2]
+            mean_s = np.mean(s[s>-1])
+            print iStr.format(titleStr, typeStr, iouStr, areaStr, maxDetsStr, '%.3f'%(float(mean_s)))
+            return mean_s
+
+        if not self.eval:
+            raise Exception('Please run accumulate() first')
+        self.stats = np.zeros((9,))
+        self.stats[0] = _summarize(1)
+        self.stats[1] = _summarize(1,iouThr=.5)
+        self.stats[2] = _summarize(1,iouThr=.75)
+        self.stats[3] = _summarize(1,areaRng='small')
+        self.stats[4] = _summarize(1,areaRng='medium')
+        self.stats[5] = _summarize(1,areaRng='large')
+        self.stats[6] = _summarize(0,maxDets=1)
+        self.stats[7] = _summarize(0,maxDets=10)
+        self.stats[8] = _summarize(0,maxDets=100)
+
     def __str__(self):
-        if self.params.useSegm:
-            annType = 'segm'
-        else:
-            annType = 'bbox'
-        return 'AP of %s results is %.4f\n'%(annType, self.eval['ap'])
+        self.summarize()
 
 class Params:
     '''
@@ -360,11 +419,9 @@ class Params:
         self.imgIds = []
         self.catIds = []
         # np.arange causes trouble.  the data point on arange is slightly larger than the true value
-        # self.iouThrs = np.arange(.05, 1.001, .05)
-        # self.recThrs = np.arange(.001,1.001, .001)
-        self.iouThrs = np.linspace(.05, 1.000, np.round((1.000-0.05)/.05) +1, endpoint=True)
-        self.recThrs = np.linspace(.001,1.000, np.round((1.000-0.001)/.001)+1, endpoint=True)
-        self.maxDets = [100]
-        self.areaRng = [[0, 1e10]]
+        self.iouThrs = np.linspace(.5, 0.95, np.round((0.95-.5)/.05)+1, endpoint=True)
+        self.recThrs = np.linspace(.0, 1.00, np.round((1.00-.0)/.01)+1, endpoint=True)
+        self.maxDets = [1,10,100]
+        self.areaRng = [ [0**2,1e5**2], [0**2, 32**2], [32**2, 96**2], [96**2, 1e5**2] ]
         self.useSegm = 0
         self.useCats = 1
