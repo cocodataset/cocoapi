@@ -19,18 +19,17 @@ class COCOeval:
     # The evaluation parameters are as follows (defaults in brackets):
     #  imgIds     - [all] N img ids to use for evaluation
     #  catIds     - [all] K cat ids to use for evaluation
-    #  iouThrs    - [1/T:1/T:1] T=20 IoU thresholds for evaluation
-    #  recThrs    - [1/R:1/R:1] R=1000 recall thresholds for evaluation
-    #  maxDets    - [100] max number of allowed detections per image
-    #  areaRng    - [0 1e10] object area range for evaluation
+    #  iouThrs    - [.5:.05:.95] T=10 IoU thresholds for evaluation
+    #  recThrs    - [0:.01:1] R=101 recall thresholds for evaluation
+    #  areaRng    - [...] A=4 object area ranges for evaluation
+    #  maxDets    - [1 10 100] M=3 thresholds on max detections per image
     #  useSegm    - [1] if true evaluate against ground-truth segments
-    #  useCats    - [1] if true use category labels for evaluation
-    # Note: if useSegm=0 the evaluation is run on bounding boxes.
+    #  useCats    - [1] if true use category labels for evaluation    # Note: if useSegm=0 the evaluation is run on bounding boxes.
     # Note: if useCats=0 category labels are ignored as in proposal scoring.
     # Note: multiple areaRngs [Ax2] and maxDets [Mx1] can be specified.
     #
     # evaluate(): evaluates detections on every image and every category and
-    # concats the results into the struct array "evalImgs" with fields:
+    # concats the results into the "evalImgs" with fields:
     #  imgId      - results for the img with the given id
     #  catId      - results for the cat with the given id
     #  areaRng    - results for objects in the given areaRng
@@ -45,7 +44,7 @@ class COCOeval:
     #  ious       - [DxG] iou between every dt and gt
     #
     # accumulate(): accumulates the per-image, per-category evaluation
-    # results in "evalImgs" into the struct "eval" with fields:
+    # results in "evalImgs" into the dictionary "eval" with fields:
     #  params     - parameters used for evaluation
     #  date       - date evaluation was performed
     #  counts     - [T,R,K,A,M] parameter dimensions (see above)
