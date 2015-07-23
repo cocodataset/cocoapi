@@ -30,6 +30,7 @@ __version__ = '1.0.1'
 #  segToMask  - Convert polygon segmentation to binary mask.
 #  showAnns   - Display the specified annotations.
 #  loadRes    - Load algorithm results and create API for accessing them.
+#  download   - Download COCO images from mscoco.org server.
 # Throughout the API "ann"=annotation, "cat"=category, and "img"=image.
 # Help on each functions can be accessed by: "help COCO>function".
 
@@ -50,9 +51,11 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 import numpy as np
 from skimage.draw import polygon
+import urllib
 import copy
 import itertools
 import mask
+import os
 
 class COCO:
     def __init__(self, annotation_file=None):
@@ -92,7 +95,7 @@ class COCO:
 
         cats = []
         catToImgs = []
-        if self.dataset['type'] == 'instances':
+        if 'categories' in self.dataset:
             cats = {cat['id']: [] for cat in self.dataset['categories']}
             for cat in self.dataset['categories']:
                 cats[cat['id']] = cat
@@ -140,11 +143,8 @@ class COCO:
                 anns = self.dataset['annotations']
             anns = anns if len(catIds)  == 0 else [ann for ann in anns if ann['category_id'] in catIds]
             anns = anns if len(areaRng) == 0 else [ann for ann in anns if ann['area'] > areaRng[0] and ann['area'] < areaRng[1]]
-        if self.dataset['type'] == 'instances':
-            if not iscrowd == None:
-                ids = [ann['id'] for ann in anns if ann['iscrowd'] == iscrowd]
-            else:
-                ids = [ann['id'] for ann in anns]
+        if not iscrowd == None:
+            ids = [ann['id'] for ann in anns if ann['iscrowd'] == iscrowd]
         else:
             ids = [ann['id'] for ann in anns]
         return ids
@@ -233,7 +233,11 @@ class COCO:
         """
         if len(anns) == 0:
             return 0
-        if self.dataset['type'] == 'instances':
+        if 'segmentation' in anns[0]:
+            datasetType = 'instances'
+        elif 'caption' in anns[0]:
+            datasetType = 'captions'
+        if datasetType == 'instances':
             ax = plt.gca()
             polygons = []
             color = []
@@ -260,7 +264,7 @@ class COCO:
                     ax.imshow(np.dstack( (img, m*0.5) ))
             p = PatchCollection(polygons, facecolors=color, edgecolors=(0,0,0,1), linewidths=3, alpha=0.4)
             ax.add_collection(p)
-        if self.dataset['type'] == 'captions':
+        elif datasetType == 'captions':
             for ann in anns:
                 print ann['caption']
 
@@ -273,7 +277,6 @@ class COCO:
         res = COCO()
         res.dataset['images'] = [img for img in self.dataset['images']]
         # res.dataset['info'] = copy.deepcopy(self.dataset['info'])
-        res.dataset['type'] = copy.deepcopy(self.dataset['type'])
         # res.dataset['licenses'] = copy.deepcopy(self.dataset['licenses'])
 
         print 'Loading and preparing results...     '
@@ -310,3 +313,27 @@ class COCO:
         res.dataset['annotations'] = anns
         res.createIndex()
         return res
+
+    def download( self, tarDir = None, imgIds = [] ):
+        '''
+        Download COCO images from mscoco.org server.
+        :param tarDir (str): COCO results directory name
+               imgIds (list): images to be downloaded
+        :return:
+        '''
+        if tarDir is None:
+            print 'Please specify target directory'
+            return -1
+        if len(imgIds) == 0:
+            imgs = self.imgs.values()
+        else:
+            imgs = self.loadImgs(imgIds)
+        N = len(imgs)
+        if not os.path.exists(tarDir):
+            os.makedirs(tarDir)
+        for i, img in enumerate(imgs):
+            time_t = datetime.datetime.utcnow()
+            fname = os.path.join(tarDir, img['file_name'])
+            if not os.path.exists(fname):
+                urllib.urlretrieve(img['coco_url'], fname)
+            print 'downloaded %d/%d images (t=%.1fs)'%(i, N, (datetime.datetime.utcnow() - time_t).total_seconds())
