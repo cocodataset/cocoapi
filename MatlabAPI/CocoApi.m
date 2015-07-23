@@ -59,18 +59,20 @@ classdef CocoApi
       fprintf('Loading and preparing annotations... '); clk=clock;
       if(isstruct(annFile)), coco.data=annFile; else
         coco.data=gason(fileread(annFile)); end
-      ann=coco.data.annotations; o=[ann.image_id];
-      if(isfield(ann,'category_id')), o=o*1e10+[ann.category_id]; end
-      [~,o]=sort(o); ann=ann(o); coco.data.annotations=ann;
-      s={'category_id','area','iscrowd','id','image_id'};
-      t={'annCatIds','annAreas','annIscrowd','annIds','annImgIds'};
-      for f=1:5, if(isfield(ann,s{f})), is.(t{f})=[ann.(s{f})]'; end; end
-      is.annIdsMap = makeMap(is.annIds);
       is.imgIds = [coco.data.images.id]';
       is.imgIdsMap = makeMap(is.imgIds);
-      is.imgAnnIdsMap = makeMultiMap(is.imgIds,...
-        is.imgIdsMap,is.annImgIds,is.annIds,0);
-      if( strcmp(coco.data.type,'instances') )
+      if( isfield(coco.data,'annotations') )
+        ann=coco.data.annotations; o=[ann.image_id];
+        if(isfield(ann,'category_id')), o=o*1e10+[ann.category_id]; end
+        [~,o]=sort(o); ann=ann(o); coco.data.annotations=ann;
+        s={'category_id','area','iscrowd','id','image_id'};
+        t={'annCatIds','annAreas','annIscrowd','annIds','annImgIds'};
+        for f=1:5, if(isfield(ann,s{f})), is.(t{f})=[ann.(s{f})]'; end; end
+        is.annIdsMap = makeMap(is.annIds);
+        is.imgAnnIdsMap = makeMultiMap(is.imgIds,...
+          is.imgIdsMap,is.annImgIds,is.annIds,0);
+      end
+      if( isfield(coco.data,'categories') )
         is.catIds = [coco.data.categories.id]';
         is.catIdsMap = makeMap(is.catIds);
         is.catImgIdsMap = makeMultiMap(is.catIds,...
@@ -219,7 +221,7 @@ classdef CocoApi
       imgs = coco.data.images([ids{:}]);
     end
     
-    function hs = showAnns( coco, anns )
+    function hs = showAnns( ~, anns )
       % Display the specified annotations.
       %
       % USAGE
@@ -231,7 +233,7 @@ classdef CocoApi
       % OUTPUTS
       %  hs         - handles to segment graphic objects
       n=length(anns); if(n==0), return; end
-      if( strcmp(coco.data.type,'instances') )
+      if( any(isfield(anns,{'segmentation','bbox'})) )
         if(~isfield(anns,'iscrowd')), [anns(:).iscrowd]=deal(0); end
         if(~isfield(anns,'segmentation')), S={anns.bbox}; %#ok<ALIGN>
           for i=1:n, x=S{i}(1); w=S{i}(3); y=S{i}(2); h=S{i}(4);
@@ -247,12 +249,11 @@ classdef CocoApi
           end
         end
         hs=hs(1:k); hold off;
-      elseif( strcmp(coco.data.type,'captions') )
+      elseif( isfield(anns,'caption') )
         S={anns.caption};
         for i=1:n, S{i}=[int2str(i) ') ' S{i} '\newline']; end
         S=[S{:}]; title(S,'FontSize',12);
       end
-      hold off;
     end
     
     function cocoRes = loadRes( coco, resFile )
