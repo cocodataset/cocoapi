@@ -27,12 +27,13 @@ classdef CocoApi
   %  loadImgs   - Load imgs with the specified ids.
   %  showAnns   - Display the specified annotations.
   %  loadRes    - Load algorithm results and create API for accessing them.
+  %  download   - Download COCO images from mscoco.org server.
   % Throughout the API "ann"=annotation, "cat"=category, and "img"=image.
   % Help on each functions can be accessed by: "help CocoApi>function".
   %
-  % See also cocoDemo, CocoApi>CocoApi, CocoApi>getAnnIds,
-  % CocoApi>getCatIds, CocoApi>getImgIds, CocoApi>loadAnns,
-  % CocoApi>loadCats, CocoApi>loadImgs, CocoApi>showAnns, CocoApi>loadRes
+  % See also CocoApi>CocoApi, CocoApi>getAnnIds, CocoApi>getCatIds,
+  % CocoApi>getImgIds, CocoApi>loadAnns, CocoApi>loadCats,
+  % CocoApi>loadImgs, CocoApi>showAnns, CocoApi>loadRes, CocoApi>download
   %
   % Microsoft COCO Toolbox.      Version 1.0
   % Data, paper, and tutorials available at:  http://mscoco.org/
@@ -287,6 +288,23 @@ classdef CocoApi
       end
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
       cdata.annotations=R; cocoRes=CocoApi(cdata);
+    end
+    
+    function download( coco, tarDir )
+      % Download COCO images from mscoco.org server.
+      %
+      % USAGE
+      %  coco.download( tarDir )
+      %
+      % INPUTS
+      %  tarDir     - COCO results filename
+      fs={coco.data.images.file_name}; n=length(fs);
+      urls={coco.data.images.coco_url}; do=true(1,n);
+      for i=1:n, fs{i}=[tarDir '/' fs{i}]; do(i)=~exist(fs{i},'file'); end
+      fs=fs(do); urls=urls(do); n=length(fs); if(n==0), return; end
+      if(~exist(tarDir,'dir')), mkdir(tarDir); end
+      msg='downloaded %i/%i images (t=%.1fs)\n'; t=tic;
+      for i=1:n, websave(fs{i},urls{i}); fprintf(msg,i,n,toc(t)); end
     end
   end
   
