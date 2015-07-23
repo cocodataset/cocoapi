@@ -345,8 +345,6 @@ class COCOeval:
             'date': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'precision': precision,
             'recall':   recall,
-            'ap': np.mean(precision[precision>-1]),
-            'ar': np.mean(recall[recall>-1]),
         }
         toc = datetime.datetime.utcnow()
         print 'DONE (t=%0.2fs).'%( (toc-tic).total_seconds() )
@@ -390,7 +388,10 @@ class COCOeval:
                     s = s[:,:,0,1]
                 elif maxDets == 100:
                     s = s[:,:,0,2]
-            mean_s = np.mean(s[s>-1])
+            if len(s[s>-1])==0:
+                mean_s = -1
+            else:
+                mean_s = np.mean(s[s>-1])
             print iStr.format(titleStr, typeStr, iouStr, areaStr, maxDetsStr, '%.3f'%(float(mean_s)))
             return mean_s
 
