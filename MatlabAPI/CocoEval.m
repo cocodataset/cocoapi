@@ -26,20 +26,17 @@ classdef CocoEval < handle
   % Note: by default areaRng=[0 1e5; 0 32; 32 96; 96 1e5].^2. These A=4
   % settings correspond to all, small, medium, and large objects, resp.
   %
-  % evaluate(): evaluates detections on every image and every category and
-  % concats the results into the struct array "evalImgs" with fields:
-  %  imgId      - results for the img with the given id
-  %  catId      - results for the cat with the given id
-  %  areaRng    - results for objects in the given areaRng
-  %  maxDets    - results given the specified max number of detections
+  % evaluate(): evaluates detections on every image and setting and concats
+  % the results into the KxA struct array "evalImgs" with fields:
   %  dtIds      - [1xD] id for each of the D detections (dt)
   %  gtIds      - [1xG] id for each of the G ground truths (gt)
+  %  dtImgIds   - [1xD] image id for each dt
+  %  gtImgIds   - [1xG] image id for each gt
   %  dtMatches  - [TxD] matching gt id at each IoU or 0
   %  gtMatches  - [TxG] matching dt id at each IoU or 0
   %  dtScores   - [1xD] confidence of each dt
-  %  gtIgnore   - [1xG] ignore flag for each gt
   %  dtIgnore   - [TxD] ignore flag for each dt at each IoU
-  %  ious       - [DxG] iou between every dt and gt
+  %  gtIgnore   - [1xG] ignore flag for each gt
   %
   % accumulate(): accumulates the per-image, per-category evaluation
   % results in "evalImgs" into the struct "eval" with fields:
@@ -85,12 +82,11 @@ classdef CocoEval < handle
       % Run per image evaluation on given images.
       fprintf('Running per image evaluation...      '); clk=clock;
       p=ev.params; if(~p.useCats), p.catIds=1; end
-      p.imgIds=unique(p.imgIds); p.catIds=unique(p.catIds);
-      ev.params=p; N=length(p.imgIds); K=length(p.catIds);
-      A=size(p.areaRng,1); M=length(p.maxDets);
+      p.imgIds=unique(p.imgIds); p.catIds=unique(p.catIds); ev.params=p;
+      N=length(p.imgIds); K=length(p.catIds); A=size(p.areaRng,1);
       [nGt,iGt]=getAnnCounts(ev.cocoGt,p.imgIds,p.catIds,p.useCats);
       [nDt,iDt]=getAnnCounts(ev.cocoDt,p.imgIds,p.catIds,p.useCats);
-      [ks,is]=ndgrid(1:K,1:N); ev.evalImgs=cell(K*N,A,M);
+      [ks,is]=ndgrid(1:K,1:N); ev.evalImgs=cell(N,K,A);
       for i=1:K*N, if(nGt(i)==0 && nDt(i)==0), continue; end
         gt=ev.cocoGt.data.annotations(iGt(i):iGt(i)+nGt(i)-1);
         dt=ev.cocoDt.data.annotations(iDt(i):iDt(i)+nDt(i)-1);
@@ -106,18 +102,17 @@ classdef CocoEval < handle
           if(~isfield(dt,f)), s=MaskApi.toBbox([dt.segmentation]);
             for d=1:nDt(i), dt(d).(f)=s(d,:); end; end
         end
-        q=p; q.catIds=p.catIds(ks(i)); q.imgIds=p.imgIds(is(i));
+        q=p; q.imgIds=p.imgIds(is(i)); q.maxDets=max(p.maxDets);
         for j=1:A, q.areaRng=p.areaRng(j,:);
-          q.maxDets=max(p.maxDets); E0=CocoEval.evaluateImg(gt,dt,q);
-          for k=1:M, E=E0; m=p.maxDets(k); E.maxDets=m; m=min(nDt(i),m);
-            E.dtIds=E.dtIds(1:m); E.dtMatches=E.dtMatches(:,1:m);
-            E.dtScores=E.dtScores(1:m); E.dtIgnore=E.dtIgnore(:,1:m);
-            E.gtMatches=ismember(E.gtMatches,E.dtIds).*E.gtMatches;
-            E.ious=E.ious(1:m,:); ev.evalImgs{i,j,k}=E;
-          end
-        end
+          ev.evalImgs{is(i),ks(i),j}=CocoEval.evaluateImg(gt,dt,q); end
       end
-      ev.evalImgs=[ev.evalImgs{nGt>0|nDt>0,:,:}];
+      E=ev.evalImgs; nms={'dtIds','gtIds','dtImgIds','gtImgIds',...
+        'dtMatches','gtMatches','dtScores','dtIgnore','gtIgnore'};
+      ev.evalImgs=repmat(cell2struct(cell(9,1),nms,1),K,A);
+      for i=1:K, is=find(nGt(i,:)>0|nDt(i,:)>0);
+        if(~isempty(is)), for j=1:A, E0=[E{is,i,j}]; for k=1:9
+              ev.evalImgs(i,j).(nms{k})=[E0{k:9:end}]; end; end; end
+      end
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
       
       function [ns,is] = getAnnCounts( coco, imgIds, catIds, useCats )
@@ -138,23 +133,26 @@ classdef CocoEval < handle
       if(isempty(ev.evalImgs)), error('Please run evaluate() first'); end
       p=ev.params; T=length(p.iouThrs); R=length(p.recThrs);
       K=length(p.catIds); A=size(p.areaRng,1); M=length(p.maxDets);
-      precision=-ones(T,R,K,A,M); recall=-ones(T,K,A,M); Es=ev.evalImgs;
-      [~,k]=ismember([Es.catId]',p.catIds);
-      [~,a]=ismember(cat(1,Es.areaRng),p.areaRng,'rows');
-      [~,m]=ismember([Es.maxDets]',p.maxDets); ks=(m-1)*K*A+(a-1)*K+k;
+      precision=-ones(T,R,K,A,M); recall=-ones(T,K,A,M);
+      [ks,as,ms]=ndgrid(1:K,1:A,1:M);
       for k=1:K*A*M
-        E=Es(ks==k); dtm=[E.dtMatches]; dtIg=[E.dtIgnore];
-        np=nnz(~[E.gtIgnore]); if(np==0), continue; end
-        [~,o]=sort([E.dtScores],'descend');
+        E=ev.evalImgs(ks(k),as(k)); is=E.dtImgIds; mx=p.maxDets(ms(k));
+        np=nnz(~E.gtIgnore); if(np==0), continue; end
+        t=[0 find(diff(is)) length(is)]; t=t(2:end)-t(1:end-1); is=is<0;
+        r=0; for i=1:length(t), is(r+1:r+min(mx,t(i)))=1; r=r+t(i); end
+        dtm=E.dtMatches(:,is); dtIg=E.dtIgnore(:,is);
+        [~,o]=sort(E.dtScores(is),'descend');
         tps=reshape( dtm & ~dtIg,T,[]); tps=tps(:,o);
         fps=reshape(~dtm & ~dtIg,T,[]); fps=fps(:,o);
+        precision(:,:,k)=0; recall(:,k)=0;
         for t=1:T
           tp=cumsum(tps(t,:)); fp=cumsum(fps(t,:)); nd=length(tp);
-          rc=tp/np; pr=tp./(fp+tp); q=zeros(1,R);
-          if(nd), recall(t,k)=rc(end); else recall(t,k)=0; end
-          for i=nd-1:-1:1, pr(i)=max(pr(i+1),pr(i)); end
-          i=1; r=1; while(r<=R && i<=nd), if(rc(i)<p.recThrs(r))
-              i=i+1; else q(r)=pr(i); r=r+1; end; end; precision(t,:,k)=q;
+          rc=tp/np; pr=tp./(fp+tp); q=zeros(1,R); thrs=p.recThrs;
+          if(nd==0 || tp(nd)==0), continue; end; recall(t,k)=rc(end);
+          for i=nd-1:-1:1, pr(i)=max(pr(i+1),pr(i)); end; i=1; r=1; s=100;
+          while(r<=R && i<=nd), if(rc(i)>=thrs(r)), q(r)=pr(i); r=r+1; else
+              i=i+1; if(i+s<=nd && rc(i+s)<thrs(r)), i=i+s; end; end; end
+          precision(t,:,k)=q;
         end
       end
       ev.eval=struct('params',p,'date',date,'counts',[T R K A M],...
@@ -230,10 +228,8 @@ classdef CocoEval < handle
       if(isempty(dt)), a=zeros(1,0); else a=[dt.area]; end
       dtIg = dtIg | (dtm==0 & repmat(a<aRng(1)|a>aRng(2),T,1));
       % store results for given image and category
-      e = struct('imgId',p.imgIds,'catId',p.catIds,'areaRng',p.areaRng,...
-        'maxDets',p.maxDets,'dtIds',dtIds,'gtIds',gtIds,...
-        'dtMatches',dtm,'gtMatches',gtm,'dtScores',[dt.score],...
-        'gtIgnore',gtIg,'dtIgnore',dtIg,'ious',ious);
+      dtImgIds=ones(1,D)*p.imgIds; gtImgIds=ones(1,G)*p.imgIds;
+      e = {dtIds,gtIds,dtImgIds,gtImgIds,dtm,gtm,[dt.score],dtIg,gtIg};
     end
   end
 end
