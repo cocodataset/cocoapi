@@ -182,10 +182,6 @@ class COCOeval:
             d = [d['bbox'] for d in dt]
 
         # compute iou between each dt and gt region
-        # if len(d) == 0 or len(g) == 0:
-        #     ious = []
-        # else:
-        #     # ious = np.random.random_sample((len(d), len(g)))
         iscrowd = [int(o['iscrowd']) for o in gt]
         ious = mask.iou(d,g,iscrowd)
         return ious
@@ -294,26 +290,16 @@ class COCOeval:
 
         # create dictionary for future indexing
         _pe = self._paramsEval
-        catToK = defaultdict(lambda:-1)
-        if p.useCats:
-            for k, catId in enumerate(self.params.catIds):
-                catToK[catId] = k
-        else:
-            catToK[-1] = 0
-        areaRngToA = defaultdict(lambda:-1)
-        for m, areaRng in enumerate(_pe.areaRng):
-            areaRngToA[tuple(areaRng)] = m
-        maxDetsToM = defaultdict(lambda:-1)
-        for a, maxDets in enumerate(_pe.maxDets):
-            maxDetsToM[maxDets] = a
-        imgidToI = defaultdict(lambda:-1)
-        for i, imgId in enumerate(_pe.imgIds):
-            imgidToI[imgId] = i
+
+        setK = set(self.params.catIds) if _pe.useCats else set([-1])
+        setA = set(map(tuple, _pe.areaRng))
+        setM = set(_pe.maxDets)
+        setI = set(_pe.imgIds)
         # get inds to evaluate
-        k_list = [n for n, k in enumerate(p.catIds)  if k in catToK]
-        m_list = [m for n, m in enumerate(p.maxDets) if m in maxDetsToM]
-        a_list = [n for n, a in enumerate(map(lambda x: tuple(x), p.areaRng)) if a in areaRngToA]
-        i_list = [n for n, i in enumerate(p.imgIds)  if i in imgidToI]
+        k_list = [n for n, k in enumerate(p.catIds)  if k in setK]
+        m_list = [m for n, m in enumerate(p.maxDets) if m in setM]
+        a_list = [n for n, a in enumerate(map(lambda x: tuple(x), p.areaRng)) if a in setA]
+        i_list = [n for n, i in enumerate(p.imgIds)  if i in setI]
         # K0 = len(_pe.catIds)
         I0 = len(_pe.imgIds)
         A0 = len(_pe.areaRng)
@@ -381,7 +367,6 @@ class COCOeval:
         }
         toc = time.time()
         print 'DONE (t=%0.2fs).'%( toc-tic )
-        # print _t, _tt
 
     def summarize(self):
         '''
