@@ -46,6 +46,7 @@ __version__ = '1.0.1'
 
 import json
 import datetime
+import time
 import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
@@ -74,9 +75,9 @@ class COCO:
         self.cats = {}
         if not annotation_file == None:
             print 'loading annotations into memory...'
-            time_t = datetime.datetime.utcnow()
+            tic = time.time()
             dataset = json.load(open(annotation_file, 'r'))
-            print 'Done (t=%0.2fs)'%(datetime.datetime.utcnow() - time_t).total_seconds()
+            print 'Done (t=%0.2fs)'%(time.time()- tic)
             self.dataset = dataset
             self.createIndex()
 
@@ -257,7 +258,10 @@ class COCO:
                 else:
                     # mask
                     t = self.imgs[ann['image_id']]
-                    rle = mask.frPyObjects([ann['segmentation']], t['height'], t['width'])
+                    if type(ann['segmentation']['counts']) == list:
+                        rle = mask.frPyObjects([ann['segmentation']], t['height'], t['width'])
+                    else:
+                        rle = [ann['segmentation']]
                     m = mask.decode(rle)
                     img = np.ones( (m.shape[0], m.shape[1], 3) )
                     if ann['iscrowd'] == 1:
@@ -285,7 +289,7 @@ class COCO:
         # res.dataset['licenses'] = copy.deepcopy(self.dataset['licenses'])
 
         print 'Loading and preparing results...     '
-        time_t = datetime.datetime.utcnow()
+        tic = time.time()
         anns    = json.load(open(resFile))
         assert type(anns) == list, 'results in not an array of objects'
         annsImgIds = [ann['image_id'] for ann in anns]
@@ -301,7 +305,8 @@ class COCO:
             for id, ann in enumerate(anns):
                 bb = ann['bbox']
                 x1, x2, y1, y2 = [bb[0], bb[0]+bb[2], bb[1], bb[1]+bb[3]]
-                ann['segmentation'] = [[x1, y1, x1, y2, x2, y2, x2, y1]]
+                if not 'segmentation' in ann:
+                    ann['segmentation'] = [[x1, y1, x1, y2, x2, y2, x2, y1]]
                 ann['area'] = bb[2]*bb[3]
                 ann['id'] = id
                 ann['iscrowd'] = 0
@@ -310,10 +315,11 @@ class COCO:
             for id, ann in enumerate(anns):
                 # now only support compressed RLE format as segmentation results
                 ann['area'] = mask.area([ann['segmentation']])[0]
-                ann['bbox'] = mask.toBbox([ann['segmentation']])[0]
+                if not 'bbox' in ann:
+                    ann['bbox'] = mask.toBbox([ann['segmentation']])[0]
                 ann['id'] = id
                 ann['iscrowd'] = 0
-        print 'DONE (t=%0.2fs)'%((datetime.datetime.utcnow() - time_t).total_seconds())
+        print 'DONE (t=%0.2fs)'%(time.time()- tic)
 
         res.dataset['annotations'] = anns
         res.createIndex()
@@ -337,8 +343,8 @@ class COCO:
         if not os.path.exists(tarDir):
             os.makedirs(tarDir)
         for i, img in enumerate(imgs):
-            time_t = datetime.datetime.utcnow()
+            tic = time.time()
             fname = os.path.join(tarDir, img['file_name'])
             if not os.path.exists(fname):
                 urllib.urlretrieve(img['coco_url'], fname)
-            print 'downloaded %d/%d images (t=%.1fs)'%(i, N, (datetime.datetime.utcnow() - time_t).total_seconds())
+            print 'downloaded %d/%d images (t=%.1fs)'%(i, N, time.time()- tic)
