@@ -39,7 +39,7 @@ __version__ = '1.0.1'
 # COCO>getImgIds, COCO>loadAnns, COCO>loadCats,
 # COCO>loadImgs, COCO>segToMask, COCO>showAnns
 
-# Microsoft COCO Toolbox.      Version 1.0
+# Microsoft COCO Toolbox.      version 2.0
 # Data, paper, and tutorials available at:  http://mscoco.org/
 # Code written by Piotr Dollar and Tsung-Yi Lin, 2014.
 # Licensed under the Simplified BSD License [see bsd.txt]

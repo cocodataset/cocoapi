@@ -68,7 +68,7 @@ import pycocotools._mask as _mask
 # To compile run "python setup.py build_ext --inplace"
 # Please do not contact us for help with compiling.
 #
-# Microsoft COCO Toolbox.      Version 1.0
+# Microsoft COCO Toolbox.      version 2.0
 # Data, paper, and tutorials available at:  http://mscoco.org/
 # Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
 # Licensed under the Simplified BSD License [see coco/license.txt]

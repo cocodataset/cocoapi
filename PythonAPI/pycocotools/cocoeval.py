@@ -52,7 +52,7 @@ class COCOeval:
     #
     # See also coco, mask, pycocoDemo, pycocoEvalDemo
     #
-    # Microsoft COCO Toolbox.      Version 1.0
+    # Microsoft COCO Toolbox.      version 2.0
     # Data, paper, and tutorials available at:  http://mscoco.org/
     # Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
     # Licensed under the Simplified BSD License [see coco/license.txt]
