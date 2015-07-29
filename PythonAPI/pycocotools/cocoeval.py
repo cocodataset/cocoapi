@@ -382,6 +382,8 @@ class COCOeval:
             areaStr     = areaRng
             maxDetsStr  = '%d'%(maxDets)
 
+            aind = [i for i, aRng in enumerate(['all', 'small', 'medium', 'large']) if aRng == areaRng]
+            mind = [i for i, mDet in enumerate([1, 10, 100]) if mDet == maxDets]
             if ap == 1:
                 # dimension of precision: [TxRxKxAxM]
                 s = self.eval['precision']
@@ -390,23 +392,11 @@ class COCOeval:
                     t = np.where(iouThr == p.iouThrs)[0]
                     s = s[t]
                 # areaRng
-                if areaRng == 'all':
-                    s = s[:,:,:,0,2]
-                elif areaRng == 'small':
-                    s = s[:,:,:,1,2]
-                elif areaRng == 'medium':
-                    s = s[:,:,:,2,2]
-                elif areaRng == 'large':
-                    s = s[:,:,:,3,2]
+                s = s[:,:,:,aind,mind]
             else:
                 # dimension of recall: [TxKxAxM]
                 s = self.eval['recall']
-                if maxDets == 1:
-                    s = s[:,:,0,0]
-                elif maxDets == 10:
-                    s = s[:,:,0,1]
-                elif maxDets == 100:
-                    s = s[:,:,0,2]
+                s = s[:,:,aind,mind]
             if len(s[s>-1])==0:
                 mean_s = -1
             else:
@@ -426,6 +416,9 @@ class COCOeval:
         self.stats[6] = _summarize(0,maxDets=1)
         self.stats[7] = _summarize(0,maxDets=10)
         self.stats[8] = _summarize(0,maxDets=100)
+        self.stats[9] = _summarize(0,areaRng='small')
+        self.stats[10] = _summarize(0,areaRng='medium')
+        self.stats[11] = _summarize(0,areaRng='large')
 
     def __str__(self):
         self.summarize()
