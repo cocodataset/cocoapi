@@ -163,7 +163,7 @@ classdef CocoEval < handle
     function summarize( ev )
       % Compute and display summary metrics for evaluation results.
       if(isempty(ev.eval)), error('Please run accumulate() first'); end
-      ev.stats=zeros(1,9);
+      ev.stats=zeros(1,12);
       ev.stats(1) = summarize1(1,':','all',100);
       ev.stats(2) = summarize1(1,.50,'all',100);
       ev.stats(3) = summarize1(1,.75,'all',100);
@@ -173,6 +173,9 @@ classdef CocoEval < handle
       ev.stats(7) = summarize1(0,':','all',1);
       ev.stats(8) = summarize1(0,':','all',10);
       ev.stats(9) = summarize1(0,':','all',100);
+      ev.stats(10) = summarize1(0,':','small',100);
+      ev.stats(11) = summarize1(0,':','medium',100);
+      ev.stats(12) = summarize1(0,':','large',100);
       
       function s = summarize1( ap, iouThr, areaRng, maxDets )
         p=ev.params; i=iouThr; m=find(p.maxDets==maxDets);
