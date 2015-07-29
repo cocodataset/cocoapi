@@ -406,7 +406,7 @@ class COCOeval:
 
         if not self.eval:
             raise Exception('Please run accumulate() first')
-        self.stats = np.zeros((9,))
+        self.stats = np.zeros((12,))
         self.stats[0] = _summarize(1)
         self.stats[1] = _summarize(1,iouThr=.5)
         self.stats[2] = _summarize(1,iouThr=.75)
@@ -416,7 +416,7 @@ class COCOeval:
         self.stats[6] = _summarize(0,maxDets=1)
         self.stats[7] = _summarize(0,maxDets=10)
         self.stats[8] = _summarize(0,maxDets=100)
-        self.stats[9] = _summarize(0,areaRng='small')
+        self.stats[9]  = _summarize(0,areaRng='small')
         self.stats[10] = _summarize(0,areaRng='medium')
         self.stats[11] = _summarize(0,areaRng='large')
 
