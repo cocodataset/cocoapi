@@ -299,7 +299,7 @@ class COCO:
             imgIds = set([img['id'] for img in res.dataset['images']]) & set([ann['image_id'] for ann in anns])
             res.dataset['images'] = [img for img in res.dataset['images'] if img['id'] in imgIds]
             for id, ann in enumerate(anns):
-                ann['id'] = id
+                ann['id'] = id+1
         elif 'bbox' in anns[0] and not anns[0]['bbox'] == []:
             res.dataset['categories'] = copy.deepcopy(self.dataset['categories'])
             for id, ann in enumerate(anns):
@@ -308,7 +308,7 @@ class COCO:
                 if not 'segmentation' in ann:
                     ann['segmentation'] = [[x1, y1, x1, y2, x2, y2, x2, y1]]
                 ann['area'] = bb[2]*bb[3]
-                ann['id'] = id
+                ann['id'] = id+1
                 ann['iscrowd'] = 0
         elif 'segmentation' in anns[0]:
             res.dataset['categories'] = copy.deepcopy(self.dataset['categories'])
@@ -317,7 +317,7 @@ class COCO:
                 ann['area'] = mask.area([ann['segmentation']])[0]
                 if not 'bbox' in ann:
                     ann['bbox'] = mask.toBbox([ann['segmentation']])[0]
-                ann['id'] = id
+                ann['id'] = id+1
                 ann['iscrowd'] = 0
         print 'DONE (t=%0.2fs)'%(time.time()- tic)
 
