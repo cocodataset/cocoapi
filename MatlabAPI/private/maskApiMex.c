@@ -59,7 +59,7 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
   
   if(!strcmp(action,"encode")) {
     checkType(pr[0],mxUINT8_CLASS); byte *M=(byte*) mxGetData(pr[0]);
-    const mwSize *ds=mxGetDimensions(pr[0]); n=mxGetN(pr[0])/ds[0];
+    const mwSize *ds=mxGetDimensions(pr[0]); n=mxGetN(pr[0])/ds[1];
     rlesInit(&R,n); rleEncode(R,M,ds[0],ds[1],n); pl[0]=toMxArray(R,n);
     
   } else if(!strcmp(action,"decode")) {
