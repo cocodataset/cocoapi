@@ -45,7 +45,8 @@ classdef CocoUtils
       for i=1:n, nm=[is{i} '.jpg'];
         f=[dev '/VOC' year '/Annotations/' is{i} '.xml'];
         R=PASreadrecord(f); hw=R.imgsize([2 1]); O=R.objects;
-        id=str2double(is{i}); ignore=[O.difficult]; bbs=cat(1,O.bbox);
+        id=is{i}; id(id=='_')=[]; id=str2double(id);
+        ignore=[O.difficult]; bbs=cat(1,O.bbox);
         t=catsMap.values({O.class}); catIds=[t{:}]; iscrowd=ignore*0;
         data=CocoUtils.addData(data,nm,id,hw,catIds,ignore,iscrowd,bbs);
       end
@@ -76,8 +77,15 @@ classdef CocoUtils
         f=fopen(f); blacklist=textscan(f,'%d %s'); fclose(f);
         t=catsMap.values(blacklist{2}); blacklist{2}=[t{:}];
       end
-      f=fopen([dev '/data/det_lists/' split '.txt']);
-      is=textscan(f,'%s %*s'); is=is{1}; fclose(f); n=length(is);
+      if(strcmp(split,'train'))
+        dl=@(i) [dev '/data/det_lists/' split '_pos_' int2str(i) '.txt'];
+        is=cell(1,200); for i=1:200, f=fopen(dl(i));
+          is{i}=textscan(f,'%s %*s'); is{i}=is{i}{1}; fclose(f); end
+        is=unique(cat(1,is{:})); n=length(is);
+      else
+        f=fopen([dev '/data/det_lists/' split '.txt']);
+        is=textscan(f,'%s %*s'); is=is{1}; fclose(f); n=length(is);
+      end
       data=CocoUtils.initData(catNms,n);
       for i=1:n
         f=[dataDir '/ILSVRC' year '_DET_bbox_' split '/' is{i} '.xml'];
