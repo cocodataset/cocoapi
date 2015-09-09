@@ -284,6 +284,7 @@ class COCOeval:
         # allows input customized parameters
         if p is None:
             p = self.params
+        p.catIds = p.catIds if p.useCats == 1 else [-1]
         T           = len(p.iouThrs)
         R           = len(p.recThrs)
         K           = len(p.catIds) if p.useCats else 1
@@ -294,8 +295,8 @@ class COCOeval:
 
         # create dictionary for future indexing
         _pe = self._paramsEval
-
-        setK = set(self.params.catIds) if _pe.useCats else set([-1])
+        catIds = _pe.catIds if _pe.useCats else [-1]
+        setK = set(catIds)
         setA = set(map(tuple, _pe.areaRng))
         setM = set(_pe.maxDets)
         setI = set(_pe.imgIds)
