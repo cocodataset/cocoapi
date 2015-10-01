@@ -123,7 +123,7 @@ class COCO:
         Print information about the annotation file.
         :return:
         """
-        for key, value in self.datset['info'].items():
+        for key, value in self.dataset['info'].items():
             print '%s: %s'%(key, value)
 
     def getAnnIds(self, imgIds=[], catIds=[], areaRng=[], iscrowd=None):

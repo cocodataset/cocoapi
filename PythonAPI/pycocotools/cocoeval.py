@@ -258,10 +258,14 @@ class COCOeval:
         dtIg = np.logical_or(dtIg, np.logical_and(dtm==0, np.repeat(a,T,0)))
         # store results for given image and category
         return {
+                'image_id':     imgId,
+                'category_id':  catId,
+                'aRng':         aRng,
+                'maxDet':       maxDet,
                 'dtIds':        [d['id'] for d in dt],
                 'gtIds':        [g['id'] for g in gt],
                 'dtMatches':    dtm,
-                # 'gtMatches':    gtm,
+                'gtMatches':    gtm,
                 'dtScores':     [d['score'] for d in dt],
                 'gtIgnore':     gtIg,
                 'dtIgnore':     dtIg,
@@ -280,6 +284,7 @@ class COCOeval:
         # allows input customized parameters
         if p is None:
             p = self.params
+        p.catIds = p.catIds if p.useCats == 1 else [-1]
         T           = len(p.iouThrs)
         R           = len(p.recThrs)
         K           = len(p.catIds) if p.useCats else 1
@@ -290,8 +295,8 @@ class COCOeval:
 
         # create dictionary for future indexing
         _pe = self._paramsEval
-
-        setK = set(self.params.catIds) if _pe.useCats else set([-1])
+        catIds = _pe.catIds if _pe.useCats else [-1]
+        setK = set(catIds)
         setA = set(map(tuple, _pe.areaRng))
         setM = set(_pe.maxDets)
         setI = set(_pe.imgIds)
