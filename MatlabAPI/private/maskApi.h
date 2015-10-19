@@ -5,7 +5,11 @@
 * Licensed under the Simplified BSD License [see coco/license.txt]
 **************************************************************************/
 #pragma once
+#if defined(_MSC_VER) &&  _MSC_VER < 1800
+//typedef unsigned char bool;
+#else
 #include <stdbool.h>
+#endif
 
 typedef unsigned int uint;
 typedef unsigned long siz;

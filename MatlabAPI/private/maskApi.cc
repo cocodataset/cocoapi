@@ -8,11 +8,17 @@
 #include <math.h>
 #include <stdlib.h>
 
+#ifdef _MSC_VER
+#include <algorithm>
+#define fmin(a,b) std::min(a, b)
+#define fmax(a,b) std::max(a, b)
+#endif
+
 uint umin( uint a, uint b ) { return (a<b) ? a : b; }
 uint umax( uint a, uint b ) { return (a>b) ? a : b; }
 
 void rleInit( RLE *R, siz h, siz w, siz m, uint *cnts ) {
-  R->h=h; R->w=w; R->m=m; R->cnts=(m==0)?0:malloc(sizeof(uint)*m);
+  R->h=h; R->w=w; R->m=m; R->cnts=(m==0)?0:(uint*)malloc(sizeof(uint)*m);
   if(cnts) for(siz j=0; j<m; j++) R->cnts[j]=cnts[j];
 }
 
@@ -31,7 +37,7 @@ void rlesFree( RLE **R, siz n ) {
 
 void rleEncode( RLE *R, const byte *M, siz h, siz w, siz n ) {
   siz i, j, k, a=w*h; uint c, *cnts; byte p;
-  cnts = malloc(sizeof(uint)*(a+1));
+  cnts = (uint*)malloc(sizeof(uint)*(a+1));
   for(i=0; i<n; i++) {
     const byte *T=M+a*i; k=0; p=0; c=0;
     for(j=0; j<a; j++) { if(T[j]!=p) { cnts[k++]=c; c=0; p=T[j]; } c++; }
@@ -51,7 +57,7 @@ void rleMerge( const RLE *R, RLE *M, siz n, bool intersect ) {
   siz i, a, b, h=R[0].h, w=R[0].w, m=R[0].m; RLE A, B;
   if(n==0) { rleInit(M,0,0,0,0); return; }
   if(n==1) { rleInit(M,h,w,m,R[0].cnts); return; }
-  cnts = malloc(sizeof(uint)*(h*w+1));
+  cnts = (uint*)malloc(sizeof(uint)*(h*w+1));
   for( a=0; a<m; a++ ) cnts[a]=R[0].cnts[a];
   for( i=1; i<n; i++ ) {
     B=R[i]; if(B.h!=h||B.w!=w) { h=w=m=0; break; }
@@ -76,8 +82,8 @@ void rleArea( const RLE *R, siz n, uint *a ) {
 
 void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o ) {
   siz g, d; BB db, gb; bool crowd;
-  db=malloc(sizeof(double)*m*4); rleToBbox(dt,db,m);
-  gb=malloc(sizeof(double)*n*4); rleToBbox(gt,gb,n);
+  db=(double*)malloc(sizeof(double)*m*4); rleToBbox(dt,db,m);
+  gb=(double*)malloc(sizeof(double)*n*4); rleToBbox(gt,gb,n);
   bbIou(db,gb,m,n,iscrowd,o); free(db); free(gb);
   for( g=0; g<n; g++ ) for( d=0; d<m; d++ ) if(o[g*m+d]>0) {
     crowd=iscrowd!=NULL && iscrowd[g];
@@ -139,11 +145,11 @@ int uintCompare(const void *a, const void *b) {
 void rleFrPoly( RLE *R, const double *xy, siz k, siz h, siz w ) {
   // upsample and get discrete points densely along entire boundary
   siz j, m=0; double scale=5; int *x, *y, *u, *v; uint *a, *b;
-  x=malloc(sizeof(int)*(k+1)); y=malloc(sizeof(int)*(k+1));
+  x=(int*)malloc(sizeof(int)*(k+1)); y=(int*)malloc(sizeof(int)*(k+1));
   for(j=0; j<k; j++) x[j]=(int)(scale*xy[j*2+0]+.5); x[k]=x[0];
   for(j=0; j<k; j++) y[j]=(int)(scale*xy[j*2+1]+.5); y[k]=y[0];
   for(j=0; j<k; j++) m+=umax(abs(x[j]-x[j+1]),abs(y[j]-y[j+1]))+1;
-  u=malloc(sizeof(int)*m); v=malloc(sizeof(int)*m); m=0;
+  u=(int*)malloc(sizeof(int)*m); v=(int*)malloc(sizeof(int)*m); m=0;
   for( j=0; j<k; j++ ) {
     int xs=x[j], xe=x[j+1], ys=y[j], ye=y[j+1], dx, dy, t;
     bool flip; double s; dx=abs(xe-xs); dy=abs(ys-ye);
@@ -158,7 +164,7 @@ void rleFrPoly( RLE *R, const double *xy, siz k, siz h, siz w ) {
   }
   // get points along y-boundary and downsample
   free(x); free(y); k=m; m=0; double xd, yd;
-  x=malloc(sizeof(int)*k); y=malloc(sizeof(int)*k);
+  x=(int*)malloc(sizeof(int)*k); y=(int*)malloc(sizeof(int)*k);
   for( j=1; j<k; j++ ) if(u[j]!=u[j-1]) {
     xd=(double)(u[j]<u[j-1]?u[j]:u[j]-1); xd=(xd+.5)/scale-.5;
     if( floor(xd)!=xd || xd<0 || xd>w-1 ) continue;
@@ -167,12 +173,12 @@ void rleFrPoly( RLE *R, const double *xy, siz k, siz h, siz w ) {
     x[m]=(int) xd; y[m]=(int) yd; m++;
   }
   // compute rle encoding given y-boundary points
-  k=m; a=malloc(sizeof(uint)*(k+1));
+  k=m; a=(uint*)malloc(sizeof(uint)*(k+1));
   for( j=0; j<k; j++ ) a[j]=(uint)(x[j]*(int)(h)+y[j]);
   a[k++]=(uint)(h*w); free(u); free(v); free(x); free(y);
   qsort(a,k,sizeof(uint),uintCompare); uint p=0;
   for( j=0; j<k; j++ ) { uint t=a[j]; a[j]-=p; p=t; }
-  b=malloc(sizeof(uint)*k); j=m=0; b[m++]=a[j++];
+  b=(uint*)malloc(sizeof(uint)*k); j=m=0; b[m++]=a[j++];
   while(j<k) if(a[j]>0) b[m++]=a[j++]; else {
     j++; if(j<k) b[m-1]+=a[j++]; }
   rleInit(R,h,w,m,b); free(a); free(b);
@@ -181,7 +187,7 @@ void rleFrPoly( RLE *R, const double *xy, siz k, siz h, siz w ) {
 char* rleToString( const RLE *R ) {
   // Similar to LEB128 but using 6 bits/char and ascii chars 48-111.
   siz i, m=R->m, p=0; long x; bool more;
-  char *s=malloc(sizeof(char)*m*6);
+  char *s=(char*)malloc(sizeof(char)*m*6);
   for( i=0; i<m; i++ ) {
     x=(long) R->cnts[i]; if(i>2) x-=(long) R->cnts[i-2]; more=1;
     while( more ) {
@@ -194,7 +200,7 @@ char* rleToString( const RLE *R ) {
 
 void rleFrString( RLE *R, char *s, siz h, siz w ) {
   siz m=0, p=0, k; long x; bool more; uint *cnts;
-  while( s[m] ) m++; cnts=malloc(sizeof(uint)*m); m=0;
+  while( s[m] ) m++; cnts=(uint*)malloc(sizeof(uint)*m); m=0;
   while( s[p] ) {
     x=0; k=0; more=1;
     while( more ) {

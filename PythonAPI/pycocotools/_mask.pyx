@@ -1,5 +1,5 @@
-# distutils: language = c
-# distutils: sources = ../MatlabAPI/private/maskApi.c
+# distutils: language = c++
+# distutils: sources = ../MatlabAPI/private/maskApi.cc
 
 #**************************************************************************
 # Microsoft COCO Toolbox.      version 2.0

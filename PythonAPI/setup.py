@@ -1,17 +1,19 @@
+import sys
 from distutils.core import setup
 from Cython.Build import cythonize
 from distutils.extension import Extension
 import numpy as np
-
 # To compile and install locally run "python setup.py build_ext --inplace"
 # To install library to Python site-packages run "python setup.py build_ext install"
-
+extra_compile_args = ['-Wno-cpp', '-Wno-unused-function', '-std=c99']\
+  if sys.platform != 'win32' else []
 ext_modules = [
-    Extension(
+    Extension(        
         'pycocotools._mask',
-        sources=['../MatlabAPI/private/maskApi.c', 'pycocotools/_mask.pyx'],
+        language='c++',
+        sources=['../MatlabAPI/private/maskApi.cc', 'pycocotools/_mask.pyx'],
         include_dirs = [np.get_include(), '../MatlabAPI/private'],
-        extra_compile_args=['-Wno-cpp', '-Wno-unused-function', '-std=c99'],
+        extra_compile_args=extra_compile_args,
     )
 ]
 
