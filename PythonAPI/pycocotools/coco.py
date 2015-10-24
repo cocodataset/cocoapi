@@ -191,8 +191,8 @@ class COCO:
             ids = self.imgs.keys()
         else:
             ids = set(imgIds)
-            for catId in catIds:
-                if len(ids) == 0:
+            for i, catId in enumerate(catIds):
+                if i == 0 and len(ids) == 0:
                     ids = set(self.catToImgs[catId])
                 else:
                     ids &= set(self.catToImgs[catId])
