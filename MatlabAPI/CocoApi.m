@@ -76,8 +76,8 @@ classdef CocoApi
       if( isfield(coco.data,'categories') )
         is.catIds = [coco.data.categories.id]';
         is.catIdsMap = makeMap(is.catIds);
-        is.catImgIdsMap = makeMultiMap(is.catIds,...
-          is.catIdsMap,is.annCatIds,is.annImgIds,1);
+        if(isfield(is,'annCatIds')), is.catImgIdsMap = makeMultiMap(...
+            is.catIds,is.catIdsMap,is.annCatIds,is.annImgIds,1); end
       end
       coco.inds=is; fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
       
