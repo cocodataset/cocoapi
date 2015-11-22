@@ -189,6 +189,74 @@ classdef CocoEval < handle
         s=mean(s(s>=0)); fprintf(fStr,tStr,iStr,areaRng,maxDets,s);
       end
     end
+    
+    function visualize( ev, varargin )
+      % Crop detector bbox results after evaluation (fp, tp, or fn).
+      %  Preliminary implementation, undocumented. Use at your own risk.
+      %  Require's Piotr's Toolbox (https://github.com/pdollar/toolbox/).
+      def = { 'imgDir','../images/val2014/', 'outDir','visualize', ...
+        'catIds',[], 'areaIds',1:4, 'type',{'tp','fp','fn'}, ...
+        'dim',200, 'pad',1.5, 'ds',[10 10 1] };
+      p = getPrmDflt(varargin,def,0);
+      if(isempty(p.catIds)), p.catIds=ev.params.catIds; end
+      type=p.type; d=p.dim; pad=p.pad; ds=p.ds;
+      % recursive call unless performing singleton task
+      if(length(p.catIds)>1), q=p; for i=1:length(p.catIds)
+          q.catIds=p.catIds(i); ev.visualize(q); end; return; end
+      if(length(p.areaIds)>1), q=p; for i=1:length(p.areaIds)
+          q.areaIds=p.areaIds(i); ev.visualize(q); end; return; end
+      if(iscell(p.type)), q=p; for i=1:length(p.type)
+          q.type=p.type{i}; ev.visualize(q); end; return; end
+      % generate file name for result
+      areaNms={'all','small','medium','large'};
+      catNm=regexprep(ev.cocoGt.loadCats(p.catIds).name,' ','_');
+      fn=sprintf('%s/%s-%s-%s%%03i.jpg',p.outDir,...
+        catNm,areaNms{p.areaIds},type); disp(fn);
+      if(exist(sprintf(fn,1),'file')), return; end
+      % select appropriate gt and dt according to type
+      E=ev.evalImgs(p.catIds==ev.params.catIds,p.areaIds);
+      E.dtMatches=E.dtMatches(1,:); E=select(E,1,~E.dtIgnore(1,:));
+      E.gtMatches=E.gtMatches(1,:); E=select(E,0,~E.gtIgnore(1,:));
+      [~,o]=sort(E.dtScores,'descend'); E=select(E,1,o);
+      if(strcmp(type,'fn'))
+        E=select(E,0,~E.gtMatches); gt=E.gtIds; G=1; D=0;
+      elseif(strcmp(type,'tp'))
+        E=select(E,1,E.dtMatches>0); dt=E.dtIds; gt=E.dtMatches; G=1; D=1;
+      elseif(strcmp(type,'fp'))
+        E=select(E,1,~E.dtMatches); dt=E.dtIds; G=0; D=1;
+      end
+      % load dt, gt, and im and crop region bbs
+      if(D), is=E.dtImgIds; else is=E.gtImgIds; end
+      n=min(prod(ds),length(is)); is=ev.cocoGt.loadImgs(is(1:n));
+      if(G), gt=ev.cocoGt.loadAnns(gt(1:n)); bb=gt; end
+      if(D), dt=ev.cocoDt.loadAnns(dt(1:n)); bb=dt; end
+      if(~n), return; end; bb=cat(1,bb.bbox); bb(:,1:2)=bb(:,1:2)+1;
+      bb=bbApply('resize',bbApply('squarify',bb,0),pad,pad);
+      % get dt and gt bbs in relative coordinates
+      if(G), gtBb=cat(1,gt.bbox); gtBb(:,1:2)=gtBb(:,1:2)-bb(:,1:2);
+        for i=1:n, gtBb(i,:)=gtBb(i,:)*d/pad/max(gtBb(i,3:4)); end; end
+      if(D), dtBb=cat(1,dt.bbox); dtBb(:,1:2)=dtBb(:,1:2)-bb(:,1:2);
+        for i=1:n, dtBb(i,:)=dtBb(i,:)*d/pad/max(dtBb(i,3:4)); end; end
+      if(D), dtBb=[dtBb E.dtScores(1:n)']; end
+      if(G && D==0), gtBb=[gtBb round([gt(1:n).area])']; end
+      % crop image samples appropriately
+      ds(3)=ceil(n/prod(ds(1:2))); Is=cell(ds);
+      for i=1:n
+        I=imread(sprintf('%s/%s',p.imgDir,is(i).file_name));
+        I=bbApply('crop',I,bb(i,:),0,[d d]); I=I{1};
+        if(D), I=bbApply('embed',I,dtBb(i,:),'col',[0 0 255]); end
+        if(G), I=bbApply('embed',I,gtBb(i,:),'col',[0 255 0]); end
+        Is{i}=I;
+      end
+      for i=n+1:prod(ds), Is{i}=zeros(d,d,3,'uint8'); end
+      I=reshape(cell2mat(permute(Is,[2 1 3])),ds(1)*d,ds(2)*d,3,ds(3));
+      for i=1:ds(3), imwrite(imresize(I(:,:,:,i),.5),sprintf(fn,i)); end
+      % helper function for taking subset of E
+      function E = select( E, D, kp )
+        fs={'Matches','Ids','ImgIds','Scores'}; pr={'gt','dt'};
+        for f=1:3+D, fd=[pr{D+1} fs{f}]; E.(fd)=E.(fd)(kp); end
+      end
+    end
   end
   
   methods( Static )
