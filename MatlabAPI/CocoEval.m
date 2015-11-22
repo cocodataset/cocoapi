@@ -231,14 +231,13 @@ classdef CocoEval < handle
       if(G), gt=ev.cocoGt.loadAnns(gt(1:n)); bb=gt; end
       if(D), dt=ev.cocoDt.loadAnns(dt(1:n)); bb=dt; end
       if(~n), return; end; bb=cat(1,bb.bbox); bb(:,1:2)=bb(:,1:2)+1;
+      r=max(bb(:,3:4),[],2)*pad/d; r=[r r r r];
       bb=bbApply('resize',bbApply('squarify',bb,0),pad,pad);
       % get dt and gt bbs in relative coordinates
       if(G), gtBb=cat(1,gt.bbox); gtBb(:,1:2)=gtBb(:,1:2)-bb(:,1:2);
-        for i=1:n, gtBb(i,:)=gtBb(i,:)*d/pad/max(gtBb(i,3:4)); end; end
+        gtBb=gtBb./r; if(~D), gtBb=[gtBb round([gt(1:n).area])']; end; end
       if(D), dtBb=cat(1,dt.bbox); dtBb(:,1:2)=dtBb(:,1:2)-bb(:,1:2);
-        for i=1:n, dtBb(i,:)=dtBb(i,:)*d/pad/max(dtBb(i,3:4)); end; end
-      if(D), dtBb=[dtBb E.dtScores(1:n)']; end
-      if(G && D==0), gtBb=[gtBb round([gt(1:n).area])']; end
+        dtBb=dtBb./r; dtBb=[dtBb E.dtScores(1:n)']; end
       % crop image samples appropriately
       ds(3)=ceil(n/prod(ds(1:2))); Is=cell(ds);
       for i=1:n
