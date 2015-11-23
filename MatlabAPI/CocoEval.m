@@ -256,6 +256,65 @@ classdef CocoEval < handle
         for f=1:3+D, fd=[pr{D+1} fs{f}]; E.(fd)=E.(fd)(kp); end
       end
     end
+    
+    function analyze( ev )
+      % Derek Hoiem style analyis of false positives.
+      %  Preliminary implementation, undocumented. Use at your own risk.
+      if(~isfield(ev.cocoGt.data.annotations,'ignore')),
+        [ev.cocoGt.data.annotations.ignore]=deal(0); end
+      ev.params.maxDets=100; ev.params.areaRng=[0 1e10];
+      ev.params.useCats=0; cocoDtAll=ev.cocoDt;
+      if(~exist('./analyze','dir')), mkdir('analyze'); end
+      catIds=ev.cocoGt.getCatIds(); K=length(catIds);
+      rs=ev.params.recThrs; ps=zeros(7,length(rs),K);
+      for k=1:K, catId=catIds(k);
+        nm=ev.cocoGt.loadCats(catId); nm=[nm.supercategory '-' nm.name];
+        fprintf('Analyzing %s...\n',nm); clk=clock;
+        dt=ev.cocoDt.data.annotations; dt=dt([dt.category_id]==catId);
+        D=ev.cocoGt.data; D.annotations=dt; ev.cocoDt=CocoApi(D);
+        ev.params.iouThrs=[.75 .5 .1]; ps(1:3,:,k)=precision(ev,0,catId);
+        ev.params.iouThrs=.1; ps(4,:,k)=precision(ev,1,catId);
+        ps(5,:,k)=precision(ev,2,catId); ev.cocoDt=cocoDtAll;
+        ps(6,:,k)=ps(5,:,k)>0; ps(7,:,k)=1; makeplot(rs,ps(:,:,k),nm);
+        fprintf('DONE (t=%0.2fs).\n\n',etime(clock,clk));
+      end
+      makeplot(rs,mean(ps,3),'overall');
+      sup={ev.cocoGt.data.categories.supercategory};
+      for k=unique(sup), ps1=mean(ps(:,:,strcmp(sup,k)),3);
+        makeplot(rs,ps1,k{1}); end
+      
+      function p = precision( ev, type, catId )
+        % Helper that computes different types of precision.
+        gt=ev.cocoGt; gtOrig=gt; ann=gt.data.annotations;
+        if( type==0 )
+          ann=ann([ann.category_id]==catId);
+          data=gt.data; data.annotations=ann; gt=CocoApi(data);
+        elseif( type==1 )
+          is=gt.getCatIds('supNms',gt.loadCats(catId).supercategory);
+          ann=ann(ismember([ann.category_id],is));
+          [ann([ann.category_id]~=catId).ignore]=deal(1);
+          data=gt.data; data.annotations=ann; gt=CocoApi(data);
+        end
+        [gt.data.annotations(gt.inds.annCatIds~=catId).ignore]=deal(1);
+        ev.cocoGt=gt; ev.evaluate(); ev.accumulate();
+        p=ev.eval.precision; ev.cocoGt=gtOrig;
+      end
+      
+      function makeplot( rs, ps, nm )
+        % Plot FP breakdown using area plot (optionally pdfcrop).
+        cs=[ones(2,3); .31 .51 .74; .75 .31 .30;
+          .36 .90 .38; .50 .39 .64; 1 .6 0]; m=size(ps,1);
+        ap=round(mean(ps,2)*1000); ds=[ps(1,:); diff(ps)]';
+        ls={'C75','C50','Loc','Sim','Oth','BG','[1.00] FN'};
+        for i=1:m-1, ls{i}=sprintf('[.%3i] %s',ap(i),ls{i}); end
+        figure(1); h=area(rs,ds); title(nm); legend(ls,'location','sw');
+        for i=1:m, set(h(i),'FaceColor',cs(i,:)); end
+        xlabel('recall'); ylabel('precision'); set(gca,'fontsize',20)
+        nm=['analyze/' regexprep(nm,' ','_')]; print(nm,'-dpdf')
+        if(0), setenv('PATH',[getenv('PATH') ':/Library/TeX/texbin/']); end
+        if(0), system(['pdfcrop ' nm '.pdf ' nm '.pdf']); end
+      end
+    end
   end
   
   methods( Static )
