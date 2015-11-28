@@ -3,6 +3,9 @@ annotations/
 results/
 external/
 
+MatlabAPI/analyze*/
+MatlabAPI/visualize*/
+
 PythonAPI/pycocotools/__init__.pyc
 PythonAPI/pycocotools/_mask.c
 PythonAPI/pycocotools/_mask.so
