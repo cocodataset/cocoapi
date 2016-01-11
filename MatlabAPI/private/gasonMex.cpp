@@ -136,24 +136,35 @@ ostrm& json( ostrm& S, const mxArray *M ) {
   }
 }
 
+mxArray* mxCreateStringRobust( const char* str ) {
+  // convert char* to Matlab string (robust version of mxCreateString)
+  mxArray *M; ushort *c; mwSize n[2]={1,strlen(str)};
+  M=mxCreateCharArray(2,n); c=(ushort*) mxGetData(M);
+  for( siz i=0; i<n[1]; i++ ) c[i]=str[i]; return M;
+}
+
+char* mxArrayToStringRobust( const mxArray *M ) {
+  // convert Matlab string to char* (robust version of mxArrayToString)
+  if(!mxIsChar(M)) mexErrMsgTxt("String expected.");
+  ushort *c=(ushort*) mxGetData(M); char* str; siz n;
+  n=mxGetNumberOfElements(M); str=(char*) mxMalloc(n+1);
+  for( siz i=0; i<n; i++ ) str[i]=c[i]; str[n]=0; return str;
+}
+
 void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
 {
   if( nr!=1 ) mexErrMsgTxt("One input expected.");
   if( nl>1 ) mexErrMsgTxt("One output expected.");
   if( mxGetClassID(pr[0])==mxCHAR_CLASS ) {
     // object = mexFunction( string )
-    ushort *c=(ushort*) mxGetData(pr[0]); char* str; siz n;
-    n=mxGetNumberOfElements(pr[0]); str=(char*) mxMalloc(n+1);
-    for( siz i=0; i<n; i++ ) str[i]=c[i]; str[n]=0;
+    char *str = mxArrayToStringRobust(pr[0]);
     char *endptr; JsonValue value; JsonAllocator allocator;
     int status = jsonParse(str, &endptr, &value, allocator);
     if( status != JSON_OK) mexErrMsgTxt(jsonStrError(status));
-    pl[0] = json( value ); mxFree(str);
+    pl[0] = json(value); mxFree(str);
   } else {
     // string = mexFunction( object )
     ostrm S; S << std::setprecision(10); json(S,pr[0]);
-    std::string str=S.str(); mwSize n[2]={1,str.size()};
-    pl[0]=mxCreateCharArray(2,n); ushort *c=(ushort*) mxGetData(pl[0]);
-    for( siz i=0; i<n[1]; i++ ) c[i]=str[i];
+    pl[0]=mxCreateStringRobust(S.str().c_str());
   }
 }
