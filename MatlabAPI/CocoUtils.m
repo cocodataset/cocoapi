@@ -10,13 +10,15 @@ classdef CocoUtils
   %  validateOnImageNet - Validate COCO eval code against ImageNet code.
   %  generateFakeDt     - Generate fake detections from ground truth.
   %  validateMaskApi    - Validate MaskApi against Matlab functions.
+  %  gasonSplit         - Split JSON file into multiple JSON files.
+  %  gasonMerge         - Merge JSON files into single JSON file.
   % Help on each functions can be accessed by: "help CocoUtils>function".
   %
   % See also CocoApi MaskApi CocoEval CocoUtils>convertPascalGt
   % CocoUtils>convertImageNetGt CocoUtils>convertPascalDt
   % CocoUtils>convertImageNetDt CocoUtils>validateOnPascal
   % CocoUtils>validateOnImageNet CocoUtils>generateFakeDt
-  % CocoUtils>validateMaskApi
+  % CocoUtils>validateMaskApi CocoUtils>gasonSplit CocoUtils>gasonMerge
   %
   % Microsoft COCO Toolbox.      version 2.0
   % Data, paper, and tutorials available at:  http://mscoco.org/
@@ -278,6 +280,40 @@ classdef CocoUtils
       if(isequal(A,B)&&isequal(Ia,IB)),
         msg='PASSED'; else msg='FAILED'; end
       warning(['MaskApi *' msg '* validation!']);
+    end
+    
+    function gasonSplit( name, k )
+      % Split JSON file into multiple JSON files.
+      %
+      % Splits file 'name.json' into multiple files 'name-*.json'. Only
+      % works for JSON arrays. Memory efficient. Inverted by gasonMerge().
+      %
+      % USAGE
+      %  CocoUtils.gasonSplit( name, k )
+      %
+      % INPUTS
+      %  name       - file containing JSON array (w/o '.json' ext)
+      %  k          - number of files to split JSON into
+      s=gasonMex('split',fileread([name '.json']),k); k=length(s);
+      for i=1:k, f=fopen(sprintf('%s-%06i.json',name,i),'w');
+        fwrite(f,s{i}); fclose(f); end
+    end
+    
+    function gasonMerge( name )
+      % Merge JSON files into single JSON file.
+      %
+      % Merge files 'name-*.json' into single file 'name.json'. Only works
+      % for JSON arrays. Memory efficient. Inverted by gasonSplit().
+      %
+      % USAGE
+      %  CocoUtils.gasonMerge( name )
+      %
+      % INPUTS
+      %  name       - files containing JSON arrays (w/o '.json' ext)
+      s=dir([name '-*.json']); s=sort({s.name}); k=length(s);
+      p=fileparts(name); for i=1:k, s{i}=fullfile(p,s{i}); end
+      for i=1:k, s{i}=fileread(s{i}); end; s=gasonMex('merge',s);
+      f=fopen([name '.json'],'w'); fwrite(f,s); fclose(f);
     end
   end
   

@@ -48,4 +48,4 @@ function out = gason( in )
 % Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
 % Licensed under the Simplified BSD License [see coco/license.txt]
 
-out = gasonMex( in );
+out = gasonMex( 'convert', in );
