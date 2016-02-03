@@ -83,6 +83,7 @@ classdef CocoApi
       
       function map = makeMap( keys )
         % Make map from key to integer id associated with key.
+        if(isempty(keys)), map=containers.Map(); return; end
         map=containers.Map(keys,1:length(keys));
       end
       

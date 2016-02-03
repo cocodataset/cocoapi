@@ -47,6 +47,12 @@ classdef CocoEval < handle
   %  recall     - [TxKxAxM] max recall for every evaluation setting
   % Note: precision and recall==-1 for settings with no gt objects.
   %
+  % summarize(): computes and displays 12 summary metrics based on the
+  % "eval" struct. Note that summarize() assumes the evaluation was
+  % computed with certain default params (including default area ranges),
+  % if not, the display may show NaN outputs for certain metrics. Results
+  % of summarize() are stored in a 12 element vector "stats".
+  %
   % See also CocoApi, MaskApi, cocoDemo, evalDemo
   %
   % Microsoft COCO Toolbox.      version 2.0
