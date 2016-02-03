@@ -10,6 +10,7 @@ classdef CocoEval < handle
   %  E.accumulate();              % accumulate per image results
   %  disp( E.eval )               % inspect accumulated results
   %  E.summarize();               % display summary metrics of results
+  %  E.analyze();                 % plot detailed analysis of errors (slow)
   % For example usage see evalDemo.m and http://mscoco.org/.
   %
   % The evaluation parameters are as follows (defaults in brackets):
@@ -52,6 +53,18 @@ classdef CocoEval < handle
   % computed with certain default params (including default area ranges),
   % if not, the display may show NaN outputs for certain metrics. Results
   % of summarize() are stored in a 12 element vector "stats".
+  %
+  % analyze(): generates plots with detailed breakdown of false positives.
+  % Inspired by "Diagnosing Error in Object Detectors" by D. Hoiem et al.
+  % Generates one plot per category (80), supercategory (12), and overall
+  % (1), multiplied by 4 scales, for a total of (80+12+1)*4=372 plots. Each
+  % plot contains a series of precision recall curves where each PR curve
+  % is guaranteed to be strictly higher than the previous as the evaluation
+  % setting becomes more permissive. These plots give insight into errors
+  % made by a detector. A more detailed description is given at mscoco.org.
+  % Note: analyze() is quite slow as it calls evaluate() multiple times.
+  % Note: if pdfcrop is not found then set pdfcrop path appropriately e.g.:
+  %   setenv('PATH',[getenv('PATH') ':/Library/TeX/texbin/']);
   %
   % See also CocoApi, MaskApi, cocoDemo, evalDemo
   %
@@ -265,9 +278,6 @@ classdef CocoEval < handle
     
     function analyze( ev )
       % Derek Hoiem style analyis of false positives.
-      %  Preliminary implementation, undocumented. Use at your own risk.
-      %  If pdfcrop not found then set pdfcrop path appropriately:
-      %  setenv('PATH',[getenv('PATH') ':/Library/TeX/texbin/']);
       outDir='./analyze'; if(~exist(outDir,'dir')), mkdir(outDir); end
       if(~isfield(ev.cocoGt.data.annotations,'ignore')),
         [ev.cocoGt.data.annotations.ignore]=deal(0); end
@@ -279,7 +289,7 @@ classdef CocoEval < handle
       ps(4:7,:,:,:)=0; ev.params.iouThrs=.1; ev.params.useCats=0;
       for k=1:length(catIds), catId=catIds(k);
         nm=ev.cocoGt.loadCats(catId); nm=[nm.supercategory '-' nm.name];
-        fprintf('\nAnalyzing %s...\n',nm); clk=clock;
+        fprintf('\nAnalyzing %s (%i):\n',nm,k); clk=clock;
         % select detections for single category only
         D=dt.data; A=D.annotations; A=A([A.category_id]==catId);
         D.annotations=A; ev.cocoDt=dt; ev.cocoDt=CocoApi(D);
@@ -318,7 +328,7 @@ classdef CocoEval < handle
           ls={'C75','C50','Loc','Sim','Oth','BG','FN'};
           for i=1:m, if(ap(i)==1000), ls{i}=['[1.00] ' ls{i}]; else
               ls{i}=sprintf('[.%03i] %s',ap(i),ls{i}); end; end
-          figure(1); h=area(rs,ds); legend(ls,'location','sw');
+          figure(1); clf; h=area(rs,ds); legend(ls,'location','sw');
           for i=1:m, set(h(i),'FaceColor',cs(i,:)); end; title(nm)
           xlabel('recall'); ylabel('precision'); set(gca,'fontsize',20)
           nm=[outDir '/' regexprep(nm,' ','_')]; print(nm,'-dpdf')

@@ -32,10 +32,13 @@ res = gason(fileread(resFile)); disp(res)
 %% the following command can be used to save the results back to disk
 if(0), f=fopen(resFile,'w'); fwrite(f,gason(res)); fclose(f); end
 
-%% run Coco evaluation code (see CocoEval.m)
+%% run COCO evaluation code (see CocoEval.m)
 cocoEval=CocoEval(cocoGt,cocoDt);
 cocoEval.params.imgIds=imgIds;
 cocoEval.params.useSegm=strcmp(type,'segm');
 cocoEval.evaluate();
 cocoEval.accumulate();
 cocoEval.summarize();
+
+%% generate Derek Hoiem style analyis of false positives (slow)
+if(0), cocoEval.analyze(); end
