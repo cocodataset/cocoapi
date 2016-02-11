@@ -287,5 +287,5 @@ def frPyObjects(pyobj, siz h, w):
     elif type(pyobj) == list and type(pyobj[0]) == dict:
         objs = frUncompressedRLE(pyobj, h, w)
     else:
-        raise 'input type is not supported.'
+        raise Exception('input type is not supported.')
     return objs
