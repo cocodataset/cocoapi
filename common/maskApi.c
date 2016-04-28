@@ -46,8 +46,8 @@ void rleDecode( const RLE *R, byte *M, siz n ) {
       for( siz k=0; k<R[i].cnts[j]; k++ ) *(M++)=v; v=!v; }}
 }
 
-void rleMerge( const RLE *R, RLE *M, siz n, bool intersect ) {
-  uint *cnts, c, ca, cb, cc, ct; bool v, va, vb, vp;
+void rleMerge( const RLE *R, RLE *M, siz n, int intersect ) {
+  uint *cnts, c, ca, cb, cc, ct; int v, va, vb, vp;
   siz i, a, b, h=R[0].h, w=R[0].w, m=R[0].m; RLE A, B;
   if(n==0) { rleInit(M,0,0,0,0); return; }
   if(n==1) { rleInit(M,h,w,m,R[0].cnts); return; }
@@ -75,14 +75,14 @@ void rleArea( const RLE *R, siz n, uint *a ) {
 }
 
 void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o ) {
-  siz g, d; BB db, gb; bool crowd;
+  siz g, d; BB db, gb; int crowd;
   db=malloc(sizeof(double)*m*4); rleToBbox(dt,db,m);
   gb=malloc(sizeof(double)*n*4); rleToBbox(gt,gb,n);
   bbIou(db,gb,m,n,iscrowd,o); free(db); free(gb);
   for( g=0; g<n; g++ ) for( d=0; d<m; d++ ) if(o[g*m+d]>0) {
     crowd=iscrowd!=NULL && iscrowd[g];
     if(dt[d].h!=gt[g].h || dt[d].w!=gt[g].w) { o[g*m+d]=-1; continue; }
-    siz ka, kb, a, b; uint c, ca, cb, ct, i, u; bool va, vb;
+    siz ka, kb, a, b; uint c, ca, cb, ct, i, u; int va, vb;
     ca=dt[d].cnts[0]; ka=dt[d].m; va=vb=0;
     cb=gt[g].cnts[0]; kb=gt[g].m; a=b=1; i=u=0; ct=1;
     while( ct>0 ) {
@@ -96,7 +96,7 @@ void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o ) {
 }
 
 void bbIou( BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o ) {
-  double h, w, i, u, ga, da; siz g, d; bool crowd;
+  double h, w, i, u, ga, da; siz g, d; int crowd;
   for( g=0; g<n; g++ ) {
     BB G=gt+g*4; ga=G[2]*G[3]; crowd=iscrowd!=NULL && iscrowd[g];
     for( d=0; d<m; d++ ) {
@@ -146,7 +146,7 @@ void rleFrPoly( RLE *R, const double *xy, siz k, siz h, siz w ) {
   u=malloc(sizeof(int)*m); v=malloc(sizeof(int)*m); m=0;
   for( j=0; j<k; j++ ) {
     int xs=x[j], xe=x[j+1], ys=y[j], ye=y[j+1], dx, dy, t;
-    bool flip; double s; dx=abs(xe-xs); dy=abs(ys-ye);
+    int flip; double s; dx=abs(xe-xs); dy=abs(ys-ye);
     flip = (dx>=dy && xs>xe) || (dx<dy && ys>ye);
     if(flip) { t=xs; xs=xe; xe=t; t=ys; ys=ye; ye=t; }
     s = dx>=dy ? (double)(ye-ys)/dx : (double)(xe-xs)/dy;
@@ -180,7 +180,7 @@ void rleFrPoly( RLE *R, const double *xy, siz k, siz h, siz w ) {
 
 char* rleToString( const RLE *R ) {
   // Similar to LEB128 but using 6 bits/char and ascii chars 48-111.
-  siz i, m=R->m, p=0; long x; bool more;
+  siz i, m=R->m, p=0; long x; int more;
   char *s=malloc(sizeof(char)*m*6);
   for( i=0; i<m; i++ ) {
     x=(long) R->cnts[i]; if(i>2) x-=(long) R->cnts[i-2]; more=1;
@@ -193,7 +193,7 @@ char* rleToString( const RLE *R ) {
 }
 
 void rleFrString( RLE *R, char *s, siz h, siz w ) {
-  siz m=0, p=0, k; long x; bool more; uint *cnts;
+  siz m=0, p=0, k; long x; int more; uint *cnts;
   while( s[m] ) m++; cnts=malloc(sizeof(uint)*m); m=0;
   while( s[p] ) {
     x=0; k=0; more=1;
