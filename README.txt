@@ -5,7 +5,8 @@ Microsoft COCO is a large image dataset designed for object detection, segmentat
 In addition to this API, please download both the COCO images and annotations in order to run the demos and use the API. Both are available on the project website.
 -Please download, unzip, and place the images in: coco/images/
 -Please download and place the annotations in: coco/annotations/
+For substantially more details on the API please see http://mscoco.org/dataset/#download.
 
 After downloading the images and annotations run either the Matlab or Python demos for example usage.
 
-To install Python API, run "python setup.py build_ext --inplace" to compile Cython code.
+To install Python API, run "make" under PythonAPI.
