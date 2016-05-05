@@ -8,5 +8,6 @@ Licensed under the Simplified BSD License [see coco/license.txt]
 ------------------------------------------------------------------------------]]
 
 local coco = require 'coco.env'
+require 'coco.CocoApi'
 require 'coco.MaskApi'
 return coco
