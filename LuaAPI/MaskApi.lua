@@ -17,15 +17,14 @@ The following API functions are defined:
   frPoly - Convert polygon to encoded mask.
 
 Usage:
-  maskApi = MaskApi()
-  Rs     = maskApi:encode( masks )
-  masks  = maskApi:decode( Rs )
-  R      = maskApi:merge( Rs, [intersect=false] )
-  o      = maskApi:iou( dt, gt, [iscrowd=false] )
-  a      = maskApi:area( Rs )
-  bbs    = maskApi:toBbox( Rs )
-  Rs     = maskApi:frBbox( bbs, h, w )
-  R      = maskApi:frPoly( poly, h, w )
+  Rs     = MaskApi.encode( masks )
+  masks  = MaskApi.decode( Rs )
+  R      = MaskApi.merge( Rs, [intersect=false] )
+  o      = MaskApi.iou( dt, gt, [iscrowd=false] )
+  a      = MaskApi.area( Rs )
+  bbs    = MaskApi.toBbox( Rs )
+  Rs     = MaskApi.frBbox( bbs, h, w )
+  R      = MaskApi.frPoly( poly, h, w )
 For detailed usage information please see cocoDemo.lua (coming soon).
 
 In the API the following formats are used:
@@ -46,46 +45,41 @@ Licensed under the Simplified BSD License [see coco/license.txt]
 local ffi = require 'ffi'
 local coco = require 'coco.env'
 
-local MaskApi = torch.class('MaskApi',coco)
+coco.MaskApi = {}
+local MaskApi = coco.MaskApi
+
+coco.libmaskapi = ffi.load(package.searchpath('libmaskapi',package.cpath))
+local libmaskapi = coco.libmaskapi
 
 --------------------------------------------------------------------------------
--- main functions
 
-function MaskApi:__init()
-  if not coco.libmaskapi then
-    self:cdef()
-    coco.libmaskapi = ffi.load(package.searchpath('libmaskapi', package.cpath))
-  end
-  self.mask = coco.libmaskapi
-end
-
-function MaskApi:encode( masks )
+MaskApi.encode = function( masks )
   local n, h, w = masks:size(1), masks:size(2), masks:size(3)
   masks = masks:type('torch.ByteTensor'):transpose(2,3)
   local data = masks:contiguous():data()
-  local Qs = self:rlesInit(n)
-  self.mask.rleEncode(Qs[0],data,h,w,n)
-  return self:rlesToLua(Qs,n)
+  local Qs = MaskApi._rlesInit(n)
+  libmaskapi.rleEncode(Qs[0],data,h,w,n)
+  return MaskApi._rlesToLua(Qs,n)
 end
 
-function MaskApi:decode( Rs )
-  local Qs, n, h, w = self:rlesFrLua(Rs)
+MaskApi.decode = function( Rs )
+  local Qs, n, h, w = MaskApi._rlesFrLua(Rs)
   local masks = torch.ByteTensor(n,w,h):zero():contiguous()
-  self.mask.rleDecode(Qs,masks:data(),n)
-  self:rlesFree(Qs,n)
+  libmaskapi.rleDecode(Qs,masks:data(),n)
+  MaskApi._rlesFree(Qs,n)
   return masks:transpose(2,3)
 end
 
-function MaskApi:merge( Rs, intersect )
+MaskApi.merge = function( Rs, intersect )
   intersect = intersect or 0
-  local Qs, n, h, w = self:rlesFrLua(Rs)
-  local Q = self:rlesInit(1)
-  self.mask.rleMerge(Qs,Q,n,intersect)
-  self:rlesFree(Qs,n)
-  return self:rlesToLua(Q,1)
+  local Qs, n, h, w = MaskApi._rlesFrLua(Rs)
+  local Q = MaskApi._rlesInit(1)
+  libmaskapi.rleMerge(Qs,Q,n,intersect)
+  MaskApi._rlesFree(Qs,n)
+  return MaskApi._rlesToLua(Q,1)
 end
 
-function MaskApi:iou( dt, gt, iscrowd )
+MaskApi.iou = function( dt, gt, iscrowd )
   if not iscrowd then iscrowd = NULL else
     iscrowd = iscrowd:type('torch.ByteTensor'):contiguous():data()
   end
@@ -95,80 +89,79 @@ function MaskApi:iou( dt, gt, iscrowd )
     local dDt = dt:type('torch.DoubleTensor'):contiguous():data()
     local dGt = gt:type('torch.DoubleTensor'):contiguous():data()
     local o = torch.DoubleTensor(nGt,nDt):contiguous()
-    self.mask.bbIou(dDt,dGt,nDt,nGt,iscrowd,o:data())
+    libmaskapi.bbIou(dDt,dGt,nDt,nGt,iscrowd,o:data())
     return o:transpose(1,2)
   else
-    local qDt, nDt = self:rlesFrLua(dt)
-    local qGt, nGt = self:rlesFrLua(gt)
+    local qDt, nDt = MaskApi._rlesFrLua(dt)
+    local qGt, nGt = MaskApi._rlesFrLua(gt)
     local o = torch.DoubleTensor(nGt,nDt):contiguous()
-    self.mask.rleIou(qDt,qGt,nDt,nGt,iscrowd,o:data())
-    self:rlesFree(qDt,nDt); self:rlesFree(qGt,nGt)
+    libmaskapi.rleIou(qDt,qGt,nDt,nGt,iscrowd,o:data())
+    MaskApi._rlesFree(qDt,nDt); MaskApi._rlesFree(qGt,nGt)
     return o:transpose(1,2)
   end
 end
 
-function MaskApi:area( Rs )
-  local Qs, n, h, w = self:rlesFrLua(Rs)
+MaskApi.area = function( Rs )
+  local Qs, n, h, w = MaskApi._rlesFrLua(Rs)
   local a = torch.IntTensor(n):contiguous()
-  self.mask.rleArea(Qs,n,a:data())
-  self:rlesFree(Qs,n)
+  libmaskapi.rleArea(Qs,n,a:data())
+  MaskApi._rlesFree(Qs,n)
   return a
 end
 
-function MaskApi:toBbox( Rs )
-  local Qs, n, h, w = self:rlesFrLua(Rs)
+MaskApi.toBbox = function( Rs )
+  local Qs, n, h, w = MaskApi._rlesFrLua(Rs)
   local bb = torch.DoubleTensor(n,4):contiguous()
-  self.mask.rleToBbox(Qs,bb:data(),n)
-  self:rlesFree(Qs,n)
+  libmaskapi.rleToBbox(Qs,bb:data(),n)
+  MaskApi._rlesFree(Qs,n)
   return bb
 end
 
-function MaskApi:frBbox( bbs, h, w )
+MaskApi.frBbox = function( bbs, h, w )
   local n, k = bbs:size(1), bbs:size(2); assert(k==4)
   local data = bbs:type('torch.DoubleTensor'):contiguous():data()
-  local Qs = self:rlesInit(n)
-  self.mask.rleFrBbox(Qs[0],data,h,w,n)
-  return self:rlesToLua(Qs,n)
+  local Qs = MaskApi._rlesInit(n)
+  libmaskapi.rleFrBbox(Qs[0],data,h,w,n)
+  return MaskApi._rlesToLua(Qs,n)
 end
 
-function MaskApi:frPoly( poly, h, w )
+MaskApi.frPoly = function( poly, h, w )
   local n = #poly
-  local Qs, Q = self:rlesInit(n), self:rlesInit(1)
+  local Qs, Q = MaskApi._rlesInit(n), MaskApi._rlesInit(1)
   for i,p in pairs(poly) do
     local xy = p:type('torch.DoubleTensor'):contiguous():data()
-    self.mask.rleFrPoly(Qs[i-1],xy,p:size(1)/2,h,w)
+    libmaskapi.rleFrPoly(Qs[i-1],xy,p:size(1)/2,h,w)
   end
-  self.mask.rleMerge(Qs,Q[0],n,0)
-  self:rlesFree(Qs,n)
-  return self:rlesToLua(Q,1)
+  libmaskapi.rleMerge(Qs,Q[0],n,0)
+  MaskApi._rlesFree(Qs,n)
+  return MaskApi._rlesToLua(Q,1)
 end
 
 --------------------------------------------------------------------------------
--- private helper functions
 
-function MaskApi:rlesToLua( Qs, n )
+MaskApi._rlesToLua = function( Qs, n )
   local h, w, Rs = tonumber(Qs[0].h), tonumber(Qs[0].w), {}
   for i=1,n do Rs[i]={size={h,w}, counts={}} end
   for i=1,n do
-    local s = self.mask.rleToString(Qs[i-1])
+    local s = libmaskapi.rleToString(Qs[i-1])
     Rs[i].counts=ffi.string(s)
     ffi.C.free(s)
   end
-  self:rlesFree(Qs,n)
+  MaskApi._rlesFree(Qs,n)
   return Rs
 end
 
-function MaskApi:rlesFrLua( Rs )
+MaskApi._rlesFrLua = function( Rs )
   if #Rs==0 then Rs={Rs} end
   local n, h, w = #Rs, Rs[1].size[1], Rs[1].size[2]
-  local Qs = self:rlesInit(n)
+  local Qs = MaskApi._rlesInit(n)
   for i=1,n do
     local c = Rs[i].counts
     if( torch.type(c)=='string' ) then
       local s=ffi.new("char[?]",#c+1); ffi.copy(s,c)
-      self.mask.rleFrString(Qs[i-1],s,h,w)
+      libmaskapi.rleFrString(Qs[i-1],s,h,w)
     elseif( torch.type(c)=='torch.IntTensor' ) then
-      self.mask.rleInit(Qs[i-1],h,w,c:size(1),c:contiguous():data())
+      libmaskapi.rleInit(Qs[i-1],h,w,c:size(1),c:contiguous():data())
     else
       assert(false,"invalid RLE")
     end
@@ -176,18 +169,19 @@ function MaskApi:rlesFrLua( Rs )
   return Qs, n, h, w
 end
 
-function MaskApi:rlesInit( n )
+MaskApi._rlesInit = function( n )
   local Qs = ffi.new("RLE[?]",n)
-  for i=1,n do self.mask.rleInit(Qs[i-1],0,0,0,NULL) end
+  for i=1,n do libmaskapi.rleInit(Qs[i-1],0,0,0,NULL) end
   return Qs
 end
 
-function MaskApi:rlesFree( Qs, n )
-  for i=1,n do self.mask.rleFree(Qs[i-1]) end
+MaskApi._rlesFree = function( Qs, n )
+  for i=1,n do libmaskapi.rleFree(Qs[i-1]) end
 end
 
-function MaskApi:cdef()
-  ffi.cdef[[
+--------------------------------------------------------------------------------
+
+ffi.cdef[[
   void free(void *ptr);
   typedef unsigned int uint;
   typedef unsigned long siz;
@@ -209,5 +203,4 @@ function MaskApi:cdef()
   void rleFrPoly( RLE *R, const double *xy, siz k, siz h, siz w );
   char* rleToString( const RLE *R );
   void rleFrString( RLE *R, char *s, siz h, siz w );
-  ]]
-end
+]]
