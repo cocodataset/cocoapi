@@ -2,7 +2,7 @@ package = "coco"
 version = "scm-1"
 
 source = {
-  url = "https://github.com/pdollar/coco.git"
+  url = "git://github.com/pdollar/coco.git"
 }
 
 description = {
@@ -33,3 +33,4 @@ build = {
 }
 
 -- luarocks make LuaAPI/rocks/coco-scm-1.rockspec
+-- https://github.com/pdollar/coco/raw/master/LuaAPI/rocks/coco-scm-1.rockspec
