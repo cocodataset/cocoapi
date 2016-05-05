@@ -1,46 +1,42 @@
 --[[----------------------------------------------------------------------------
 
 Interface for manipulating masks stored in RLE format.
-For more details please see http://mscoco.org/dataset/#download.
-More detailed information on RLE can be found in the Matlab MaskApi here:
-https://github.com/pdollar/coco/blob/master/MatlabAPI/MaskApi.m.
+
+For an overview of RLE please see http://mscoco.org/dataset/#download.
+Additionally, more detailed information can be found in the Matlab MaskApi.m:
+  https://github.com/pdollar/coco/blob/master/MatlabAPI/MaskApi.m
 
 The following API functions are defined:
- encode - Encode binary masks using RLE.
- decode - Decode binary masks encoded via RLE.
- merge  - Compute union or intersection of encoded masks.
- iou    - Compute intersection over union between masks.
- area   - Compute area of encoded masks.
- toBbox - Get bounding boxes surrounding encoded masks.
- frBbox - Convert bounding boxes to encoded masks.
- frPoly - Convert polygon to encoded mask.
+  encode - Encode binary masks using RLE.
+  decode - Decode binary masks encoded via RLE.
+  merge  - Compute union or intersection of encoded masks.
+  iou    - Compute intersection over union between masks.
+  area   - Compute area of encoded masks.
+  toBbox - Get bounding boxes surrounding encoded masks.
+  frBbox - Convert bounding boxes to encoded masks.
+  frPoly - Convert polygon to encoded mask.
 
 Usage:
- maskApi = MaskApi()
- Rs     = maskApi:encode( masks )
- masks  = maskApi:decode( Rs )
- R      = maskApi:merge( Rs, [intersect=false] )
- o      = maskApi:iou( dt, gt, [iscrowd=false] )
- a      = maskApi:area( Rs )
- bbs    = maskApi:toBbox( Rs )
- Rs     = maskApi:frBbox( bbs, h, w )
- R      = maskApi:frPoly( poly, h, w )
+  maskApi = MaskApi()
+  Rs     = maskApi:encode( masks )
+  masks  = maskApi:decode( Rs )
+  R      = maskApi:merge( Rs, [intersect=false] )
+  o      = maskApi:iou( dt, gt, [iscrowd=false] )
+  a      = maskApi:area( Rs )
+  bbs    = maskApi:toBbox( Rs )
+  Rs     = maskApi:frBbox( bbs, h, w )
+  R      = maskApi:frPoly( poly, h, w )
+For detailed usage information please see cocoDemo.lua (coming soon).
 
 In the API the following formats are used:
- R,Rs   - [table] Run-length encoding of binary mask(s)
- masks  - [nxhxw] Binary mask(s)
- bbs    - [nx4] Bounding box(es) stored as [x y w h]
- poly   - Polygon stored as {[x1 y1 x2 y2...],[x1 y1 ...],...}
- dt,gt  - May be either bounding boxes or encoded masks
+  R,Rs   - [table] Run-length encoding of binary mask(s)
+  masks  - [nxhxw] Binary mask(s)
+  bbs    - [nx4] Bounding box(es) stored as [x y w h]
+  poly   - Polygon stored as {[x1 y1 x2 y2...],[x1 y1 ...],...}
+  dt,gt  - May be either bounding boxes or encoded masks
 Both poly and bbs are 0-indexed (bbox=[0 0 1 1] encloses first pixel).
 
-To compile use the following (some precompiled binaries are included):
-  cd coco/common/
-  gcc -shared     -fPIC -std=c99 -Wall -o libmaskApi.so maskApi.c #LINUX
-  gcc -dynamiclib -fPIC -std=c99 -Wall -o libmaskApi.dylib maskApi.c #OSX
-Please do not contact us for help with compiling.
-
-Common Object in COntext (COCO) Toolbox.      version 3.0
+Common Objects in COntext (COCO) Toolbox.      version 3.0
 Data, paper, and tutorials available at:  http://mscoco.org/
 Code written by Pedro O. Pinheiro and Piotr Dollar, 2016.
 Licensed under the Simplified BSD License [see coco/license.txt]
@@ -48,18 +44,19 @@ Licensed under the Simplified BSD License [see coco/license.txt]
 ------------------------------------------------------------------------------]]
 
 local ffi = require 'ffi'
-local M = {}
-local MaskApi = torch.class('MaskApi', M)
+local coco = require 'coco.env'
+
+local MaskApi = torch.class('MaskApi',coco)
 
 --------------------------------------------------------------------------------
 -- main functions
 
 function MaskApi:__init()
-  local d = paths.dirname(paths.thisfile())
-  ffi.cdef(assert(io.open(d..'/../common/maskApi.h','r')):read('*all'))
-  ffi.cdef('void free(void *ptr)')
-  local ext = ffi.os=='OSX' and 'dylib' or 'so'
-  self.mask = ffi.load(d..'/../common/libmaskApi.'..ext)
+  if not coco.libmaskapi then
+    self:cdef()
+    coco.libmaskapi = ffi.load(package.searchpath('libmaskapi', package.cpath))
+  end
+  self.mask = coco.libmaskapi
 end
 
 function MaskApi:encode( masks )
@@ -189,5 +186,28 @@ function MaskApi:rlesFree( Qs, n )
   for i=1,n do self.mask.rleFree(Qs[i-1]) end
 end
 
---------------------------------------------------------------------------------
-return M.MaskApi
+function MaskApi:cdef()
+  ffi.cdef[[
+  void free(void *ptr);
+  typedef unsigned int uint;
+  typedef unsigned long siz;
+  typedef unsigned char byte;
+  typedef double* BB;
+  typedef struct { siz h, w, m; uint *cnts; } RLE;
+  void rleInit( RLE *R, siz h, siz w, siz m, uint *cnts );
+  void rleFree( RLE *R );
+  void rlesInit( RLE **R, siz n );
+  void rlesFree( RLE **R, siz n );
+  void rleEncode( RLE *R, const byte *mask, siz h, siz w, siz n );
+  void rleDecode( const RLE *R, byte *mask, siz n );
+  void rleMerge( const RLE *R, RLE *M, siz n, int intersect );
+  void rleArea( const RLE *R, siz n, uint *a );
+  void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o );
+  void bbIou( BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o );
+  void rleToBbox( const RLE *R, BB bb, siz n );
+  void rleFrBbox( RLE *R, const BB bb, siz h, siz w, siz n );
+  void rleFrPoly( RLE *R, const double *xy, siz k, siz h, siz w );
+  char* rleToString( const RLE *R );
+  void rleFrString( RLE *R, char *s, siz h, siz w );
+  ]]
+end
