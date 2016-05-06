@@ -223,6 +223,23 @@ function CocoApi:loadImgs( ids )
   return self:__load(self.data.images,self.inds.imgIdsMap,ids)
 end
 
+function CocoApi:showAnns( img, anns )
+  local n, h, w = #anns, img:size(2), img:size(3)
+  if n==0 then anns,n={anns},1 end
+  if anns[1].segmentation or anns[1].bbox then
+    local MaskApi, Rs = coco.MaskApi, {}
+    for i=1,n do
+      if anns[i].segmentation then
+        Rs[i]=anns[i].segmentation
+        if #Rs[i]>0 then Rs[i]=MaskApi.frPoly(Rs[i],h,w) end
+      elseif anns[i].bbox then
+        Rs[i]=MaskApi.frBbox(anns[i].bbox,h,w)[1]
+      end
+    end
+    return MaskApi.drawMasks(img,MaskApi.decode(Rs))
+  end
+end
+
 function CocoApi:__load( data, map, ids )
   if not torch.isTensor(ids) then ids=torch.LongTensor({ids}) end
   local out, idx = {}, nil

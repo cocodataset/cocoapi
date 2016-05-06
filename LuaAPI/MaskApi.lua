@@ -25,6 +25,7 @@ Usage:
   bbs    = MaskApi.toBbox( Rs )
   Rs     = MaskApi.frBbox( bbs, h, w )
   R      = MaskApi.frPoly( poly, h, w )
+  img    = MaskApi.drawMasks( img, masks, [maxn=n], [alpha=.4], [clrs] )
 For detailed usage information please see cocoDemo.lua (coming soon).
 
 In the API the following formats are used:
@@ -76,7 +77,7 @@ MaskApi.merge = function( Rs, intersect )
   local Q = MaskApi._rlesInit(1)
   libmaskapi.rleMerge(Qs,Q,n,intersect)
   MaskApi._rlesFree(Qs,n)
-  return MaskApi._rlesToLua(Q,1)
+  return MaskApi._rlesToLua(Q,1)[1]
 end
 
 MaskApi.iou = function( dt, gt, iscrowd )
@@ -118,6 +119,7 @@ MaskApi.toBbox = function( Rs )
 end
 
 MaskApi.frBbox = function( bbs, h, w )
+  if bbs:dim()==1 then bbs=bbs:view(1,bbs:size(1)) end
   local n, k = bbs:size(1), bbs:size(2); assert(k==4)
   local data = bbs:type('torch.DoubleTensor'):contiguous():data()
   local Qs = MaskApi._rlesInit(n)
@@ -134,7 +136,33 @@ MaskApi.frPoly = function( poly, h, w )
   end
   libmaskapi.rleMerge(Qs,Q[0],n,0)
   MaskApi._rlesFree(Qs,n)
-  return MaskApi._rlesToLua(Q,1)
+  return MaskApi._rlesToLua(Q,1)[1]
+end
+
+MaskApi.drawMasks = function( img, masks, maxn, alpha, clrs )
+  local n, h, w = masks:size(1), masks:size(2), masks:size(3)
+  if not maxn then maxn=n end
+  if not alpha then alpha=.4 end
+  if not clrs then clrs=torch.rand(n,3)*1.4 end
+  local out = img:clone():contiguous():float()
+  for i=1,math.min(maxn,n) do
+    local M = masks[i]:contiguous():data()
+    local B = torch.ByteTensor(h,w):zero():contiguous():data()
+    -- get boundaries B in masks M quickly
+    for y=0,h-2 do for x=0,w-2 do
+      local k=y*w+x
+      if M[k]~=M[k+1] then B[k],B[k+1]=1,1 end
+      if M[k]~=M[k+w] then B[k],B[k+w]=1,1 end
+      if M[k]~=M[k+1+w] then B[k],B[k+1+w]=1,1 end
+    end end
+    -- softly embed masks into image and add solid boundaries
+    for j=1,3 do
+      local O,c,a = out[j]:data(), math.min(clrs[i][j],1), alpha
+      for k=0,w*h-1 do if M[k]==1 then O[k]=O[k]*(1-a)+c*a end end
+      for k=0,w*h-1 do if B[k]==1 then O[k]=c end end
+    end
+  end
+  return out
 end
 
 --------------------------------------------------------------------------------
