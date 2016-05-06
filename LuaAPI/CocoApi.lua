@@ -14,11 +14,11 @@ The following API functions are defined in the Lua API:
   loadAnns   - Load anns with the specified ids.
   loadCats   - Load cats with the specified ids.
   loadImgs   - Load imgs with the specified ids.
+  showAnns   - Display the specified annotations.
 Throughout the API "ann"=annotation, "cat"=category, and "img"=image.
-For detailed usage information please see cocoDemo.lua (coming soon).
+For detailed usage information please see cocoDemo.lua.
 
 LIMITATIONS: the following API functions are NOT defined in the Lua API:
-  showAnns   - Display the specified annotations.
   loadRes    - Load algorithm results and create API for accessing them.
   download   - Download COCO images from mscoco.org server.
 In addition, currently the getCatIds() and getImgIds() do not accept filters.

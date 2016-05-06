@@ -26,7 +26,7 @@ Usage:
   Rs     = MaskApi.frBbox( bbs, h, w )
   R      = MaskApi.frPoly( poly, h, w )
   img    = MaskApi.drawMasks( img, masks, [maxn=n], [alpha=.4], [clrs] )
-For detailed usage information please see cocoDemo.lua (coming soon).
+For detailed usage information please see cocoDemo.lua.
 
 In the API the following formats are used:
   R,Rs   - [table] Run-length encoding of binary mask(s)
