@@ -152,7 +152,7 @@ classdef CocoApi
       [catNms,supNms,catIds] = getPrmDflt(varargin,def,1);
       if(~isempty(catNms)), t = t(ismember({t.name},catNms)); end
       if(~isempty(supNms)), t = t(ismember({t.supercategory},supNms)); end
-      if(~isempty(catIds)), t = t(ismember([t.ids],catIds)); end
+      if(~isempty(catIds)), t = t(ismember([t.id],catIds)); end
       ids = [t.id];
     end
     
