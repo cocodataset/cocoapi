@@ -291,16 +291,18 @@ classdef CocoApi
       cdata.annotations=R; cocoRes=CocoApi(cdata);
     end
     
-    function download( coco, tarDir )
+    function download( coco, tarDir, maxn )
       % Download COCO images from mscoco.org server.
       %
       % USAGE
-      %  coco.download( tarDir )
+      %  coco.download( tarDir, [maxn] )
       %
       % INPUTS
       %  tarDir     - COCO results filename
+      %  maxn       - maximum number of images to download
       fs={coco.data.images.file_name}; n=length(fs);
-      urls={coco.data.images.coco_url}; do=true(1,n);
+      if(nargin==3), n=min(n,maxn); end; [fs,o]=sort(fs);
+      urls={coco.data.images.coco_url}; urls=urls(o); do=true(1,n);
       for i=1:n, fs{i}=[tarDir '/' fs{i}]; do(i)=~exist(fs{i},'file'); end
       fs=fs(do); urls=urls(do); n=length(fs); if(n==0), return; end
       if(~exist(tarDir,'dir')), mkdir(tarDir); end
