@@ -305,9 +305,9 @@ classdef CocoApi
       urls={coco.data.images.coco_url}; urls=urls(o); do=true(1,n);
       for i=1:n, fs{i}=[tarDir '/' fs{i}]; do(i)=~exist(fs{i},'file'); end
       fs=fs(do); urls=urls(do); n=length(fs); if(n==0), return; end
-      if(~exist(tarDir,'dir')), mkdir(tarDir); end
-      msg='downloaded %i/%i images (t=%.1fs)\n'; t=tic;
-      for i=1:n, websave(fs{i},urls{i}); fprintf(msg,i,n,toc(t)); end
+      if(~exist(tarDir,'dir')), mkdir(tarDir); end; t=tic;
+      m='downloaded %i/%i images (t=%.1fs)\n'; o=weboptions('Timeout',60);
+      for i=1:n, websave(fs{i},urls{i},o); fprintf(m,i,n,toc(t)); end
     end
   end
   
