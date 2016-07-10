@@ -223,7 +223,7 @@ classdef CocoApi
       imgs = coco.data.images([ids{:}]);
     end
     
-    function hs = showAnns( ~, anns )
+    function hs = showAnns( coco, anns )
       % Display the specified annotations.
       %
       % USAGE
@@ -235,7 +235,23 @@ classdef CocoApi
       % OUTPUTS
       %  hs         - handles to segment graphic objects
       n=length(anns); if(n==0), return; end
-      if( any(isfield(anns,{'segmentation','bbox'})) )
+      r=.4:.2:1; [r,g,b]=ndgrid(r,r,r); cs=[r(:) g(:) b(:)];
+      cs=cs(randperm(size(cs,1)),:); cs=repmat(cs,100,1);
+      if( isfield( anns,'keypoints') )
+        for i=1:n
+          a=anns(i); if(a.iscrowd), continue; end; hold on;
+          seg=a.segmentation; kp=a.keypoints; c=cs(i,:);
+          sk=coco.loadCats(a.category_id); sk=sk.skeleton;
+          x=kp(1:3:end)+1; y=kp(2:3:end)+1; v=kp(3:3:end);
+          p={'FaceAlpha',.25,'LineWidth',2,'EdgeColor',c}; % polygon
+          for j=seg, xy=j{1}+.5; fill(xy(1:2:end),xy(2:2:end),c,p{:}); end
+          p={'Color',c,'LineWidth',3}; % skeleton
+          for j=sk, s=j{1}; if(all(v(s)>0)), line(x(s),y(s),p{:}); end; end
+          p={'MarkerSize',8,'MarkerFaceColor',c,'MarkerEdgeColor'}; % pnts
+          plot(x(v==1),y(v==1),'o',p{:},'k');
+          plot(x(v==2),y(v==2),'o',p{:},c); hold off;
+        end
+      elseif( any(isfield(anns,{'segmentation','bbox'})) )
         if(~isfield(anns,'iscrowd')), [anns(:).iscrowd]=deal(0); end
         if(~isfield(anns,'segmentation')), S={anns.bbox}; %#ok<ALIGN>
           for i=1:n, x=S{i}(1); w=S{i}(3); y=S{i}(2); h=S{i}(4);
