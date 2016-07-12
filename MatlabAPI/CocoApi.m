@@ -148,6 +148,7 @@ classdef CocoApi
       %
       % OUTPUTS
       %  ids        - integer array of cat ids
+      if(~isfield(coco.data,'categories')), ids=[]; return; end
       def={'catNms',[],'supNms',[],'catIds',[]}; t=coco.data.categories;
       [catNms,supNms,catIds] = getPrmDflt(varargin,def,1);
       if(~isempty(catNms)), t = t(ismember({t.name},catNms)); end
@@ -204,6 +205,7 @@ classdef CocoApi
       %
       % OUTPUTS
       %  cats       - loaded cat objects
+      if(~isfield(coco.data,'categories')), cats=[]; return; end
       ids = values(coco.inds.catIdsMap,num2cell(ids));
       cats = coco.data.categories([ids{:}]);
     end
