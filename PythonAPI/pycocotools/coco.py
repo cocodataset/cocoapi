@@ -1,5 +1,5 @@
 __author__ = 'tylin'
-__version__ = '1.0.1'
+__version__ = '2.0'
 # Interface for accessing the Microsoft COCO dataset.
 
 # Microsoft COCO is a large image dataset designed for object detection,
@@ -245,15 +245,16 @@ class COCO:
             datasetType = 'captions'
         if datasetType == 'instances':
             ax = plt.gca()
+            ax.set_autoscale_on(False)
             polygons = []
             color = []
             for ann in anns:
-                c = np.random.random((1, 3)).tolist()[0]
+                c = (np.random.random((1, 3))*0.6+0.4).tolist()[0]
                 if type(ann['segmentation']) == list:
                     # polygon
                     for seg in ann['segmentation']:
                         poly = np.array(seg).reshape((len(seg)/2, 2))
-                        polygons.append(Polygon(poly, True,alpha=0.4))
+                        polygons.append(Polygon(poly))
                         color.append(c)
                 else:
                     # mask
@@ -271,7 +272,21 @@ class COCO:
                     for i in range(3):
                         img[:,:,i] = color_mask[i]
                     ax.imshow(np.dstack( (img, m*0.5) ))
-            p = PatchCollection(polygons, facecolors=color, edgecolors=(0,0,0,1), linewidths=3, alpha=0.4)
+                if 'keypoints' in ann and type(ann['keypoints']) == list:
+                    # turn skeleton into zero-based index
+                    sks = np.array(self.loadCats(ann['category_id'])[0]['skeleton'])-1
+                    kp = np.array(ann['keypoints'])
+                    x = kp[0::3]
+                    y = kp[1::3]
+                    v = kp[2::3]
+                    for sk in sks:
+                        if np.all(v[sk]>0):
+                            plt.plot(x[sk],y[sk], linewidth=3, color=c)
+                    plt.plot(x[v==1], y[v==1],'o',markersize=8, markerfacecolor=c, markeredgecolor='k',markeredgewidth=2)
+                    plt.plot(x[v==2], y[v==2],'o',markersize=8, markerfacecolor=c, markeredgecolor=c, markeredgewidth=2)
+            p = PatchCollection(polygons, facecolor=color, linewidths=0, alpha=0.4)
+            ax.add_collection(p)
+            p = PatchCollection(polygons, facecolor="none", edgecolors=color, linewidths=2)
             ax.add_collection(p)
         elif datasetType == 'captions':
             for ann in anns:
