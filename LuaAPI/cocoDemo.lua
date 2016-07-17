@@ -2,10 +2,11 @@
 coco = require 'coco'
 image = require 'image'
 
--- initialize COCO api for instance annotations
-dataDir, dataType = '../', 'val2014'
-annFile = dataDir..'/annotations/instances_'..dataType..'.json'
-if not cocoApi then cocoApi=coco.CocoApi(annFile) end
+-- initialize COCO api (please specify dataType/annType below)
+annTypes = { 'instances', 'captions', 'person_keypoints' }
+dataType, annType = 'val2014', annTypes[1]; -- specify dataType/annType
+annFile = '../annotations/'..annType..'_'..dataType..'.json'
+cocoApi=coco.CocoApi(annFile)
 
 -- get all image ids, select one at random
 imgIds = cocoApi:getImgIds()
@@ -13,7 +14,7 @@ imgId = imgIds[torch.random(imgIds:numel())]
 
 -- load image
 img = cocoApi:loadImgs(imgId)[1]
-I = image.load(dataDir..'/images/'..dataType..'/'..img.file_name,3)
+I = image.load('../images/'..dataType..'/'..img.file_name,3)
 
 -- load and display instance annotations
 annIds = cocoApi:getAnnIds({imgId=imgId})

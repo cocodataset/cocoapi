@@ -15,6 +15,9 @@ The following API functions are defined:
   toBbox - Get bounding boxes surrounding encoded masks.
   frBbox - Convert bounding boxes to encoded masks.
   frPoly - Convert polygon to encoded mask.
+  drawCirc  - Draw circle into image (alters input).
+  drawLine  - Draw line into image (alters input).
+  drawMasks - Draw masks into image (alters input).
 
 Usage:
   Rs     = MaskApi.encode( masks )
@@ -25,7 +28,9 @@ Usage:
   bbs    = MaskApi.toBbox( Rs )
   Rs     = MaskApi.frBbox( bbs, h, w )
   R      = MaskApi.frPoly( poly, h, w )
-  img    = MaskApi.drawMasks( img, masks, [maxn=n], [alpha=.4], [clrs] )
+  MaskApi.drawCirc( img, x, y, rad, clr )
+  MaskApi.drawLine( img, x0, y0, x1, y1, rad, clr )
+  MaskApi.drawMasks( img, masks, [maxn=n], [alpha=.4], [clrs] )
 For detailed usage information please see cocoDemo.lua.
 
 In the API the following formats are used:
@@ -139,12 +144,37 @@ MaskApi.frPoly = function( poly, h, w )
   return MaskApi._rlesToLua(Q,1)[1]
 end
 
+--------------------------------------------------------------------------------
+
+MaskApi.drawCirc = function( img, x, y, rad, clr )
+  assert(img:isContiguous() and img:dim()==3)
+  local k, h, w, data = img:size(1), img:size(2), img:size(3), img:data()
+  for dx=-rad,rad do for dy=-rad,rad do
+    local xi, yi = torch.round(x+dx), torch.round(y+dy)
+    if dx*dx+dy*dy<=rad*rad and xi>=0 and yi>=0 and xi<w and yi<h then
+      for c=1,k do data[(c-1)*h*w + yi*w + xi] = clr[c] end
+    end
+  end end
+end
+
+MaskApi.drawLine = function( img, x0, y0, x1, y1, rad, clr )
+  assert(img:isContiguous() and img:dim()==3)
+  local k, h, w, data = img:size(1), img:size(2), img:size(3), img:data()
+  local dx,dy,d; dx,dy=x1-x0,y1-y0; d=torch.sqrt(dx*dx+dy*dy); dx,dy=dx/d,dy/d
+  for i=0,d,.5 do for j=-rad,rad,.5 do
+    local xi, yi = torch.round(x0+dx*i+j*dy), torch.round(y0+dy*i-j*dx)
+    if xi>=0 and yi>=0 and xi<w and yi<h then
+      for c=1,k do data[(c-1)*h*w + yi*w + xi] = clr[c] end
+    end
+  end end
+end
+
 MaskApi.drawMasks = function( img, masks, maxn, alpha, clrs )
+  assert(img:isContiguous() and img:dim()==3)
   local n, h, w = masks:size(1), masks:size(2), masks:size(3)
   if not maxn then maxn=n end
   if not alpha then alpha=.4 end
-  if not clrs then clrs=torch.rand(n,3)*1.4 end
-  local out = img:clone():contiguous():float()
+  if not clrs then clrs=torch.rand(n,3)*.6+.4 end
   for i=1,math.min(maxn,n) do
     local M = masks[i]:contiguous():data()
     local B = torch.ByteTensor(h,w):zero():contiguous():data()
@@ -157,12 +187,11 @@ MaskApi.drawMasks = function( img, masks, maxn, alpha, clrs )
     end end
     -- softly embed masks into image and add solid boundaries
     for j=1,3 do
-      local O,c,a = out[j]:data(), math.min(clrs[i][j],1), alpha
+      local O,c,a = img[j]:data(), clrs[i][j], alpha
       for k=0,w*h-1 do if M[k]==1 then O[k]=O[k]*(1-a)+c*a end end
       for k=0,w*h-1 do if B[k]==1 then O[k]=c end end
     end
   end
-  return out
 end
 
 --------------------------------------------------------------------------------

@@ -225,19 +225,29 @@ end
 
 function CocoApi:showAnns( img, anns )
   local n, h, w = #anns, img:size(2), img:size(3)
+  local MaskApi, clrs = coco.MaskApi, torch.rand(n,3)*.6+.4
+  local O = img:clone():contiguous():float()
   if n==0 then anns,n={anns},1 end
+  if anns[1].keypoints then for i=1,n do if anns[i].iscrowd==0 then
+    local sk, kp, j, k = self:loadCats(anns[i].category_id)[1].skeleton
+    kp=anns[i].keypoints; k=kp:size(1); j=torch.range(1,k,3):long(); k=k/3;
+    local x,y,v = kp:index(1,j), kp:index(1,j+1), kp:index(1,j+2)
+    for _,s in pairs(sk) do if v[s[1]]>0 and v[s[2]]>0 then
+      MaskApi.drawLine(O,x[s[1]],y[s[1]],x[s[2]],y[s[2]],.75,clrs[i])
+    end end
+    for j=1,k do if v[j]==1 then MaskApi.drawCirc(O,x[j],y[j],4,{0,0,0}) end end
+    for j=1,k do if v[j]>0 then MaskApi.drawCirc(O,x[j],y[j],3,clrs[i]) end end
+  end end end
   if anns[1].segmentation or anns[1].bbox then
-    local MaskApi, Rs = coco.MaskApi, {}
+    local Rs, alpha = {}, anns[1].keypoints and .25 or .4
     for i=1,n do
-      if anns[i].segmentation then
-        Rs[i]=anns[i].segmentation
-        if #Rs[i]>0 then Rs[i]=MaskApi.frPoly(Rs[i],h,w) end
-      elseif anns[i].bbox then
-        Rs[i]=MaskApi.frBbox(anns[i].bbox,h,w)[1]
-      end
+      Rs[i]=anns[i].segmentation
+      if Rs[i] and #Rs[i]>0 then Rs[i]=MaskApi.frPoly(Rs[i],h,w) end
+      if not Rs[i] then Rs[i]=MaskApi.frBbox(anns[i].bbox,h,w)[1] end
     end
-    return MaskApi.drawMasks(img,MaskApi.decode(Rs))
+    MaskApi.drawMasks(O,MaskApi.decode(Rs),nil,alpha,clrs)
   end
+  return O
 end
 
 function CocoApi:__load( data, map, ids )
