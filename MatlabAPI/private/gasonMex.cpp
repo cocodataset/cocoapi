@@ -190,7 +190,7 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
       pl[0] = json(val); mxFree(str);
     } else {
       // string = mexFunction( object )
-      ostrm S; S << std::setprecision(10); json(S,pr[0]);
+      ostrm S; S << std::setprecision(12); json(S,pr[0]);
       pl[0]=mxCreateStringRobust(S.str().c_str());
     }
     
@@ -203,7 +203,7 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
     if( val.getTag()!=JSON_ARRAY ) mexErrMsgTxt("Array expected");
     siz i=0, t=0, n=length(val), k=(siz) mxGetScalar(pr[1]);
     k=(k>n)?n:(k<1)?1:k; k=ceil(n/ceil(double(n)/k));
-    pl[0]=mxCreateCellMatrix(1,k); ostrm S; S<<std::setprecision(10);
+    pl[0]=mxCreateCellMatrix(1,k); ostrm S; S<<std::setprecision(12);
     for(auto o:val) {
       if(!t) { S.str(std::string()); S << "["; t=ceil(double(n)/k); }
       json(S,&o->value); t--; if(!o->next) t=0; S << (t ? "," : "]");
@@ -215,7 +215,7 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
     if( nr!=1 ) mexErrMsgTxt("One input expected.");
     if(!mxIsCell(pr[0])) mexErrMsgTxt("Cell array expected.");
     siz n = mxGetNumberOfElements(pr[0]);
-    ostrm S; S << std::setprecision(10); S << "[";
+    ostrm S; S << std::setprecision(12); S << "[";
     for( siz i=0; i<n; i++ ) {
       char *str = mxArrayToStringRobust(mxGetCell(pr[0],i));
       int status = jsonParse(str, &endptr, &val, allocator);
