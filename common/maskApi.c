@@ -95,6 +95,17 @@ void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o ) {
   }
 }
 
+void rleNms( RLE *dt, siz n, uint *keep, double thr ) {
+  siz i, j; double u;
+  for( i=0; i<n; i++ ) keep[i]=1;
+  for( i=0; i<n; i++ ) if(keep[i]) {
+    for( j=i+1; j<n; j++ ) if(keep[j]) {
+      rleIou(dt+i,dt+j,1,1,0,&u);
+      if(u>thr) keep[j]=0;
+    }
+  }
+}
+
 void bbIou( BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o ) {
   double h, w, i, u, ga, da; siz g, d; int crowd;
   for( g=0; g<n; g++ ) {
@@ -104,6 +115,17 @@ void bbIou( BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o ) {
       w=fmin(D[2]+D[0],G[2]+G[0])-fmax(D[0],G[0]); if(w<=0) continue;
       h=fmin(D[3]+D[1],G[3]+G[1])-fmax(D[1],G[1]); if(h<=0) continue;
       i=w*h; u = crowd ? da : da+ga-i; o[g*m+d]=i/u;
+    }
+  }
+}
+
+void bbNms( BB dt, siz n, uint *keep, double thr ) {
+  siz i, j; double u;
+  for( i=0; i<n; i++ ) keep[i]=1;
+  for( i=0; i<n; i++ ) if(keep[i]) {
+    for( j=i+1; j<n; j++ ) if(keep[j]) {
+      bbIou(dt+i*4,dt+j*4,1,1,0,&u);
+      if(u>thr) keep[j]=0;
     }
   }
 }

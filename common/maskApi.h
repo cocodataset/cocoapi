@@ -35,8 +35,14 @@ void rleArea( const RLE *R, siz n, uint *a );
 /* Compute intersection over union between masks. */
 void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o );
 
+/* Compute non-maximum suppression between bounding masks */
+void rleNms( RLE *dt, siz n, uint *keep, double thr );
+
 /* Compute intersection over union between bounding boxes. */
 void bbIou( BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o );
+
+/* Compute non-maximum suppression between bounding boxes */
+void bbNms( BB dt, siz n, uint *keep, double thr );
 
 /* Get bounding boxes surrounding encoded masks. */
 void rleToBbox( const RLE *R, BB bb, siz n );

@@ -29,6 +29,7 @@ classdef MaskApi
   %  decode - Decode binary masks encoded via RLE.
   %  merge  - Compute union or intersection of encoded masks.
   %  iou    - Compute intersection over union between masks.
+  %  nms    - Compute non-maximum suppression between ordered masks.
   %  area   - Compute area of encoded masks.
   %  toBbox - Get bounding boxes surrounding encoded masks.
   %  frBbox - Convert bounding boxes to encoded masks.
@@ -39,6 +40,7 @@ classdef MaskApi
   %  masks  = MaskApi.decode( Rs )
   %  R      = MaskApi.merge( Rs, [intersect=false] )
   %  o      = MaskApi.iou( dt, gt, [iscrowd=false] )
+  %  keep   = MaskApi.nms( dt, thr )
   %  a      = MaskApi.area( Rs )
   %  bbs    = MaskApi.toBbox( Rs )
   %  Rs     = MaskApi.frBbox( bbs, h, w )
@@ -88,6 +90,10 @@ classdef MaskApi
     
     function o = iou( dt, gt, varargin )
       o = maskApiMex( 'iou', dt', gt', varargin{:} );
+    end
+    
+    function keep = nms( dt, thr )
+      keep = maskApiMex('nms',dt',thr);
     end
     
     function a = area( Rs )
