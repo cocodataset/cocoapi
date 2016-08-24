@@ -305,7 +305,12 @@ class COCO:
 
         print 'Loading and preparing results...     '
         tic = time.time()
-        anns    = json.load(open(resFile))
+        if type(resFile) == str:
+            anns = json.load(open(resFile))
+        elif type(resFile) == np.ndarray:
+            anns = self.loadNumpyAnnotations(resFile)
+        else:
+            anns = resFile
         assert type(anns) == list, 'results in not an array of objects'
         annsImgIds = [ann['image_id'] for ann in anns]
         assert set(annsImgIds) == (set(annsImgIds) & set(self.getImgIds())), \
@@ -363,3 +368,26 @@ class COCO:
             if not os.path.exists(fname):
                 urllib.urlretrieve(img['coco_url'], fname)
             print 'downloaded %d/%d images (t=%.1fs)'%(i, N, time.time()- tic)
+
+    def loadNumpyAnnotations(self, data):
+        """
+        Convert result data from a numpy array [Nx7] where each row contains {imageID,x1,y1,w,h,score,class}
+        :param  data (numpy.ndarray)
+        :return: annotations (python nested list)
+        """
+        print("Converting ndarray to lists...")
+        assert(type(data) == np.ndarray)
+        print(data.shape)
+        assert(data.shape[1] == 7)
+        N = data.shape[0]
+        ann = []
+        for i in range(N):
+            if i % 1000000 == 0:
+                print("%d/%d" % (i,N))
+            ann += [{
+                'image_id'  : int(data[i, 0]),
+                'bbox'  : [ data[i, 1], data[i, 2], data[i, 3], data[i, 4] ],
+                'score' : data[i, 5],
+                'category_id': int(data[i, 6]),
+                }]
+        return ann
