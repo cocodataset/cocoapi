@@ -102,7 +102,7 @@ class COCOeval:
                 elif type(obj['segmentation']) == dict and type(obj['segmentation']['counts']) == list:
                     obj['segmentation'] = mask.frPyObjects([obj['segmentation']],t['height'],t['width'])[0]
                 elif type(obj['segmentation']) == dict and \
-                     type(obj['segmentation']['counts'] == unicode or type(obj['segmentation']['counts']) == str):
+                     type(obj['segmentation']['counts']) == unicode or type(obj['segmentation']['counts']) == str:
                     pass
                 else:
                     raise Exception('segmentation format not supported.')
