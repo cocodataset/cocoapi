@@ -241,17 +241,17 @@ classdef CocoApi
       cs=cs(randperm(size(cs,1)),:); cs=repmat(cs,100,1);
       if( isfield( anns,'keypoints') )
         for i=1:n
-          a=anns(i); if(a.iscrowd), continue; end; hold on;
-          seg=a.segmentation; kp=a.keypoints; c=cs(i,:);
-          sk=coco.loadCats(a.category_id); sk=sk.skeleton;
-          x=kp(1:3:end)+1; y=kp(2:3:end)+1; v=kp(3:3:end);
+          a=anns(i); if(isfield(a,'iscrowd') && a.iscrowd), continue; end
+          seg={}; if(isfield(a,'segmentation')), seg=a.segmentation; end
+          k=a.keypoints; x=k(1:3:end)+1; y=k(2:3:end)+1; v=k(3:3:end);
+          k=coco.loadCats(a.category_id); k=k.skeleton; c=cs(i,:); hold on
           p={'FaceAlpha',.25,'LineWidth',2,'EdgeColor',c}; % polygon
           for j=seg, xy=j{1}+.5; fill(xy(1:2:end),xy(2:2:end),c,p{:}); end
           p={'Color',c,'LineWidth',3}; % skeleton
-          for j=sk, s=j{1}; if(all(v(s)>0)), line(x(s),y(s),p{:}); end; end
+          for j=k, s=j{1}; if(all(v(s)>0)), line(x(s),y(s),p{:}); end; end
           p={'MarkerSize',8,'MarkerFaceColor',c,'MarkerEdgeColor'}; % pnts
-          plot(x(v==1),y(v==1),'o',p{:},'k');
-          plot(x(v==2),y(v==2),'o',p{:},c); hold off;
+          plot(x(v>0),y(v>0),'o',p{:},'k');
+          plot(x(v>1),y(v>1),'o',p{:},c); hold off;
         end
       elseif( any(isfield(anns,{'segmentation','bbox'})) )
         if(~isfield(anns,'iscrowd')), [anns(:).iscrowd]=deal(0); end
@@ -295,14 +295,16 @@ classdef CocoApi
       cdata=coco.data; R=gason(fileread(resFile)); m=length(R);
       valid=ismember([R.image_id],[cdata.images.id]);
       if(~all(valid)), error('Results provided for invalid images.'); end
-      type={'segmentation','bbox','caption'}; type=type{isfield(R,type)};
-      if(strcmp(type,'caption'))
+      t={'segmentation','bbox','keypoints','caption'}; t=t{isfield(R,t)};
+      if(strcmp(t,'caption'))
         for i=1:m, R(i).id=i; end; imgs=cdata.images;
         cdata.images=imgs(ismember([imgs.id],[R.image_id]));
       else
-        assert(all(isfield(R,{'category_id','score',type})));
-        s=cat(1,R.(type)); if(strcmp(type,'bbox'))
-          a=s(:,3).*s(:,4); else a=MaskApi.area(s); end
+        assert(all(isfield(R,{'category_id','score',t})));
+        s=cat(1,R.(t)); if(strcmp(t,'bbox')), a=s(:,3).*s(:,4); end
+        if(strcmp(t,'segmentation')), a=MaskApi.area(s); end
+        if(strcmp(t,'keypoints')), x=s(:,1:3:end)'; y=s(:,2:3:end)';
+          a=(max(x)-min(x)).*(max(y)-min(y)); end
         for i=1:m, R(i).area=a(i); R(i).id=i; end
       end
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
