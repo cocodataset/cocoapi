@@ -35,7 +35,7 @@ if(0), f=fopen(resFile,'w'); fwrite(f,gason(res)); fclose(f); end
 %% run COCO evaluation code (see CocoEval.m)
 cocoEval=CocoEval(cocoGt,cocoDt);
 cocoEval.params.imgIds=imgIds;
-cocoEval.params.useSegm=strcmp(type,'segm');
+cocoEval.params.iouType=type;
 cocoEval.evaluate();
 cocoEval.accumulate();
 cocoEval.summarize();

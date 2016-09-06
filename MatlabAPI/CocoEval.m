@@ -20,9 +20,9 @@ classdef CocoEval < handle
   %  recThrs    - [0:.01:1] R=101 recall thresholds for evaluation
   %  areaRng    - [...] A=4 object area ranges for evaluation
   %  maxDets    - [1 10 100] M=3 thresholds on max detections per image
-  %  useSegm    - [1] if true evaluate against ground-truth segments
+  %  iouType    - ['segm'] set iouType to 'segm' or 'bbox'
   %  useCats    - [1] if true use category labels for evaluation
-  % Note: if useSegm=0 the evaluation is run on bounding boxes.
+  % Note: iouType replaced the now DEPRECATED useSegm parameter.
   % Note: if useCats=0 category labels are ignored as in proposal scoring.
   % Note: by default areaRng=[0 1e5; 0 32; 32 96; 96 1e5].^2. These A=4
   % settings correspond to all, small, medium, and large objects, resp.
@@ -93,14 +93,15 @@ classdef CocoEval < handle
       ev.params.recThrs = 0:.01:1;
       ev.params.areaRng = [0 1e5; 0 32; 32 96; 96 1e5].^2;
       ev.params.maxDets = [1 10 100];
-      ev.params.useSegm = 1;
+      ev.params.iouType = 'segm';
       ev.params.useCats = 1;
     end
     
     function evaluate( ev )
       % Run per image evaluation on given images.
       fprintf('Running per image evaluation...      '); clk=clock;
-      p=ev.params; if(~p.useCats), p.catIds=1; end
+      p=ev.params; if(~p.useCats), p.catIds=1; end; t={'bbox','segm'};
+      if(isfield(p,'useSegm')), p.iouType=t{p.useSegm+1}; end
       p.imgIds=unique(p.imgIds); p.catIds=unique(p.catIds); ev.params=p;
       N=length(p.imgIds); K=length(p.catIds); A=size(p.areaRng,1);
       [nGt,iGt]=getAnnCounts(ev.cocoGt,p.imgIds,p.catIds,p.useCats);
@@ -109,17 +110,20 @@ classdef CocoEval < handle
       for i=1:K*N, if(nGt(i)==0 && nDt(i)==0), continue; end
         gt=ev.cocoGt.data.annotations(iGt(i):iGt(i)+nGt(i)-1);
         dt=ev.cocoDt.data.annotations(iDt(i):iDt(i)+nDt(i)-1);
-        if( p.useSegm )
+        if(~isfield(gt,'ignore')), [gt(:).ignore]=deal(0); end
+        if( strcmp(p.iouType,'segm') )
           im=ev.cocoGt.loadImgs(p.imgIds(is(i))); h=im.height; w=im.width;
           for g=1:nGt(i), s=gt(g).segmentation; if(~isstruct(s))
               gt(g).segmentation=MaskApi.frPoly(s,h,w); end; end
           f='segmentation'; if(isempty(dt)), [dt(:).(f)]=deal(); end
           if(~isfield(dt,f)), s=MaskApi.frBbox(cat(1,dt.bbox),h,w);
             for d=1:nDt(i), dt(d).(f)=s(d); end; end
-        else
+        elseif( strcmp(p.iouType,'bbox') )
           f='bbox'; if(isempty(dt)), [dt(:).(f)]=deal(); end
           if(~isfield(dt,f)), s=MaskApi.toBbox([dt.segmentation]);
             for d=1:nDt(i), dt(d).(f)=s(d,:); end; end
+        else
+          error('unknown iouType: %s',p.iouType);
         end
         q=p; q.imgIds=p.imgIds(is(i)); q.maxDets=max(p.maxDets);
         for j=1:A, q.areaRng=p.areaRng(j,:);
@@ -182,19 +186,12 @@ classdef CocoEval < handle
     function summarize( ev )
       % Compute and display summary metrics for evaluation results.
       if(isempty(ev.eval)), error('Please run accumulate() first'); end
-      ev.stats=zeros(1,12);
-      ev.stats(1) = summarize1(1,':','all',100);
-      ev.stats(2) = summarize1(1,.50,'all',100);
-      ev.stats(3) = summarize1(1,.75,'all',100);
-      ev.stats(4) = summarize1(1,':','small',100);
-      ev.stats(5) = summarize1(1,':','medium',100);
-      ev.stats(6) = summarize1(1,':','large',100);
-      ev.stats(7) = summarize1(0,':','all',1);
-      ev.stats(8) = summarize1(0,':','all',10);
-      ev.stats(9) = summarize1(0,':','all',100);
-      ev.stats(10) = summarize1(0,':','small',100);
-      ev.stats(11) = summarize1(0,':','medium',100);
-      ev.stats(12) = summarize1(0,':','large',100);
+      k=100; M={{1,':','all',k},{1,.50,'all',k}, {1,.75,'all',k},...
+        {1,':','small',k}, {1,':','medium',k}, {1,':','large',k},...
+        {0,':','all',1}, {0,':','all',10}, {0,':','all',k},...
+        {0,':','small',k}, {0,':','medium',k}, {0,':','large',k}};
+      k=length(M); ev.stats=zeros(1,k);
+      for s=1:k, ev.stats(s)=summarize1(M{s}{:}); end
       
       function s = summarize1( ap, iouThr, areaRng, maxDets )
         p=ev.params; i=iouThr; m=find(p.maxDets==maxDets);
@@ -344,7 +341,6 @@ classdef CocoEval < handle
     function e = evaluateImg( gt, dt, params )
       % Run evaluation for a single image and category.
       p=params; T=length(p.iouThrs); aRng=p.areaRng;
-      if(~isfield(gt,'ignore')), [gt(:).ignore]=deal(0); end
       a=[gt.area]; gtIg=[gt.iscrowd]|[gt.ignore]|a<aRng(1)|a>aRng(2);
       G=length(gt); D=length(dt); for g=1:G, gt(g).ignore=gtIg(g); end
       % sort dt highest score first, sort gt ignore last
@@ -352,9 +348,10 @@ classdef CocoEval < handle
       [~,o]=sort([dt.score],'descend'); dt=dt(o);
       if(D>p.maxDets), D=p.maxDets; dt=dt(1:D); end
       % compute iou between each dt and gt region
-      iscrowd = uint8([gt.iscrowd]); t=p.useSegm;
-      if(t), g=[gt.segmentation]; else g=cat(1,gt.bbox); end
-      if(t), d=[dt.segmentation]; else d=cat(1,dt.bbox); end
+      iscrowd = uint8([gt.iscrowd]);
+      t=find(strcmp(p.iouType,{'segm','bbox'}));
+      if(t==1), g=[gt.segmentation]; elseif(t==2), g=cat(1,gt.bbox); end
+      if(t==1), d=[dt.segmentation]; elseif(t==2), d=cat(1,dt.bbox); end
       ious=MaskApi.iou(d,g,iscrowd);
       % attempt to match each (sorted) dt to each (sorted) gt
       gtm=zeros(T,G); gtIds=[gt.id]; gtIg=[gt.ignore];
