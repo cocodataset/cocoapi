@@ -1,17 +1,18 @@
 %% Demo demonstrating the algorithm result formats for COCO
 
 %% select results type for demo (either bbox or segm)
-type = {'segm','bbox'}; type = type{1}; % specify type here
+type = {'segm','bbox','keypoints'}; type = type{1}; % specify type here
 fprintf('Running demo for *%s* results.\n\n',type);
 
 %% initialize COCO ground truth api
-dataDir='../'; dataType='val2014';
-annFile=sprintf('%s/annotations/instances_%s.json',dataDir,dataType);
-if(~exist('cocoGt','var')), cocoGt=CocoApi(annFile); end
+dataDir='../'; prefix='instances'; dataType='val2014';
+if(strcmp(type,'keypoints')), prefix='person_keypoints'; end
+annFile=sprintf('%s/annotations/%s_%s.json',dataDir,prefix,dataType);
+cocoGt=CocoApi(annFile);
 
 %% initialize COCO detections api
-resFile='%s/results/instances_%s_fake%s100_results.json';
-resFile=sprintf(resFile,dataDir,dataType,type);
+resFile='%s/results/%s_%s_fake%s100_results.json';
+resFile=sprintf(resFile,dataDir,prefix,dataType,type);
 cocoDt=cocoGt.loadRes(resFile);
 
 %% visialuze gt and dt side by side
@@ -33,9 +34,8 @@ res = gason(fileread(resFile)); disp(res)
 if(0), f=fopen(resFile,'w'); fwrite(f,gason(res)); fclose(f); end
 
 %% run COCO evaluation code (see CocoEval.m)
-cocoEval=CocoEval(cocoGt,cocoDt);
+cocoEval=CocoEval(cocoGt,cocoDt,type);
 cocoEval.params.imgIds=imgIds;
-cocoEval.params.iouType=type;
 cocoEval.evaluate();
 cocoEval.accumulate();
 cocoEval.summarize();
