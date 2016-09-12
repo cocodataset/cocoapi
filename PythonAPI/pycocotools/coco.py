@@ -72,6 +72,7 @@ class COCO:
             print 'loading annotations into memory...'
             tic = time.time()
             dataset = json.load(open(annotation_file, 'r'))
+            assert type(dataset)==dict, "annotation file format %s not supported"%(type(dataset))
             print 'Done (t=%0.2fs)'%(time.time()- tic)
             self.dataset = dataset
             self.createIndex()
@@ -332,8 +333,10 @@ class COCO:
                 s = ann['keypoints']
                 x = s[0::3]
                 y = s[1::3]
-                ann['area'] = float((np.max(x)-np.min(x))*(np.max(y)-np.min(y)))
+                x0,x1,y0,y1 = np.min(x), np.max(x), np.min(y), np.max(y)
+                ann['area'] = (x1-x0)*(y1-y0)
                 ann['id'] = id + 1
+                ann['bbox'] = [x0,y0,x1-x0,y1-y0]
         print 'DONE (t=%0.2fs)'%(time.time()- tic)
 
         res.dataset['annotations'] = anns
