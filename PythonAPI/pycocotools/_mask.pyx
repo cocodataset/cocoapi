@@ -119,7 +119,7 @@ def _frString(rleObjs):
     cdef bytes py_string
     cdef char* c_string
     for i, obj in enumerate(rleObjs):
-        py_string = str(obj['counts'])
+        py_string = str(obj['counts']).encode('utf8')
         c_string = py_string
         rleFrString( <RLE*> &Rs._R[i], <char*> c_string, obj['size'][0], obj['size'][1] )
     return Rs
@@ -255,7 +255,7 @@ def frPoly( poly, siz h, siz w ):
     Rs = RLEs(n)
     for i, p in enumerate(poly):
         np_poly = np.array(p, dtype=np.double, order='F')
-        rleFrPoly( <RLE*>&Rs._R[i], <const double*> np_poly.data, len(np_poly)/2, h, w )
+        rleFrPoly( <RLE*>&Rs._R[i], <const double*> np_poly.data, int(len(p)/2), h, w )
     objs = _toString(Rs)
     return objs
 
