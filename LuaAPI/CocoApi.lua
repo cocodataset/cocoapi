@@ -103,6 +103,7 @@ function CocoSeg:__init( segs )
     if not isStr then rles[i]=torch.IntTensor(rles[i]) end
   end
   for i=1,p do polys[i]=torch.DoubleTensor(polys[i]) end
+  if p == 0 then polys[1]=torch.DoubleTensor(); pIdx[1] = torch.LongTensor() end
   self.polys, self.pIdx = coco.TensorTable(polys), coco.TensorTable(pIdx)
   self.sizes, self.rles = coco.TensorTable(sizes), coco.TensorTable(rles)
 end
