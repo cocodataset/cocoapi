@@ -27,7 +27,7 @@ __version__ = '2.0'
 #  loadAnns   - Load anns with the specified ids.
 #  loadCats   - Load cats with the specified ids.
 #  loadImgs   - Load imgs with the specified ids.
-#  segToMask  - Convert polygon segmentation to binary mask.
+#  annToMask  - Convert segmentation in an annotation to binary mask.
 #  showAnns   - Display the specified annotations.
 #  loadRes    - Load algorithm results and create API for accessing them.
 #  download   - Download COCO images from mscoco.org server.
@@ -37,7 +37,7 @@ __version__ = '2.0'
 # See also COCO>decodeMask,
 # COCO>encodeMask, COCO>getAnnIds, COCO>getCatIds,
 # COCO>getImgIds, COCO>loadAnns, COCO>loadCats,
-# COCO>loadImgs, COCO>segToMask, COCO>showAnns
+# COCO>loadImgs, COCO>annToMask, COCO>showAnns
 
 # Microsoft COCO Toolbox.      version 2.0
 # Data, paper, and tutorials available at:  http://mscoco.org/
@@ -50,12 +50,17 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 import numpy as np
-import urllib
 import copy
 import itertools
-import mask
+import pycocotools.mask as maskUtils
 import os
 from collections import defaultdict
+import sys
+PYTHON_VERSION = sys.version_info[0]
+if PYTHON_VERSION == 2:
+    from urllib import urlretrieve
+elif PYTHON_VERSION == 3:
+    from urllib.request import urlretrieve
 
 class COCO:
     def __init__(self, annotation_file=None):
@@ -69,18 +74,18 @@ class COCO:
         self.dataset,self.anns,self.cats,self.imgs = dict(),dict(),dict(),dict()
         self.imgToAnns, self.catToImgs = defaultdict(list), defaultdict(list)
         if not annotation_file == None:
-            print 'loading annotations into memory...'
+            print('loading annotations into memory...')
             tic = time.time()
             dataset = json.load(open(annotation_file, 'r'))
-            assert type(dataset)==dict, "annotation file format %s not supported"%(type(dataset))
-            print 'Done (t=%0.2fs)'%(time.time()- tic)
+            assert type(dataset)==dict, 'annotation file format {} not supported'.format(type(dataset))
+            print('Done (t={:0.2f}s)'.format(time.time()- tic))
             self.dataset = dataset
             self.createIndex()
 
     def createIndex(self):
         # create index
-        print 'creating index...'
-        anns,cats,imgs = dict(),dict(),dict()
+        print('creating index...')
+        anns, cats, imgs = {}, {}, {}
         imgToAnns,catToImgs = defaultdict(list),defaultdict(list)
         if 'annotations' in self.dataset:
             for ann in self.dataset['annotations']:
@@ -94,10 +99,12 @@ class COCO:
         if 'categories' in self.dataset:
             for cat in self.dataset['categories']:
                 cats[cat['id']] = cat
+
+        if 'annotations' in self.dataset and 'categories' in self.dataset:
             for ann in self.dataset['annotations']:
                 catToImgs[ann['category_id']].append(ann['image_id'])
 
-        print 'index created!'
+        print('index created!')
 
         # create class members
         self.anns = anns
@@ -112,7 +119,7 @@ class COCO:
         :return:
         """
         for key, value in self.dataset['info'].items():
-            print '%s: %s'%(key, value)
+            print('{}: {}'.format(key, value))
 
     def getAnnIds(self, imgIds=[], catIds=[], areaRng=[], iscrowd=None):
         """
@@ -231,7 +238,7 @@ class COCO:
         elif 'caption' in anns[0]:
             datasetType = 'captions'
         else:
-            raise Exception("datasetType not supported")
+            raise Exception('datasetType not supported')
         if datasetType == 'instances':
             ax = plt.gca()
             ax.set_autoscale_on(False)
@@ -243,17 +250,17 @@ class COCO:
                     if type(ann['segmentation']) == list:
                         # polygon
                         for seg in ann['segmentation']:
-                            poly = np.array(seg).reshape((len(seg)/2, 2))
+                            poly = np.array(seg).reshape((int(len(seg)/2), 2))
                             polygons.append(Polygon(poly))
                             color.append(c)
                     else:
                         # mask
                         t = self.imgs[ann['image_id']]
                         if type(ann['segmentation']['counts']) == list:
-                            rle = mask.frPyObjects([ann['segmentation']], t['height'], t['width'])
+                            rle = maskUtils.frPyObjects([ann['segmentation']], t['height'], t['width'])
                         else:
                             rle = [ann['segmentation']]
-                        m = mask.decode(rle)
+                        m = maskUtils.decode(rle)
                         img = np.ones( (m.shape[0], m.shape[1], 3) )
                         if ann['iscrowd'] == 1:
                             color_mask = np.array([2.0,166.0,101.0])/255
@@ -276,11 +283,11 @@ class COCO:
                     plt.plot(x[v>1], y[v>1],'o',markersize=8, markerfacecolor=c, markeredgecolor=c, markeredgewidth=2)
             p = PatchCollection(polygons, facecolor=color, linewidths=0, alpha=0.4)
             ax.add_collection(p)
-            p = PatchCollection(polygons, facecolor="none", edgecolors=color, linewidths=2)
+            p = PatchCollection(polygons, facecolor='none', edgecolors=color, linewidths=2)
             ax.add_collection(p)
         elif datasetType == 'captions':
             for ann in anns:
-                print ann['caption']
+                print(ann['caption'])
 
     def loadRes(self, resFile):
         """
@@ -291,7 +298,7 @@ class COCO:
         res = COCO()
         res.dataset['images'] = [img for img in self.dataset['images']]
 
-        print 'Loading and preparing results...     '
+        print('Loading and preparing results...')
         tic = time.time()
         if type(resFile) == str or type(resFile) == unicode:
             anns = json.load(open(resFile))
@@ -322,9 +329,9 @@ class COCO:
             res.dataset['categories'] = copy.deepcopy(self.dataset['categories'])
             for id, ann in enumerate(anns):
                 # now only support compressed RLE format as segmentation results
-                ann['area'] = mask.area([ann['segmentation']])[0]
+                ann['area'] = maskUtils.area(ann['segmentation'])
                 if not 'bbox' in ann:
-                    ann['bbox'] = mask.toBbox([ann['segmentation']])[0]
+                    ann['bbox'] = maskUtils.toBbox(ann['segmentation'])
                 ann['id'] = id+1
                 ann['iscrowd'] = 0
         elif 'keypoints' in anns[0]:
@@ -337,13 +344,13 @@ class COCO:
                 ann['area'] = (x1-x0)*(y1-y0)
                 ann['id'] = id + 1
                 ann['bbox'] = [x0,y0,x1-x0,y1-y0]
-        print 'DONE (t=%0.2fs)'%(time.time()- tic)
+        print('DONE (t={:0.2f}s)'.format(time.time()- tic))
 
         res.dataset['annotations'] = anns
         res.createIndex()
         return res
 
-    def download( self, tarDir = None, imgIds = [] ):
+    def download(self, tarDir = None, imgIds = [] ):
         '''
         Download COCO images from mscoco.org server.
         :param tarDir (str): COCO results directory name
@@ -351,7 +358,7 @@ class COCO:
         :return:
         '''
         if tarDir is None:
-            print 'Please specify target directory'
+            print('Please specify target directory')
             return -1
         if len(imgIds) == 0:
             imgs = self.imgs.values()
@@ -364,8 +371,8 @@ class COCO:
             tic = time.time()
             fname = os.path.join(tarDir, img['file_name'])
             if not os.path.exists(fname):
-                urllib.urlretrieve(img['coco_url'], fname)
-            print 'downloaded %d/%d images (t=%.1fs)'%(i, N, time.time()- tic)
+                urlretrieve(img['coco_url'], fname)
+            print('downloaded {}/{} images (t={:0.1f}s)'.format(i, N, time.time()- tic))
 
     def loadNumpyAnnotations(self, data):
         """
@@ -373,7 +380,7 @@ class COCO:
         :param  data (numpy.ndarray)
         :return: annotations (python nested list)
         """
-        print("Converting ndarray to lists...")
+        print('Converting ndarray to lists...')
         assert(type(data) == np.ndarray)
         print(data.shape)
         assert(data.shape[1] == 7)
@@ -381,7 +388,7 @@ class COCO:
         ann = []
         for i in range(N):
             if i % 1000000 == 0:
-                print("%d/%d" % (i,N))
+                print('{}/{}'.format(i,N))
             ann += [{
                 'image_id'  : int(data[i, 0]),
                 'bbox'  : [ data[i, 1], data[i, 2], data[i, 3], data[i, 4] ],
@@ -389,3 +396,33 @@ class COCO:
                 'category_id': int(data[i, 6]),
                 }]
         return ann
+
+    def annToRLE(self, ann):
+        """
+        Convert annotation which can be polygons, uncompressed RLE to RLE.
+        :return: binary mask (numpy 2D array)
+        """
+        t = self.imgs[ann['image_id']]
+        h, w = t['height'], t['width']
+        segm = ann['segmentation']
+        if type(segm) == list:
+            # polygon -- a single object might consist of multiple parts
+            # we merge all parts into one mask rle code
+            rles = maskUtils.frPyObjects(segm, h, w)
+            rle = maskUtils.merge(rles)
+        elif type(segm['counts']) == list:
+            # uncompressed RLE
+            rle = maskUtils.frPyObjects(segm, h, w)
+        else:
+            # rle
+            rle = ann['segmentation']
+        return rle
+
+    def annToMask(self, ann):
+        """
+        Convert annotation which can be polygons, uncompressed RLE, or RLE to binary mask.
+        :return: binary mask (numpy 2D array)
+        """
+        rle = self.annToRLE(ann)
+        m = maskUtils.decode(rle)
+        return m
