@@ -52,7 +52,7 @@ from matplotlib.patches import Polygon
 import numpy as np
 import copy
 import itertools
-import pycocotools.mask as maskUtils
+from . import mask as maskUtils
 import os
 from collections import defaultdict
 import sys
