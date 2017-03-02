@@ -26,7 +26,7 @@ build = {
     ["coco.MaskApi"] = "LuaAPI/MaskApi.lua",
     ["coco.CocoApi"] = "LuaAPI/CocoApi.lua",
     libmaskapi = {
-      sources = { "common/maskApi.c" },
+      sources = { "common/maskApi.c", "common/luaopen.c" },
       incdirs = { "common/" }
     }
   }
