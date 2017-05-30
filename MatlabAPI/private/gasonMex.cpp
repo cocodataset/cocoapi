@@ -7,6 +7,7 @@
 #include "gason.h"
 #include "mex.h"
 #include "string.h"
+#include "math.h"
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
@@ -100,6 +101,27 @@ ostrm& json( ostrm &S, const char *A ) {
   S << "\""; return S;
 }
 
+ostrm& json( ostrm& S, const JsonValue *o ) {
+  // convert JsonValue to JSON string
+  switch( o->getTag() ) {
+    case JSON_NUMBER: S << o->toNumber(); return S;
+    case JSON_TRUE:   S << "true"; return S;
+    case JSON_FALSE:  S << "false"; return S;
+    case JSON_NULL:   S << "null"; return S;
+    case JSON_STRING: return json(S,o->toString());
+    case JSON_ARRAY:
+      S << "["; for(auto i:*o) {
+        json(S,&i->value) << (i->next ? "," : ""); }
+      S << "]"; return S;
+    case JSON_OBJECT:
+      S << "{"; for(auto i:*o) {
+        json(S,i->key) << ":";
+        json(S,&i->value) << (i->next ? "," : ""); }
+      S << "}"; return S;
+    default: return S;
+  }
+}
+
 ostrm& json( ostrm& S, const mxArray *M ) {
   // convert Matlab mxArray to JSON string
   siz i, j, m, n=mxGetNumberOfElements(M);
@@ -136,24 +158,73 @@ ostrm& json( ostrm& S, const mxArray *M ) {
   }
 }
 
+mxArray* mxCreateStringRobust( const char* str ) {
+  // convert char* to Matlab string (robust version of mxCreateString)
+  mxArray *M; ushort *c; mwSize n[2]={1,strlen(str)};
+  M=mxCreateCharArray(2,n); c=(ushort*) mxGetData(M);
+  for( siz i=0; i<n[1]; i++ ) c[i]=str[i]; return M;
+}
+
+char* mxArrayToStringRobust( const mxArray *M ) {
+  // convert Matlab string to char* (robust version of mxArrayToString)
+  if(!mxIsChar(M)) mexErrMsgTxt("String expected.");
+  ushort *c=(ushort*) mxGetData(M); char* str; siz n;
+  n=mxGetNumberOfElements(M); str=(char*) mxMalloc(n+1);
+  for( siz i=0; i<n; i++ ) str[i]=c[i]; str[n]=0; return str;
+}
+
 void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
 {
-  if( nr!=1 ) mexErrMsgTxt("One input expected.");
+  char action[1024]; if(!nr) mexErrMsgTxt("Inputs expected.");
+  mxGetString(pr[0],action,1024); nr--; pr++;
+  char *endptr; JsonValue val; JsonAllocator allocator;
   if( nl>1 ) mexErrMsgTxt("One output expected.");
-  if( mxGetClassID(pr[0])==mxCHAR_CLASS ) {
-    // object = mexFunction( string )
-    ushort *c=(ushort*) mxGetData(pr[0]); char* str; siz n;
-    n=mxGetNumberOfElements(pr[0]); str=(char*) mxMalloc(n+1);
-    for( siz i=0; i<n; i++ ) str[i]=c[i]; str[n]=0;
-    char *endptr; JsonValue value; JsonAllocator allocator;
-    int status = jsonParse(str, &endptr, &value, allocator);
+  
+  if(!strcmp(action,"convert")) {
+    if( nr!=1 ) mexErrMsgTxt("One input expected.");
+    if( mxGetClassID(pr[0])==mxCHAR_CLASS ) {
+      // object = mexFunction( string )
+      char *str = mxArrayToStringRobust(pr[0]);
+      int status = jsonParse(str, &endptr, &val, allocator);
+      if( status != JSON_OK) mexErrMsgTxt(jsonStrError(status));
+      pl[0] = json(val); mxFree(str);
+    } else {
+      // string = mexFunction( object )
+      ostrm S; S << std::setprecision(12); json(S,pr[0]);
+      pl[0]=mxCreateStringRobust(S.str().c_str());
+    }
+    
+  } else if(!strcmp(action,"split")) {
+    // strings = mexFunction( string, k )
+    if( nr!=2 ) mexErrMsgTxt("Two input expected.");
+    char *str = mxArrayToStringRobust(pr[0]);
+    int status = jsonParse(str, &endptr, &val, allocator);
     if( status != JSON_OK) mexErrMsgTxt(jsonStrError(status));
-    pl[0] = json( value ); mxFree(str);
-  } else {
-    // string = mexFunction( object )
-    ostrm S; S << std::setprecision(10); json(S,pr[0]);
-    std::string str=S.str(); mwSize n[2]={1,str.size()};
-    pl[0]=mxCreateCharArray(2,n); ushort *c=(ushort*) mxGetData(pl[0]);
-    for( siz i=0; i<n[1]; i++ ) c[i]=str[i];
-  }
+    if( val.getTag()!=JSON_ARRAY ) mexErrMsgTxt("Array expected");
+    siz i=0, t=0, n=length(val), k=(siz) mxGetScalar(pr[1]);
+    k=(k>n)?n:(k<1)?1:k; k=ceil(n/ceil(double(n)/k));
+    pl[0]=mxCreateCellMatrix(1,k); ostrm S; S<<std::setprecision(12);
+    for(auto o:val) {
+      if(!t) { S.str(std::string()); S << "["; t=ceil(double(n)/k); }
+      json(S,&o->value); t--; if(!o->next) t=0; S << (t ? "," : "]");
+      if(!t) mxSetCell(pl[0],i++,mxCreateStringRobust(S.str().c_str()));
+    }
+    
+  } else if(!strcmp(action,"merge")) {
+    // string = mexFunction( strings )
+    if( nr!=1 ) mexErrMsgTxt("One input expected.");
+    if(!mxIsCell(pr[0])) mexErrMsgTxt("Cell array expected.");
+    siz n = mxGetNumberOfElements(pr[0]);
+    ostrm S; S << std::setprecision(12); S << "[";
+    for( siz i=0; i<n; i++ ) {
+      char *str = mxArrayToStringRobust(mxGetCell(pr[0],i));
+      int status = jsonParse(str, &endptr, &val, allocator);
+      if( status != JSON_OK) mexErrMsgTxt(jsonStrError(status));
+      if( val.getTag()!=JSON_ARRAY ) mexErrMsgTxt("Array expected");
+      for(auto j:val) json(S,&j->value) << (j->next ? "," : "");
+      mxFree(str); if(i<n-1) S<<",";
+    }
+    S << "]"; pl[0]=mxCreateStringRobust(S.str().c_str());
+    
+  } else mexErrMsgTxt("Invalid action.");
 }

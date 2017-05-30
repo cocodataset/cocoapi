@@ -1,4 +1,4 @@
-// https://github.com/vivkin/gason - pulled May 29, 2015
+// https://github.com/vivkin/gason - pulled January 10, 2016
 #include "gason.h"
 #include <stdlib.h>
 
@@ -28,6 +28,8 @@ void *JsonAllocator::allocate(size_t size) {
 
     size_t allocSize = sizeof(Zone) + size;
     Zone *zone = (Zone *)malloc(allocSize <= JSON_ZONE_SIZE ? JSON_ZONE_SIZE : allocSize);
+    if (zone == nullptr)
+        return nullptr;
     zone->used = allocSize;
     if (allocSize <= JSON_ZONE_SIZE || head == nullptr) {
         zone->next = head;
@@ -139,6 +141,7 @@ int jsonParse(char *s, char **endptr, JsonValue *value, JsonAllocator &allocator
     JsonValue o;
     int pos = -1;
     bool separator = true;
+    JsonNode *node;
     *endptr = s;
 
     while (*s) {
@@ -316,11 +319,15 @@ int jsonParse(char *s, char **endptr, JsonValue *value, JsonAllocator &allocator
                 keys[pos] = o.toString();
                 continue;
             }
-            tails[pos] = insertAfter(tails[pos], (JsonNode *)allocator.allocate(sizeof(JsonNode)));
+            if ((node = (JsonNode *) allocator.allocate(sizeof(JsonNode))) == nullptr)
+                return JSON_ALLOCATION_FAILURE;
+            tails[pos] = insertAfter(tails[pos], node);
             tails[pos]->key = keys[pos];
             keys[pos] = nullptr;
         } else {
-            tails[pos] = insertAfter(tails[pos], (JsonNode *)allocator.allocate(sizeof(JsonNode) - sizeof(char *)));
+            if ((node = (JsonNode *) allocator.allocate(sizeof(JsonNode) - sizeof(char *))) == nullptr)
+                return JSON_ALLOCATION_FAILURE;
+            tails[pos] = insertAfter(tails[pos], node);
         }
         tails[pos]->value = o;
     }

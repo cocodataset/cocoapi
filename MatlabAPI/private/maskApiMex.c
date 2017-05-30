@@ -94,6 +94,20 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
       double *o=mxGetPr(pl[0]); bbIou(dt,gt,nDt,nGt,iscrowd,o);
     }
     
+  } else if(!strcmp(action,"nms")) {
+    siz n; uint *keep; double thr=(double) mxGetScalar(pr[1]);
+    if(mxIsStruct(pr[0])) {
+      RLE *dt=frMxArray(pr[0],&n,1);
+      pl[0]=mxCreateNumericMatrix(1,n,mxUINT32_CLASS,mxREAL);
+      keep=(uint*) mxGetPr(pl[0]); rleNms(dt,n,keep,thr);
+      rlesFree(&dt,n);
+    } else {
+      checkType(pr[0],mxDOUBLE_CLASS);
+      double *dt=mxGetPr(pr[0]); n=mxGetN(pr[0]);
+      pl[0]=mxCreateNumericMatrix(1,n,mxUINT32_CLASS,mxREAL);
+      keep=(uint*) mxGetPr(pl[0]); bbNms(dt,n,keep,thr);
+    }
+    
   } else if(!strcmp(action,"toBbox")) {
     R=frMxArray(pr[0],&n,0);
     pl[0]=mxCreateNumericMatrix(4,n,mxDOUBLE_CLASS,mxREAL);

@@ -76,13 +76,14 @@ classdef CocoApi
       if( isfield(coco.data,'categories') )
         is.catIds = [coco.data.categories.id]';
         is.catIdsMap = makeMap(is.catIds);
-        is.catImgIdsMap = makeMultiMap(is.catIds,...
-          is.catIdsMap,is.annCatIds,is.annImgIds,1);
+        if(isfield(is,'annCatIds')), is.catImgIdsMap = makeMultiMap(...
+            is.catIds,is.catIdsMap,is.annCatIds,is.annImgIds,1); end
       end
       coco.inds=is; fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
       
       function map = makeMap( keys )
         % Make map from key to integer id associated with key.
+        if(isempty(keys)), map=containers.Map(); return; end
         map=containers.Map(keys,1:length(keys));
       end
       
@@ -147,11 +148,12 @@ classdef CocoApi
       %
       % OUTPUTS
       %  ids        - integer array of cat ids
+      if(~isfield(coco.data,'categories')), ids=[]; return; end
       def={'catNms',[],'supNms',[],'catIds',[]}; t=coco.data.categories;
       [catNms,supNms,catIds] = getPrmDflt(varargin,def,1);
       if(~isempty(catNms)), t = t(ismember({t.name},catNms)); end
       if(~isempty(supNms)), t = t(ismember({t.supercategory},supNms)); end
-      if(~isempty(catIds)), t = t(ismember([t.ids],catIds)); end
+      if(~isempty(catIds)), t = t(ismember([t.id],catIds)); end
       ids = [t.id];
     end
     
@@ -203,6 +205,7 @@ classdef CocoApi
       %
       % OUTPUTS
       %  cats       - loaded cat objects
+      if(~isfield(coco.data,'categories')), cats=[]; return; end
       ids = values(coco.inds.catIdsMap,num2cell(ids));
       cats = coco.data.categories([ids{:}]);
     end
@@ -222,7 +225,7 @@ classdef CocoApi
       imgs = coco.data.images([ids{:}]);
     end
     
-    function hs = showAnns( ~, anns )
+    function hs = showAnns( coco, anns )
       % Display the specified annotations.
       %
       % USAGE
@@ -234,7 +237,23 @@ classdef CocoApi
       % OUTPUTS
       %  hs         - handles to segment graphic objects
       n=length(anns); if(n==0), return; end
-      if( any(isfield(anns,{'segmentation','bbox'})) )
+      r=.4:.2:1; [r,g,b]=ndgrid(r,r,r); cs=[r(:) g(:) b(:)];
+      cs=cs(randperm(size(cs,1)),:); cs=repmat(cs,100,1);
+      if( isfield( anns,'keypoints') )
+        for i=1:n
+          a=anns(i); if(isfield(a,'iscrowd') && a.iscrowd), continue; end
+          seg={}; if(isfield(a,'segmentation')), seg=a.segmentation; end
+          k=a.keypoints; x=k(1:3:end)+1; y=k(2:3:end)+1; v=k(3:3:end);
+          k=coco.loadCats(a.category_id); k=k.skeleton; c=cs(i,:); hold on
+          p={'FaceAlpha',.25,'LineWidth',2,'EdgeColor',c}; % polygon
+          for j=seg, xy=j{1}+.5; fill(xy(1:2:end),xy(2:2:end),c,p{:}); end
+          p={'Color',c,'LineWidth',3}; % skeleton
+          for j=k, s=j{1}; if(all(v(s)>0)), line(x(s),y(s),p{:}); end; end
+          p={'MarkerSize',8,'MarkerFaceColor',c,'MarkerEdgeColor'}; % pnts
+          plot(x(v>0),y(v>0),'o',p{:},'k');
+          plot(x(v>1),y(v>1),'o',p{:},c); hold off;
+        end
+      elseif( any(isfield(anns,{'segmentation','bbox'})) )
         if(~isfield(anns,'iscrowd')), [anns(:).iscrowd]=deal(0); end
         if(~isfield(anns,'segmentation')), S={anns.bbox}; %#ok<ALIGN>
           for i=1:n, x=S{i}(1); w=S{i}(3); y=S{i}(2); h=S{i}(4);
@@ -276,35 +295,39 @@ classdef CocoApi
       cdata=coco.data; R=gason(fileread(resFile)); m=length(R);
       valid=ismember([R.image_id],[cdata.images.id]);
       if(~all(valid)), error('Results provided for invalid images.'); end
-      type={'segmentation','bbox','caption'}; type=type{isfield(R,type)};
-      if(strcmp(type,'caption'))
+      t={'segmentation','bbox','keypoints','caption'}; t=t{isfield(R,t)};
+      if(strcmp(t,'caption'))
         for i=1:m, R(i).id=i; end; imgs=cdata.images;
         cdata.images=imgs(ismember([imgs.id],[R.image_id]));
       else
-        assert(all(isfield(R,{'category_id','score',type})));
-        s=cat(1,R.(type)); if(strcmp(type,'bbox'))
-          a=s(:,3).*s(:,4); else a=MaskApi.area(s); end
+        assert(all(isfield(R,{'category_id','score',t})));
+        s=cat(1,R.(t)); if(strcmp(t,'bbox')), a=s(:,3).*s(:,4); end
+        if(strcmp(t,'segmentation')), a=MaskApi.area(s); end
+        if(strcmp(t,'keypoints')), x=s(:,1:3:end)'; y=s(:,2:3:end)';
+          a=(max(x)-min(x)).*(max(y)-min(y)); end
         for i=1:m, R(i).area=a(i); R(i).id=i; end
       end
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
       cdata.annotations=R; cocoRes=CocoApi(cdata);
     end
     
-    function download( coco, tarDir )
+    function download( coco, tarDir, maxn )
       % Download COCO images from mscoco.org server.
       %
       % USAGE
-      %  coco.download( tarDir )
+      %  coco.download( tarDir, [maxn] )
       %
       % INPUTS
       %  tarDir     - COCO results filename
+      %  maxn       - maximum number of images to download
       fs={coco.data.images.file_name}; n=length(fs);
-      urls={coco.data.images.coco_url}; do=true(1,n);
+      if(nargin==3), n=min(n,maxn); end; [fs,o]=sort(fs);
+      urls={coco.data.images.coco_url}; urls=urls(o); do=true(1,n);
       for i=1:n, fs{i}=[tarDir '/' fs{i}]; do(i)=~exist(fs{i},'file'); end
       fs=fs(do); urls=urls(do); n=length(fs); if(n==0), return; end
-      if(~exist(tarDir,'dir')), mkdir(tarDir); end
-      msg='downloaded %i/%i images (t=%.1fs)\n'; t=tic;
-      for i=1:n, websave(fs{i},urls{i}); fprintf(msg,i,n,toc(t)); end
+      if(~exist(tarDir,'dir')), mkdir(tarDir); end; t=tic;
+      m='downloaded %i/%i images (t=%.1fs)\n'; o=weboptions('Timeout',60);
+      for i=1:n, websave(fs{i},urls{i},o); fprintf(m,i,n,toc(t)); end
     end
   end
   

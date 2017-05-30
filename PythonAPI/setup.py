@@ -11,8 +11,8 @@ ext_modules = [
     Extension(        
         'pycocotools._mask',
         language='c++',
-        sources=['../MatlabAPI/private/maskApi.cc', 'pycocotools/_mask.pyx'],
-        include_dirs = [np.get_include(), '../MatlabAPI/private'],
+        sources=['../common/maskApi.c', 'pycocotools/_mask.pyx'],
+        include_dirs = [np.get_include(), '../common'],
         extra_compile_args=extra_compile_args,
     )
 ]

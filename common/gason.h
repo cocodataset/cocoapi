@@ -1,4 +1,4 @@
-// https://github.com/vivkin/gason - pulled May 29, 2015
+// https://github.com/vivkin/gason - pulled January 10, 2016
 #pragma once
 
 #include <stdint.h>
@@ -30,7 +30,7 @@ union JsonValue {
         : fval(x) {
     }
     JsonValue(JsonTag tag = JSON_NULL, void *payload = nullptr) {
-        assert((uint64_t)payload <= JSON_VALUE_PAYLOAD_MASK);
+        assert((uintptr_t)payload <= JSON_VALUE_PAYLOAD_MASK);
         ival = JSON_VALUE_NAN_MASK | ((uint64_t)tag << JSON_VALUE_TAG_SHIFT) | (uintptr_t)payload;
     }
     bool isDouble() const {
@@ -97,7 +97,8 @@ inline JsonIterator end(JsonValue) {
     XX(MISMATCH_BRACKET, "mismatch bracket")         \
     XX(UNEXPECTED_CHARACTER, "unexpected character") \
     XX(UNQUOTED_KEY, "unquoted key")                 \
-    XX(BREAKING_BAD, "breaking bad")
+    XX(BREAKING_BAD, "breaking bad")                 \
+    XX(ALLOCATION_FAILURE, "allocation failure")
 
 enum JsonErrno {
 #define XX(no, str) JSON_##no,

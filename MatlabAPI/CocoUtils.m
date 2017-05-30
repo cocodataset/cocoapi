@@ -10,13 +10,15 @@ classdef CocoUtils
   %  validateOnImageNet - Validate COCO eval code against ImageNet code.
   %  generateFakeDt     - Generate fake detections from ground truth.
   %  validateMaskApi    - Validate MaskApi against Matlab functions.
+  %  gasonSplit         - Split JSON file into multiple JSON files.
+  %  gasonMerge         - Merge JSON files into single JSON file.
   % Help on each functions can be accessed by: "help CocoUtils>function".
   %
   % See also CocoApi MaskApi CocoEval CocoUtils>convertPascalGt
   % CocoUtils>convertImageNetGt CocoUtils>convertPascalDt
   % CocoUtils>convertImageNetDt CocoUtils>validateOnPascal
   % CocoUtils>validateOnImageNet CocoUtils>generateFakeDt
-  % CocoUtils>validateMaskApi
+  % CocoUtils>validateMaskApi CocoUtils>gasonSplit CocoUtils>gasonMerge
   %
   % Microsoft COCO Toolbox.      version 2.0
   % Data, paper, and tutorials available at:  http://mscoco.org/
@@ -220,12 +222,12 @@ classdef CocoUtils
       %   .fp         - [.10] false positive rate (0<fp<fn)
       %   .sigma      - [.10] translation noise (relative to object width)
       %   .seed       - [0] random seed for reproducibility
-      %   .type       - ['bbox'] can be either 'bbox' or 'segm'
+      %   .type       - ['bbox'] can be 'bbox', 'segm', or 'keypoints'
       fprintf('Generating fake detection data...    '); clk=tic;
       def={'n',100,'fn',.20,'fp',.10,'sigma',.10,'seed',0,'type','bbox'};
       opts=getPrmDflt(varargin,def,1); n=opts.n;
       if(strcmp(opts.type,'segm')), opts.type='segmentation'; end
-      assert(any(strcmp(opts.type,{'bbox','segmentation'})));
+      assert(any(strcmp(opts.type,{'bbox','segmentation','keypoints'})));
       rstream = RandStream('mrg32k3a','Seed',opts.seed); k=n*100;
       R=struct('image_id',[],'category_id',[],opts.type,[],'score',[]);
       imgIds=sort(coco.getImgIds()); imgIds=imgIds(1:n); R=repmat(R,1,k);
@@ -237,17 +239,20 @@ classdef CocoUtils
           if(t<opts.fp), catId=catIds(randi(rstream,length(catIds)));
           elseif(t<opts.fn), continue; else catId=A(j).category_id; end
           bb=A(j).bbox; dx=round(randn(rstream)*opts.sigma*bb(3));
-          if( strcmp(opts.type,'bbox') ), M=[];
+          if( strcmp(opts.type,'bbox') )
             x0=max(0,bb(1)+dx); x1=min(w-1,bb(1)+bb(3)+dx-1);
-            bb(1)=x0; bb(3)=x1-x0+1; if(bb(3)==0), continue; end
-          elseif( strcmp(opts.type,'segmentation') ), bb=[];
+            bb(1)=x0; bb(3)=x1-x0+1; if(bb(3)==0), continue; end; o=bb;
+          elseif( strcmp(opts.type,'segmentation') )
             M=MaskApi.decode(MaskApi.frPoly(A(j).segmentation,h,w)); T=M*0;
             T(:,max(1,1+dx):min(w,w+dx))=M(:,max(1,1-dx):min(w,w-dx));
-            if(nnz(T)==0), continue; end; M=MaskApi.encode(T);
+            if(nnz(T)==0), continue; end; o=MaskApi.encode(T);
+          elseif( strcmp(opts.type,'keypoints') )
+            o=A(j).keypoints; v=o(3:3:end)>0; if(~any(v)), continue; end
+            x=o(1:3:end); y=o(2:3:end); x(~v)=mean(x(v)); y(~v)=mean(y(v));
+            x=max(0,min(w-1,x+dx)); o(1:3:end)=x; o(2:3:end)=y;
           end
           k=k+1; R(k).image_id=imgIds(i); R(k).category_id=catId;
-          if(isempty(bb)), R(k).segmentation=M; else R(k).bbox=bb; end
-          R(k).score=round(rand(rstream)*1000)/1000;
+          R(k).(opts.type)=o; R(k).score=round(rand(rstream)*1000)/1000;
         end
       end
       R=R(1:k); f=fopen(dtFile,'w'); fwrite(f,gason(R)); fclose(f);
@@ -278,6 +283,40 @@ classdef CocoUtils
       if(isequal(A,B)&&isequal(Ia,IB)),
         msg='PASSED'; else msg='FAILED'; end
       warning(['MaskApi *' msg '* validation!']);
+    end
+    
+    function gasonSplit( name, k )
+      % Split JSON file into multiple JSON files.
+      %
+      % Splits file 'name.json' into multiple files 'name-*.json'. Only
+      % works for JSON arrays. Memory efficient. Inverted by gasonMerge().
+      %
+      % USAGE
+      %  CocoUtils.gasonSplit( name, k )
+      %
+      % INPUTS
+      %  name       - file containing JSON array (w/o '.json' ext)
+      %  k          - number of files to split JSON into
+      s=gasonMex('split',fileread([name '.json']),k); k=length(s);
+      for i=1:k, f=fopen(sprintf('%s-%06i.json',name,i),'w');
+        fwrite(f,s{i}); fclose(f); end
+    end
+    
+    function gasonMerge( name )
+      % Merge JSON files into single JSON file.
+      %
+      % Merge files 'name-*.json' into single file 'name.json'. Only works
+      % for JSON arrays. Memory efficient. Inverted by gasonSplit().
+      %
+      % USAGE
+      %  CocoUtils.gasonMerge( name )
+      %
+      % INPUTS
+      %  name       - files containing JSON arrays (w/o '.json' ext)
+      s=dir([name '-*.json']); s=sort({s.name}); k=length(s);
+      p=fileparts(name); for i=1:k, s{i}=fullfile(p,s{i}); end
+      for i=1:k, s{i}=fileread(s{i}); end; s=gasonMex('merge',s);
+      f=fopen([name '.json'],'w'); fwrite(f,s); fclose(f);
     end
   end
   

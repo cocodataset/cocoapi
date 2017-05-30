@@ -2,6 +2,10 @@ images/
 annotations/
 results/
 external/
+.DS_Store
+
+MatlabAPI/analyze*/
+MatlabAPI/visualize*/
 
 PythonAPI/pycocotools/__init__.pyc
 PythonAPI/pycocotools/_mask.c

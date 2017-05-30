@@ -29,6 +29,7 @@ classdef MaskApi
   %  decode - Decode binary masks encoded via RLE.
   %  merge  - Compute union or intersection of encoded masks.
   %  iou    - Compute intersection over union between masks.
+  %  nms    - Compute non-maximum suppression between ordered masks.
   %  area   - Compute area of encoded masks.
   %  toBbox - Get bounding boxes surrounding encoded masks.
   %  frBbox - Convert bounding boxes to encoded masks.
@@ -39,6 +40,7 @@ classdef MaskApi
   %  masks  = MaskApi.decode( Rs )
   %  R      = MaskApi.merge( Rs, [intersect=false] )
   %  o      = MaskApi.iou( dt, gt, [iscrowd=false] )
+  %  keep   = MaskApi.nms( dt, thr )
   %  a      = MaskApi.area( Rs )
   %  bbs    = MaskApi.toBbox( Rs )
   %  Rs     = MaskApi.frBbox( bbs, h, w )
@@ -63,8 +65,9 @@ classdef MaskApi
   % For crowd gt regions we use this modified criteria above for the iou.
   %
   % To compile use the following (some precompiled binaries are included):
-  %   mex('CFLAGS=\$CFLAGS -Wall -std=c99','private/maskApi.c',...
-  %     'private/maskApiMex.c','-largeArrayDims','-outdir','private');
+  %   mex('CFLAGS=\$CFLAGS -Wall -std=c99','-largeArrayDims',...
+  %     'private/maskApiMex.c','../common/maskApi.c',...
+  %     '-I../common/','-outdir','private');
   % Please do not contact us for help with compiling.
   %
   % Microsoft COCO Toolbox.      version 2.0
@@ -74,35 +77,39 @@ classdef MaskApi
   
   methods( Static )
     function Rs = encode( masks )
-      Rs = maskApi( 'encode', masks );
+      Rs = maskApiMex( 'encode', masks );
     end
     
     function masks = decode( Rs )
-      masks = maskApi( 'decode', Rs );
+      masks = maskApiMex( 'decode', Rs );
     end
     
     function R = merge( Rs, varargin )
-      R = maskApi( 'merge', Rs, varargin{:} );
+      R = maskApiMex( 'merge', Rs, varargin{:} );
     end
     
     function o = iou( dt, gt, varargin )
-      o = maskApi( 'iou', dt', gt', varargin{:} );
+      o = maskApiMex( 'iou', dt', gt', varargin{:} );
+    end
+    
+    function keep = nms( dt, thr )
+      keep = maskApiMex('nms',dt',thr);
     end
     
     function a = area( Rs )
-      a = maskApi( 'area', Rs );
+      a = maskApiMex( 'area', Rs );
     end
     
     function bbs = toBbox( Rs )
-      bbs = maskApi( 'toBbox', Rs )';
+      bbs = maskApiMex( 'toBbox', Rs )';
     end
     
     function Rs = frBbox( bbs, h, w )
-      Rs = maskApi( 'frBbox', bbs', h, w );
+      Rs = maskApiMex( 'frBbox', bbs', h, w );
     end
     
     function R = frPoly( poly, h, w )
-      R = maskApi( 'frPoly', poly, h , w );
+      R = maskApiMex( 'frPoly', poly, h , w );
     end
   end
   

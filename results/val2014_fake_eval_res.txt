@@ -1,0 +1,48 @@
+------------------------------------------------------------------------------
+type=segm
+Running per image evaluation...      DONE (t=0.45s).
+Accumulating evaluation results...   DONE (t=0.08s).
+ Average Precision (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.320
+ Average Precision (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.562
+ Average Precision (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.299
+ Average Precision (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.387
+ Average Precision (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.310
+ Average Precision (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.327
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.268
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.415
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.417
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.469
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.377
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.381
+
+------------------------------------------------------------------------------
+type=bbox
+Running per image evaluation...      DONE (t=0.34s).
+Accumulating evaluation results...   DONE (t=0.08s).
+ Average Precision (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.505
+ Average Precision (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.697
+ Average Precision (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.573
+ Average Precision (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.586
+ Average Precision (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.519
+ Average Precision (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.501
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.387
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.594
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.595
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.640
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.566
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.564
+
+------------------------------------------------------------------------------
+type=keypoints
+Running per image evaluation...      DONE (t=0.06s).
+Accumulating evaluation results...   DONE (t=0.00s).
+ Average Precision (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.372
+ Average Precision (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.636
+ Average Precision (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.348
+ Average Precision (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.384
+ Average Precision (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.386
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.514
+ Average Recall    (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.734
+ Average Recall    (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.504
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.508
+ Average Recall    (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.522
