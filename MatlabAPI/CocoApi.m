@@ -300,7 +300,7 @@ classdef CocoApi
         for i=1:m, R(i).id=i; end; imgs=cdata.images;
         cdata.images=imgs(ismember([imgs.id],[R.image_id]));
       else
-        assert(all(isfield(R,{'category_id','score',t})));
+        assert(all(isfield(R,{'category_id',t})));
         s=cat(1,R.(t)); if(strcmp(t,'bbox')), a=s(:,3).*s(:,4); end
         if(strcmp(t,'segmentation')), a=MaskApi.area(s); end
         if(strcmp(t,'keypoints')), x=s(:,1:3:end)'; y=s(:,2:3:end)';

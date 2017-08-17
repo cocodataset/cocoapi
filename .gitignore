@@ -2,6 +2,7 @@ images/
 annotations/
 results/
 external/
+export_png/
 .DS_Store
 
 MatlabAPI/analyze*/
@@ -12,4 +13,5 @@ PythonAPI/pycocotools/_mask.c
 PythonAPI/pycocotools/_mask.so
 PythonAPI/pycocotools/coco.pyc
 PythonAPI/pycocotools/cocoeval.pyc
+PythonAPI/pycocotools/cocostuffeval.pyc
 PythonAPI/pycocotools/mask.pyc
