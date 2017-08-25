@@ -64,10 +64,7 @@ elif PYTHON_VERSION == 3:
 
 
 def _isArrayLike(obj):
-    if hasattr(obj, '__iter__') and hasattr(obj, '__len__'):
-        return True
-    else:
-        return False
+    return hasattr(obj, '__iter__') and hasattr(obj, '__len__')
 
 
 class COCO:
