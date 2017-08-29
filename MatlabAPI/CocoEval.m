@@ -214,7 +214,7 @@ classdef CocoEval < handle
       k=length(M); ev.stats=zeros(1,k);
       for s=1:k, ev.stats(s)=summarize1(M{s}{:}); end
 
-      function s = summarize1( ap, iouThr, areaRng, maxDets )
+      function s = summarize1( ap, iouThr, areaRng, maxDets, printResults )
         p=ev.params; i=iouThr; m=find(p.maxDets==maxDets);
         if(i~=':'), iStr=sprintf('%.2f     ',i); i=find(p.iouThrs==i);
         else iStr=sprintf('%.2f:%.2f',min(p.iouThrs),max(p.iouThrs)); end
