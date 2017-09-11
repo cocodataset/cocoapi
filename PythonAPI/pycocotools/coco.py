@@ -55,6 +55,7 @@ import itertools
 from . import mask as maskUtils
 import os
 from collections import defaultdict
+import numbers
 import sys
 PYTHON_VERSION = sys.version_info[0]
 if PYTHON_VERSION == 2:
@@ -205,11 +206,10 @@ class COCO:
         """
         if _isArrayLike(ids):
             return [self.anns[id] for id in ids]
-        if PYTHON_VERSION == 2:
-            if type(ids) == int or type(ids) == long:
-                return [self.anns[ids]]
-        elif PYTHON_VERSION == 3 and type(ids) == int:
+        if isinstance(ids, numbers.Integral):
             return [self.anns[ids]]
+        else:
+            raise ValueError("param must be integer array or single integer")
 
     def loadCats(self, ids=[]):
         """
