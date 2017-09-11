@@ -31,7 +31,7 @@ import time
 
 def internalToCocoGTDemo(dataType='train2017', dataDir='../..',
         imgCount=float('inf'), stuffStartId=92, stuffEndId=182, mergeThings=True, 
-        indent=None, includeCrowd=False):
+        indent=None, includeCrowd=False, outputAnnots=True):
     '''
     Converts our internal .mat representation of the ground-truth annotations to COCO format.
     :param dataType: the name of the subset: train201x, val201x, test-dev201x or test-challenge201x
@@ -42,6 +42,7 @@ def internalToCocoGTDemo(dataType='train2017', dataDir='../..',
     :param mergeThings: merges all 91 thing classes into a single class 'other' with id 183
     :param indent: number of whitespaces used for JSON indentation
     :param includeCrowd: whether to include 'crowd' thing annotations as 'other' (or void)
+    :param outputAnnots: whether to include annotations (for test images we only release ids)
     :return: None
     '''
 
@@ -49,7 +50,10 @@ def internalToCocoGTDemo(dataType='train2017', dataDir='../..',
     imgCountStr = ('_%d' % imgCount) if imgCount < float('inf') else ''
     annotFolder = '%s/annotations/internal/%s' % (dataDir, dataType)
     annPath = '%s/annotations/instances_%s.json' % (dataDir, dataType)
-    jsonPath = '%s/annotations/stuff_%s%s.json' % (dataDir, dataType, imgCountStr)
+    if outputAnnots:
+        jsonPath = '%s/annotations/stuff_%s%s.json' % (dataDir, dataType, imgCountStr)
+    else:
+        jsonPath = '%s/annotations/stuff_image_info_%s%s.json' % (dataDir, dataType, imgCountStr)
 
     # Check if output file already exists
     if os.path.exists(jsonPath):
@@ -209,70 +213,75 @@ def internalToCocoGTDemo(dataType='train2017', dataDir='../..',
             catdata.extend([{'id': stuffEndId+1, 'name': 'other', 'supercategory': 'other'}])
         catdata = {'categories': catdata}
         catStr = json.dumps(catdata, indent=indent)
-        catStr = catStr[1:-1] + ',\n'  # Remove brackets and add comma
+        catStr = catStr[1:-1]  # Remove brackets
 
         # Write opening braces, headers and annotation start to disk
-        output.write(unicode('{\n' + infoStr + imStr + licStr + catStr + '"annotations": \n[\n'))
+        output.write(unicode('{\n' + infoStr + imStr + licStr + catStr))
 
         # Start annots
-        for i, imgName in enumerate(imgNames):
+        if outputAnnots:
+            output.write(unicode(',\n"annotations": \n[\n'))
+            for i, imgName in enumerate(imgNames):
 
-            # Write annotations
-            imgId = imgIds[i]
-            diffTime = time.clock() - startTime
-            print "Writing JSON annotation %d of %d (%.1fs): %s..." % (i+1, imgCount, diffTime, imgName)
+                # Write annotations
+                imgId = imgIds[i]
+                diffTime = time.clock() - startTime
+                print "Writing JSON annotation %d of %d (%.1fs): %s..." % (i+1, imgCount, diffTime, imgName)
 
-            # Read annotation file
-            annotPath = os.path.join(annotFolder, imgName)
-            matfile = scipy.io.loadmat(annotPath)
-            labelMap = matfile['S']
-            if not np.all([i == 0 or i >= stuffStartId for i in np.unique(labelMap)]):
-                raise Exception('Error: .mat annotation files should not contain thing labels!')
+                # Read annotation file
+                annotPath = os.path.join(annotFolder, imgName)
+                matfile = scipy.io.loadmat(annotPath)
+                labelMap = matfile['S']
+                if not np.all([i == 0 or i >= stuffStartId for i in np.unique(labelMap)]):
+                    raise Exception('Error: .mat annotation files should not contain thing labels!')
 
-            # Merge thing classes
-            if mergeThings:
-                # Get thing GT
-                labelMapThings = cocoSegmentationToSegmentationMap(cocoGt, imgId, checkUniquePixelLabel=False, includeCrowd=includeCrowd)
-                if labelMap.shape[0] != labelMapThings.shape[0] \
-                    or labelMap.shape[1] != labelMapThings.shape[1]:
-                    raise Exception('Error: Stuff segmentation map has different size from thing segmentation map!')
+                # Merge thing classes
+                if mergeThings:
+                    # Get thing GT
+                    labelMapThings = cocoSegmentationToSegmentationMap(cocoGt, imgId, checkUniquePixelLabel=False, includeCrowd=includeCrowd)
+                    if labelMap.shape[0] != labelMapThings.shape[0] \
+                        or labelMap.shape[1] != labelMapThings.shape[1]:
+                        raise Exception('Error: Stuff segmentation map has different size from thing segmentation map!')
 
-                # Set all thing classes to the new 'other' class
-                labelMap[labelMapThings > 0] = stuffEndId + 1
+                    # Set all thing classes to the new 'other' class
+                    labelMap[labelMapThings > 0] = stuffEndId + 1
 
-            # Add stuff annotations
-            labelsAll = np.unique(labelMap)
-            labelsValid = [i for i in labelsAll if i >= stuffStartId]
-            for i, labelId in enumerate(labelsValid):
-                # Add a comma and line break after each annotation
-                assert annId - annIdStart <= 1e7, 'Error: Annotation ids are not unique!'
-                if annId == annIdStart:
-                    annotStr = ''
-                else:
-                    annotStr = ',\n'
+                # Add stuff annotations
+                labelsAll = np.unique(labelMap)
+                labelsValid = [i for i in labelsAll if i >= stuffStartId]
+                for i, labelId in enumerate(labelsValid):
+                    # Add a comma and line break after each annotation
+                    assert annId - annIdStart <= 1e7, 'Error: Annotation ids are not unique!'
+                    if annId == annIdStart:
+                        annotStr = ''
+                    else:
+                        annotStr = ',\n'
 
-                # Create mask and encode it
-                Rs = segmentationToCocoMask(labelMap, labelId)
+                    # Create mask and encode it
+                    Rs = segmentationToCocoMask(labelMap, labelId)
 
-                # Create annotation data
-                anndata = {}
-                anndata['id'] = annId
-                anndata['image_id'] = int(imgId)
-                anndata['category_id'] = int(labelId)
-                anndata['segmentation'] = Rs
-                anndata['area'] = float(mask.area(Rs))
-                anndata['bbox'] = mask.toBbox(Rs).tolist()
-                anndata['iscrowd'] = 0
+                    # Create annotation data
+                    anndata = {}
+                    anndata['id'] = annId
+                    anndata['image_id'] = int(imgId)
+                    anndata['category_id'] = int(labelId)
+                    anndata['segmentation'] = Rs
+                    anndata['area'] = float(mask.area(Rs))
+                    anndata['bbox'] = mask.toBbox(Rs).tolist()
+                    anndata['iscrowd'] = 0
 
-                # Write JSON
-                annotStr = annotStr + json.dumps(anndata, indent=indent)
-                output.write(unicode(annotStr))
+                    # Write JSON
+                    annotStr = annotStr + json.dumps(anndata, indent=indent)
+                    output.write(unicode(annotStr))
 
-                # Increment annId
-                annId = annId + 1
+                    # Increment annId
+                    annId = annId + 1
 
-        # End annots
-        output.write(unicode('\n]\n' + '}'))
+            # End annots
+            output.write(unicode('\n]'))
+
+        # Global end
+        output.write(unicode('\n}'))
 
 if __name__ == "__main__":
     internalToCocoGTDemo()
