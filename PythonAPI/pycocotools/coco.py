@@ -205,7 +205,10 @@ class COCO:
         """
         if _isArrayLike(ids):
             return [self.anns[id] for id in ids]
-        elif type(ids) == int:
+        if PYTHON_VERSION == 2:
+            if type(ids) == int or type(ids) == long:
+                return [self.anns[ids]]
+        elif PYTHON_VERSION == 3 and type(ids) == int:
             return [self.anns[ids]]
 
     def loadCats(self, ids=[]):
