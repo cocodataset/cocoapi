@@ -2,7 +2,7 @@
 
 __author__ = 'hcaesar'
 
-# A preview script that shows how to use the COCO API.
+# A preview script that shows how to use the COCO API with stuff annotations.
 #
 # It lists the categories and super-categories and shows the
 # annotations of an example image.
@@ -46,15 +46,21 @@ def pycocostuffDemo(dataDir='../..', dataType='train2017'):
     img = cocoGt.loadImgs(imgId)[0]
 
     # Load and display image
-    I = skimage.io.imread('http://mscoco.org/images/%d' % img['id'])
+    I = skimage.io.imread(img['coco_url'])
     plt.figure()
+    plt.subplot(121)
     plt.imshow(I)
     plt.axis('off')
+    plt.title('original image')
 
     # Load and display stuff annotations
     annIds = cocoGt.getAnnIds(imgIds=img['id'])
     anns = cocoGt.loadAnns(annIds)
+    plt.subplot(122)
+    plt.imshow(I)
     cocoGt.showAnns(anns)
+    plt.axis('off')
+    plt.title('annotated image')
     plt.show()
 
 if __name__ == "__main__":

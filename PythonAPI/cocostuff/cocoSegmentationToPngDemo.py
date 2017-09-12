@@ -73,17 +73,18 @@ def cocoSegmentationToPngDemo(dataDir='../..', dataTypeAnn='train2017', dataType
         cocoSegmentationToPng(coco, imgId, segmentationPath)
 
     # Visualize the last image
-    originalImage = skimage.io.imread('http://mscoco.org/images/%d' % imgId)
+    originalImage = skimage.io.imread(coco.loadImgs(imgId)[0]['coco_url'])
     segmentationImage = skimage.io.imread(segmentationPath)
     plt.figure()
     plt.subplot(121)
     plt.imshow(originalImage)
     plt.axis('off')
     plt.title('original image')
+
     plt.subplot(122)
     plt.imshow(segmentationImage)
     plt.axis('off')
-    plt.title('annotation')
+    plt.title('annotated image')
     plt.show()
 
 if __name__ == "__main__":
