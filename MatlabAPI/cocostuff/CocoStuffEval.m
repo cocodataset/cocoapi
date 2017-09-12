@@ -148,8 +148,8 @@ classdef CocoStuffEval < handle
             %  confusion      - confusion matrix updated with pixels of the current image
             
             % Combine all annotations of this image in labelMapGt and labelMapRes
-            labelMapGt  = cocoSegmentationToSegmentationMap(cocoGt,  imgId, 'includeCrowd', false);
-            labelMapRes = cocoSegmentationToSegmentationMap(cocoRes, imgId, 'includeCrowd', false);
+            labelMapGt  = CocoStuffHelper.cocoSegmentationToSegmentationMap(cocoGt,  imgId, 'includeCrowd', false);
+            labelMapRes = CocoStuffHelper.cocoSegmentationToSegmentationMap(cocoRes, imgId, 'includeCrowd', false);
             
             % Check that the result has only valid labels
             if ~all(ismember(labelMapRes(:), coco.catIds))

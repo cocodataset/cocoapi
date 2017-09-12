@@ -18,7 +18,7 @@ __author__ = 'hcaesar'
 from pycocotools.coco import COCO
 from pycocotools.cocostuffeval import COCOStuffeval
 
-def pycocostuffEvalDemo(dataDir='../..', dataType='train2017', resType='examples'):
+def cocoStuffEvalDemo(dataDir='../..', dataType='train2017', resType='examples'):
     '''
     Shows how to use the main evaluation script of the Stuff Segmentation Challenge.
     :param dataDir: location of the COCO root folder
@@ -45,4 +45,4 @@ def pycocostuffEvalDemo(dataDir='../..', dataType='train2017', resType='examples
     cocoEval.summarize()
 
 if __name__ == "__main__":
-    pycocostuffEvalDemo()
+    cocoStuffEvalDemo()

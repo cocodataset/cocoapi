@@ -17,7 +17,7 @@ import numpy as np
 import skimage.io
 import matplotlib.pyplot as plt
 
-def pycocostuffDemo(dataDir='../..', dataType='train2017'):
+def cocoStuffDemo(dataDir='../..', dataType='train2017'):
     '''
     A preview script that shows how to use the COCO API.
     :param dataDir: location of the COCO root folder
@@ -64,4 +64,4 @@ def pycocostuffDemo(dataDir='../..', dataType='train2017'):
     plt.show()
 
 if __name__ == "__main__":
-    pycocostuffDemo()
+    cocoStuffDemo()

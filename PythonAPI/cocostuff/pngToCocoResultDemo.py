@@ -12,7 +12,7 @@ __author__ = 'hcaesar'
 # format (000000000934.jpg). The older format
 # (COCO_train2014_000000000934.jpg) is not supported.
 #
-# See cocoSegmentationToPng.py for the reverse conversion.
+# See cocoSegmentationToPngDemo.py for the reverse conversion.
 #
 # Microsoft COCO Toolbox.      version 2.0
 # Data, paper, and tutorials available at:  http://mscoco.org/
@@ -65,8 +65,8 @@ def pngToCocoResultDemo(dataDir='../..', resType='examples', indent=None):
             # Write JSON
             str_ = json.dumps(anns, indent=indent)
             str_ = str_[1:-1]
-            output.write(unicode(str_))
             if len(str_) > 0:
+                output.write(unicode(str_))
                 annCount = annCount + 1
 
             # Add comma separator

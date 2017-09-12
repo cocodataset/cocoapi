@@ -13,13 +13,13 @@ __author__ = 'hcaesar'
 
 import cocoSegmentationToPngDemo
 import pngToCocoResultDemo
-import pycocostuffDemo
-import pycocostuffEvalDemo
+import cocoStuffDemo
+import cocoStuffEvalDemo
 
 # Run demos
 print('Running test...')
 cocoSegmentationToPngDemo.cocoSegmentationToPngDemo()
 pngToCocoResultDemo.pngToCocoResultDemo()
-pycocostuffDemo.pycocostuffDemo()
-pycocostuffEvalDemo.pycocostuffEvalDemo()
+cocoStuffDemo.cocoStuffDemo()
+cocoStuffEvalDemo.cocoStuffEvalDemo()
 print('Test successfully finished!')

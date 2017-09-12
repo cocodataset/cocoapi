@@ -57,7 +57,7 @@ def segmentationToCocoResult(labelMap, imgId, stuffStartId=92):
 
     # Add stuff annotations
     anns = []
-    for i, labelId in enumerate(labelsStuff):
+    for labelId in labelsStuff:
 
         # Create mask and encode it
         Rs = segmentationToCocoMask(labelMap, labelId)
@@ -108,6 +108,10 @@ def pngToCocoResult(pngPath, imgId, stuffStartId=92):
     :param pngPath: the path of the .png file
     :param imgId: the COCO id of the image (last part of the file name)
     :param stuffStartId: (optional) index where stuff classes start
+    :return: anns    - a list of dicts for each label in this image
+       .image_id     - the id of the COCO image
+       .category_id  - the id of the stuff class of this annotation
+       .segmentation - the RLE encoded segmentation of this class
     '''
 
     # Read indexed .png file from disk
@@ -129,7 +133,7 @@ def cocoSegmentationToPng(coco, imgId, pngPath, includeCrowd=False):
     '''
 
     # Create label map
-    labelMap = cocoSegmentationToSegmentationMap(coco, imgId, includeCrowd=False)
+    labelMap = cocoSegmentationToSegmentationMap(coco, imgId, includeCrowd=includeCrowd)
     labelMap = labelMap.astype(np.int8)
 
     # Get color map and convert to PIL's format
