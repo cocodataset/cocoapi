@@ -87,7 +87,7 @@ class COCOStuffeval:
         if len(missingInGt) > 0:
             raise Exception('Error: Some images specified in imgIds do not occur in the GT: %s' % missingInGt)
         if len(missingInRes) > 0:
-            print('Warning: %d evaluation images not found in the result!' % sum(missingInRes))
+            raise Exception('Error: %d evaluation images not found in the result!' % sum(missingInRes))
 
         # Create confusion matrix
         labelCount = max([c for c in self.cocoGt.cats])
