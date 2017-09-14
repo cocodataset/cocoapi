@@ -76,7 +76,7 @@ class COCOStuffeval:
         # Reset eval and print message
         tic = time.time()
         imgIds = self.params.imgIds
-        print('Evaluate stuff segmentation on %d images and %d classes...' \
+        print('Evaluating stuff segmentation on %d images and %d classes...' \
             % (len(imgIds), len(self.catIds)))
 
         # Check that all images in params occur in GT and results
@@ -87,7 +87,7 @@ class COCOStuffeval:
         if len(missingInGt) > 0:
             raise Exception('Error: Some images specified in imgIds do not occur in the GT: %s' % missingInGt)
         if len(missingInRes) > 0:
-            raise Exception('Error: %d evaluation images not found in the result!' % sum(missingInRes))
+            raise Exception('Error: %d evaluation images not found in the result!' % len(missingInRes))
 
         # Create confusion matrix
         labelCount = max([c for c in self.cocoGt.cats])
