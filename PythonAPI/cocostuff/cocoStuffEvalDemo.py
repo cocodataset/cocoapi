@@ -18,7 +18,7 @@ __author__ = 'hcaesar'
 from pycocotools.coco import COCO
 from pycocotools.cocostuffeval import COCOStuffeval
 
-def cocoStuffEvalDemo(dataDir='../..', dataType='train2017', resType='examples'):
+def cocoStuffEvalDemo(dataDir='../..', dataType='examples', resType='examples'):
     '''
     Shows how to use the main evaluation script of the Stuff Segmentation Challenge.
     :param dataDir: location of the COCO root folder
@@ -37,10 +37,14 @@ def cocoStuffEvalDemo(dataDir='../..', dataType='train2017', resType='examples')
     # Initialize COCO result API
     cocoRes = cocoGt.loadRes(resFile)
 
-    # Run evaluation on the example images
-    imgIds = sorted(set([a['image_id'] for a in cocoRes.anns.values()]))
+    # Initialize the evaluation
     cocoEval = COCOStuffeval(cocoGt, cocoRes)
+
+    # Modify this to use only a subset of the images for evaluation
+    imgIds = sorted(set([a['image_id'] for a in cocoRes.anns.values()]))
     cocoEval.params.imgIds = imgIds
+
+    # Run evaluation on the example images
     cocoEval.evaluate()
     cocoEval.summarize()
 
