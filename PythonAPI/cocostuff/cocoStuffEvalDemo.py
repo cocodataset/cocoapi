@@ -41,8 +41,8 @@ def cocoStuffEvalDemo(dataDir='../..', dataType='examples', resType='examples'):
     cocoEval = COCOStuffeval(cocoGt, cocoRes)
 
     # Modify this to use only a subset of the images for evaluation
-    imgIds = sorted(set([a['image_id'] for a in cocoRes.anns.values()]))
-    cocoEval.params.imgIds = imgIds
+    #imgIds = sorted(set([a['image_id'] for a in cocoRes.anns.values()]))
+    #cocoEval.params.imgIds = imgIds
 
     # Measure time
     import time

@@ -124,8 +124,10 @@ class COCOStuffeval:
         labelMapRes = cocoSegmentationToSegmentationMap(cocoRes, imgId, includeCrowd=False)
 
         # Check that the result has only valid labels
-        if not np.in1d(labelMapRes, self.catIds).all():
-            raise Exception('Error: Invalid classes predicted in the result file!')
+        invalidLabels = [l for l in np.unique(labelMapRes) if l not in self.catIds]
+        if len(invalidLabels) > 0:
+            raise Exception('Error: Invalid classes predicted in the result file: %s. Please insert only labels in the range [%d, %d]!'
+            % (str(invalidLabels), min(self.catIds), max(self.catIds)))
         
         # Filter labels that are not in catIds (includes the 0 label)
         valid = np.reshape(np.in1d(labelMapGt, self.catIds), labelMapGt.shape)
