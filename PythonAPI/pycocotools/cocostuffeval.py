@@ -120,7 +120,7 @@ class COCOStuffeval:
         '''
 
         # Combine all annotations of this image in labelMapGt and labelMapRes
-        labelMapGt  = cocoSegmentationToSegmentationMap(cocoGt, imgId, includeCrowd=False)
+        labelMapGt  = cocoSegmentationToSegmentationMap(cocoGt,  imgId, includeCrowd=False)
         labelMapRes = cocoSegmentationToSegmentationMap(cocoRes, imgId, includeCrowd=False)
 
         # Check that the result has only valid labels
@@ -134,8 +134,14 @@ class COCOStuffeval:
 
         # Gather annotations in confusion matrix
         for g, d in zip(validGt, validRes):
-            confusion[g-1, d-1] = confusion[g-1, d-1] + 1
+            confusion[g-1, d-1] += 1
 
+        # Equally slow alternative
+        # import sklearn.metrics # Used to update the confusion matrix
+        # confusionNew = sklearn.metrics.confusion_matrix(validGt, validRes, labels=xrange(1, labelCount+1))
+        #confusion = confusion + confusionNew
+
+        # Update confusion matrix
         return confusion
 
     def summarize(self):

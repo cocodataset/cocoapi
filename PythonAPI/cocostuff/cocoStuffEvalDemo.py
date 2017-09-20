@@ -29,7 +29,7 @@ def cocoStuffEvalDemo(dataDir='../..', dataType='examples', resType='examples'):
 
     # Define paths
     annFile = '%s/annotations/stuff_%s.json' % (dataDir, dataType)
-    resFile = '%s/results/instances_stuff_%s_results.json' % (dataDir, resType)
+    resFile = '%s/results/stuff_%s_results.json' % (dataDir, resType)
 
     # Initialize COCO ground-truth API
     cocoGt = COCO(annFile)
@@ -44,9 +44,17 @@ def cocoStuffEvalDemo(dataDir='../..', dataType='examples', resType='examples'):
     imgIds = sorted(set([a['image_id'] for a in cocoRes.anns.values()]))
     cocoEval.params.imgIds = imgIds
 
+    # Measure time
+    import time
+    before = time.clock()
+
     # Run evaluation on the example images
     cocoEval.evaluate()
     cocoEval.summarize()
+
+    # Print time
+    after = time.clock()
+    print('Evaluation took %fs!' % (after - before))
 
 if __name__ == "__main__":
     cocoStuffEvalDemo()

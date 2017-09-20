@@ -27,7 +27,7 @@ import skimage.io
 import matplotlib.pyplot as plt
 
 def cocoSegmentationToPngDemo(dataDir='../..', dataTypeAnn='train2017', dataTypeRes='examples', \
-        pngFolderName='export_png', isAnnotation=True, exportImageLimit=100):
+        pngFolderName='export_png', isAnnotation=True, exportImageLimit=10):
     '''
     Converts COCO segmentation .json files (GT or results) to one .png file per image.
     :param dataDir: location of the COCO root folder

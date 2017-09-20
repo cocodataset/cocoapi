@@ -34,7 +34,7 @@ def internalToCocoGTDemo(dataType='train2017', dataDir='../..',
         indent=None, includeCrowd=False, outputAnnots=True):
     '''
     Converts our internal .mat representation of the ground-truth annotations to COCO format.
-    :param dataType: the name of the subset: train201x, val201x, test-dev201x or test-challenge201x
+    :param dataType: the name of the subset: train201x, val201x, test-dev201x or test201x
     :param dataDir: location of the COCO root folder
     :param imgCount: the number of images to use for the .json file
     :param stuffStartId: id where stuff classes start
@@ -83,7 +83,7 @@ def internalToCocoGTDemo(dataType='train2017', dataDir='../..',
         annIdStart = int(2e7)
     elif dataType == 'test-dev2017':
         annIdStart = int(3e7)
-    elif dataType == 'test-challenge2017':
+    elif dataType == 'test2017':
         annIdStart = int(4e7)
     else:
         raise Exception('Error: Unknown dataType %s specified!' % dataType)

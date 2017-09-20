@@ -87,12 +87,17 @@ def cocoSegmentationToSegmentationMap(coco, imgId, checkUniquePixelLabel=True, i
 
     # Get annotations of the current image (may be empty)
     imgAnnots = [a for a in coco.anns.values() if a['image_id'] == imgId]
-    if not includeCrowd:
-        imgAnnots = [a for a in imgAnnots if a['iscrowd'] != 1]
-    
+    if includeCrowd:
+        annIds = coco.getAnnIds(imgIds=imgId)
+    else:
+        annIds = coco.getAnnIds(imgIds=imgId, iscrowd=False)
+    imgAnnots = coco.loadAnns(annIds)
+
     # Combine all annotations of this image in labelMap
+    labelMasks = mask.decode([a['segmentation'] for a in imgAnnots])
     for a in xrange(0, len(imgAnnots)):
-        labelMask = coco.annToMask(imgAnnots[a]) == 1
+        #labelMask = coco.annToMask(imgAnnots[a]) == 1
+        labelMask = labelMasks[:, :, a] == 1
         newLabel = imgAnnots[a]['category_id']
 
         if checkUniquePixelLabel and (labelMap[labelMask] != 0).any():

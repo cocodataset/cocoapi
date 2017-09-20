@@ -37,7 +37,7 @@ def pngToCocoResultDemo(dataDir='../..', resType='examples', indent=None):
 
     # Define paths
     pngFolder = '%s/results/segmentations/%s' % (dataDir, resType)
-    jsonPath = '%s/results/instances_stuff_%s_results.json' % (dataDir, resType)
+    jsonPath = '%s/results/stuff_%s_results.json' % (dataDir, resType)
 
     # Get images in png folder
     imgNames = os.listdir(pngFolder)
@@ -59,7 +59,16 @@ def pngToCocoResultDemo(dataDir='../..', resType='examples', indent=None):
 
             # Add stuff annotations
             pngPath = '%s/%s.png' % (pngFolder, imgName)
-            imgId = int(imgName)
+            tokens = imgName.split('_')
+            if len(tokens) == 1:
+                # COCO 2017 format
+                imgId = int(imgName)
+            elif len(tokens) == 3:
+                # Previous COCO format
+                imgId = int(tokens[2])
+            else:
+                raise Exception('Error: Invalid COCO file format!')
+
             anns = pngToCocoResult(pngPath, imgId)
 
             # Write JSON
