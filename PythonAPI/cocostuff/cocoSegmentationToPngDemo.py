@@ -44,7 +44,7 @@ def cocoSegmentationToPngDemo(dataDir='../..', dataTypeAnn='train2017', dataType
         pngFolder = '%s/annotations/%s' % (dataDir, pngFolderName)
     else:
         pngFolder = '%s/results/%s' % (dataDir, pngFolderName)
-        resPath = '%s/results/instances_stuff_%s_results.json' % (dataDir, dataTypeRes)
+        resPath = '%s/results/stuff_%s_results.json' % (dataDir, dataTypeRes)
 
     # Create output folder
     if not os.path.exists(pngFolder):

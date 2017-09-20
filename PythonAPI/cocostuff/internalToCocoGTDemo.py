@@ -72,7 +72,7 @@ def internalToCocoGTDemo(dataType='train2017', dataDir='../..',
     imgCount = len(imgNames)
     imgIds = [int(imgName) for imgName in imgNames]
 
-    # Load COCO API
+    # Load COCO API for things
     cocoGt = COCO(annPath)
 
     # Init
