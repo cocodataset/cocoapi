@@ -13,10 +13,10 @@
 
 % Define paths
 dataDir= '../..';
-dataType = 'train2017';
+dataType = 'examples';
 resType = 'examples';
 annFile = sprintf('%s/annotations/stuff_%s.json', dataDir, dataType);
-resFile = sprintf('%s/results/instances_stuff_%s_results.json', dataDir, resType);
+resFile = sprintf('%s/results/stuff_%s_results.json', dataDir, resType);
 
 % Initialize COCO ground-truth API
 cocoGt = CocoApi(annFile);
@@ -24,9 +24,16 @@ cocoGt = CocoApi(annFile);
 % Initialize COCO result API
 cocoRes = cocoGt.loadRes(resFile);
 
-% Run evaluation on the example images
-imgIds = unique(cell2mat({cocoRes.data.annotations.image_id}))';
+% Initialize the evaluation
 cocoEval = CocoStuffEval(cocoGt, cocoRes);
-cocoEval.params.imgIds = imgIds;
+
+% Modify this to use only a subset of the images for evaluation
+% imgIds = unique(cell2mat({cocoRes.data.annotations.image_id}))';
+% cocoEval.params.imgIds = imgIds;
+
+% Run evaluation on the example images
+timer = tic;
 cocoEval.evaluate();
 cocoEval.summarize();
+time = toc(timer);
+fprintf('Evaluation took %.2fs!\n', time);

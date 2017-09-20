@@ -20,7 +20,7 @@ dataTypeAnn = 'train2017';
 dataTypeRes = 'examples';
 pngFolderName = 'export_png';
 isAnnotation = true;
-exportImageLimit = 100;
+exportImageLimit = 10;
 
 % Define paths
 annPath = sprintf('%s/annotations/stuff_%s.json', dataDir, dataTypeAnn);
@@ -28,7 +28,7 @@ if isAnnotation
     pngFolder = sprintf('%s/annotations/%s', dataDir, pngFolderName);
 else
     pngFolder = sprintf('%s/results/%s', dataDir, pngFolderName);
-    resPath = sprintf('%s/results/instances_stuff_%s_results.json', dataDir, dataTypeRes);
+    resPath = sprintf('%s/results/stuff_%s_results.json', dataDir, dataTypeRes);
 end
 
 % Create output folder

@@ -96,7 +96,7 @@ classdef CocoStuffEval < handle
             %  coco      - initialized CocoStuffEval object
             timer = tic();
             imgIds = coco.params.imgIds;
-            fprintf('Evaluate stuff segmentation on %d images and %d classes...\n', numel(imgIds), numel(coco.catIds));
+            fprintf('Evaluating stuff segmentation on %d images and %d classes...\n', numel(imgIds), numel(coco.catIds));
             
             % Check that all images in params occur in GT and results
             gtImgIds = unique(coco.cocoGt.getImgIds());
@@ -107,7 +107,7 @@ classdef CocoStuffEval < handle
                 error('Error: Some images specified in params.imgIds do not occur in the GT: %s', num2str(missingInGt));
             end
             if ~isempty(missingInRes)
-                fprintf('Warning: %d evaluation images not found in the result!\n', sum(missingInRes));
+                error('Error: %d evaluation images not found in the result!\n', numel(missingInRes));
             end
             
             % Create confusion matrix
@@ -152,8 +152,10 @@ classdef CocoStuffEval < handle
             labelMapRes = CocoStuffHelper.cocoSegmentationToSegmentationMap(cocoRes, imgId, 'includeCrowd', false);
             
             % Check that the result has only valid labels
-            if ~all(ismember(labelMapRes(:), coco.catIds))
-                error('Error: Invalid classes predicted in the result file!');
+            labelMapResUn = unique(labelMapRes);
+            invalidLabels = labelMapResUn(~ismember(labelMapResUn, coco.catIds));
+            if ~isempty(invalidLabels)
+                error('Error: Invalid classes predicted in the result file: %s. Please insert only labels in the range [%d, %d]!', sprintf('%s', num2str(invalidLabels')), min(coco.catIds), max(coco.catIds));
             end
             
             % Filter labels that are not in catIds (includes the 0 label)

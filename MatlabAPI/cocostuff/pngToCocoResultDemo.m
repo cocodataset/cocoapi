@@ -17,7 +17,7 @@
 dataDir = '../..';
 resType = 'examples';
 pngFolder = sprintf('%s/results/segmentations/%s', dataDir, resType);
-jsonPath = sprintf('%s/results/instances_stuff_%s_results.json', dataDir, resType);
+jsonPath = sprintf('%s/results/stuff_%s_results.json', dataDir, resType);
 
 % Get images in png folder
 imgNames = dir([pngFolder, '/*.png']);
@@ -41,7 +41,16 @@ for i = 1 : imgCount
     
     % Add stuff annotations
     pngPath = sprintf('%s/%s.png', pngFolder, imgName);
-    imgId = str2double(imgName);
+    tokens = strsplit(imgName, '_');
+    if numel(tokens) == 1
+        % COCO 2017 format
+        imgId = str2double(imgName);
+    elseif numel(tokens) == 3
+        % Previous COCO format
+        imgId = str2double(tokens(3));
+    else
+        error('Error: Invalid COCO file format!');
+    end
     anns = CocoStuffHelper.pngToCocoResult(pngPath, imgId);
     
     % Write JSON
