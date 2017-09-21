@@ -124,10 +124,10 @@ classdef CocoStuffHelper
             imgAnnots = coco.loadAnns(imgAnnotIds);
             
             % Combine all annotations of this image in labelMap
-            labelMasks = MaskApi.decode([imgAnnots.segmentation]);
+            % labelMasks = MaskApi.decode([imgAnnots.segmentation]);
             for a = 1 : numel(imgAnnots)
-                % labelMask = CocoStuffHelper.annToMask(coco, imgAnnots(a)) == 1;
-                labelMask = labelMasks(:, :, a) == 1;
+                labelMask = CocoStuffHelper.annToMask(coco, imgAnnots(a)) == 1;
+                % labelMask = labelMasks(:, :, a) == 1;
                 newLabel = imgAnnots(a).category_id;
                 
                 if checkUniquePixelLabel && any(labelMap(labelMask) ~= 0)

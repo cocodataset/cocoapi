@@ -54,7 +54,7 @@ def cocoStuffEvalDemo(dataDir='../..', dataType='examples', resType='examples'):
 
     # Print time
     after = time.clock()
-    print('Evaluation took %fs!' % (after - before))
+    print('Evaluation took %.2fs!' % (after - before))
 
 if __name__ == "__main__":
     cocoStuffEvalDemo()

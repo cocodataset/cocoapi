@@ -292,7 +292,15 @@ classdef CocoApi
       % OUTPUTS
       %  cocoRes    - initialized results API
       fprintf('Loading and preparing results...     '); clk=clock;
-      cdata=coco.data; R=gason(fileread(resFile)); m=length(R);
+      cdata=coco.data; R=gason(fileread(resFile));
+      
+      % Modified for stuff challenge. Allow submitting more results than there are images in the GT
+      relevantImgIds = unique([cdata.images.id]');
+      imgIdsR = [R.image_id]';
+      relevantMaskR = ismember(imgIdsR, relevantImgIds);
+      R = R(relevantMaskR);
+      
+      m=length(R);
       valid=ismember([R.image_id],[cdata.images.id]);
       if(~all(valid)), error('Results provided for invalid images.'); end
       t={'segmentation','bbox','keypoints','caption'}; t=t{isfield(R,t)};

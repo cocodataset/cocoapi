@@ -93,7 +93,8 @@ class COCOStuffeval:
         labelCount = max([c for c in self.cocoGt.cats])
         confusion = np.zeros((labelCount, labelCount))
         for i, imgId in enumerate(imgIds):
-            print('Evaluating image %d of %d: %d' % (i+1, len(imgIds), imgId))
+            if i+1 == 1 or i+1 == len(imgIds) or (i+1) % 10 == 0:
+                print('Evaluating image %d of %d: %d' % (i+1, len(imgIds), imgId))
             confusion = self._accumulateConfusion(self.cocoGt, self.cocoRes, confusion, imgId)
         self.confusion = confusion
 

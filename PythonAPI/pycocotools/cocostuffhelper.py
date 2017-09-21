@@ -94,10 +94,10 @@ def cocoSegmentationToSegmentationMap(coco, imgId, checkUniquePixelLabel=True, i
     imgAnnots = coco.loadAnns(annIds)
 
     # Combine all annotations of this image in labelMap
-    labelMasks = mask.decode([a['segmentation'] for a in imgAnnots])
+    #labelMasks = mask.decode([a['segmentation'] for a in imgAnnots])
     for a in xrange(0, len(imgAnnots)):
-        #labelMask = coco.annToMask(imgAnnots[a]) == 1
-        labelMask = labelMasks[:, :, a] == 1
+        labelMask = coco.annToMask(imgAnnots[a]) == 1
+        #labelMask = labelMasks[:, :, a] == 1
         newLabel = imgAnnots[a]['category_id']
 
         if checkUniquePixelLabel and (labelMap[labelMask] != 0).any():

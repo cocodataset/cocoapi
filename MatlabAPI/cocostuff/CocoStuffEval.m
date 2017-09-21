@@ -115,7 +115,9 @@ classdef CocoStuffEval < handle
             confusionCur = zeros(maxLabelCount, maxLabelCount);
             for i = 1 : numel(imgIds)
                 imgId = imgIds(i);
-                fprintf('Evaluating image %d of %d: %d\n', i, numel(imgIds), imgId);
+                if i == 1 || i == numel(imgIds) || mod(i, 10) == 0
+                    fprintf('Evaluating image %d of %d: %d\n', i, numel(imgIds), imgId);
+                end
                 confusionCur = coco.accumulateConfusion(coco.cocoGt, coco.cocoRes, confusionCur, imgId);
             end
             coco.confusion = confusionCur;

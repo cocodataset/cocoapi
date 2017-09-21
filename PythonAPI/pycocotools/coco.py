@@ -307,9 +307,15 @@ class COCO:
         else:
             anns = resFile
         assert type(anns) == list, 'results in not an array of objects'
+
+        # Modified for stuff challenge. Allow submitting more results than there are images in the GT
+        relevantImgIds = sorted(set(self.getImgIds()))
+        imgIdsR = [ann['image_id'] for ann in anns]
+        anns = [a for a in anns if a['image_id'] in relevantImgIds]
         annsImgIds = [ann['image_id'] for ann in anns]
         assert set(annsImgIds) == (set(annsImgIds) & set(self.getImgIds())), \
                'Results do not correspond to current coco set'
+
         if 'caption' in anns[0]:
             imgIds = set([img['id'] for img in res.dataset['images']]) & set([ann['image_id'] for ann in anns])
             res.dataset['images'] = [img for img in res.dataset['images'] if img['id'] in imgIds]
