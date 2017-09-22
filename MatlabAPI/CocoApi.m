@@ -225,7 +225,7 @@ classdef CocoApi
       imgs = coco.data.images([ids{:}]);
     end
     
-    function hs = showAnns( coco, anns )
+    function hs = showAnns( coco, anns, color )
       % Display the specified annotations.
       %
       % USAGE
@@ -239,6 +239,11 @@ classdef CocoApi
       n=length(anns); if(n==0), return; end
       r=.4:.2:1; [r,g,b]=ndgrid(r,r,r); cs=[r(:) g(:) b(:)];
       cs=cs(randperm(size(cs,1)),:); cs=repmat(cs,100,1);
+      if exist('color', 'var')
+          cs(:, 1) = color(1);
+          cs(:, 2) = color(2);
+          cs(:, 3) = color(3);
+      end
       if( isfield( anns,'keypoints') )
         for i=1:n
           a=anns(i); if(isfield(a,'iscrowd') && a.iscrowd), continue; end
