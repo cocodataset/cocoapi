@@ -136,15 +136,18 @@ class COCOStuffeval:
         validRes = labelMapRes[valid].astype(int)
 
         # Gather annotations in confusion matrix
-        for g, d in zip(validGt, validRes):
-            confusion[g-1, d-1] += 1
+        #for g, d in zip(validGt, validRes):
+        #    confusion[g-1, d-1] += 1
 
-        # Equally slow alternative
-        # import sklearn.metrics # Used to update the confusion matrix
-        # confusionNew = sklearn.metrics.confusion_matrix(validGt, validRes, labels=xrange(1, labelCount+1))
-        #confusion = confusion + confusionNew
+        # Much faster version using np.unique
+        n = confusion.shape[0] + 1  # Arbitrary number > labelCount
+        map_for_count = validGt * n + validRes
+        vals, cnts = np.unique(map_for_count, return_counts=True)
+        for v, c in zip(vals, cnts):
+            g = v // n
+            d = v % n
+            confusion[g - 1, d - 1] += c
 
-        # Update confusion matrix
         return confusion
 
     def summarize(self):
