@@ -334,6 +334,7 @@ class COCOeval:
         M           = len(p.maxDets)
         precision   = -np.ones((T,R,K,A,M)) # -1 for the precision of absent categories
         recall      = -np.ones((T,K,A,M))
+        scores      = -np.ones((T,R,K,A,M))
 
         # create dictionary for future indexing
         _pe = self._paramsEval
@@ -364,6 +365,7 @@ class COCOeval:
                     # different sorting method generates slightly different results.
                     # mergesort is used to be consistent as Matlab implementation.
                     inds = np.argsort(-dtScores, kind='mergesort')
+                    dtScoresSorted = dtScores[inds]
 
                     dtm  = np.concatenate([e['dtMatches'][:,0:maxDet] for e in E], axis=1)[:,inds]
                     dtIg = np.concatenate([e['dtIgnore'][:,0:maxDet]  for e in E], axis=1)[:,inds]
@@ -383,6 +385,7 @@ class COCOeval:
                         rc = tp / npig
                         pr = tp / (fp+tp+np.spacing(1))
                         q  = np.zeros((R,))
+                        ss = np.zeros((R,))
 
                         if nd:
                             recall[t,k,a,m] = rc[-1]
@@ -401,15 +404,18 @@ class COCOeval:
                         try:
                             for ri, pi in enumerate(inds):
                                 q[ri] = pr[pi]
+                                ss[ri] = dtScoresSorted[pi]
                         except:
                             pass
                         precision[t,:,k,a,m] = np.array(q)
+                        scores[t,:,k,a,m] = np.array(ss)
         self.eval = {
             'params': p,
             'counts': [T, R, K, A, M],
             'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'precision': precision,
             'recall':   recall,
+            'scores': scores,
         }
         toc = time.time()
         print('DONE (t={:0.2f}s).'.format( toc-tic))
