@@ -18,6 +18,7 @@ ext_modules = [
 setup(name='pycocotools',
       packages=['pycocotools'],
       package_dir = {'pycocotools': 'pycocotools'},
+      install_requires=['matplotlib'],
       version='2.0',
       ext_modules=
           cythonize(ext_modules)
