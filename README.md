@@ -1,6 +1,7 @@
-COCO API - http://cocodataset.org/
+Clone of COCO API - http://cocodataset.org/
+===========================================
 
-> Phil: Made changes to `PythonAPI/setup.py` and `PythonAPI/pycocotools/coco.py` to support Windows build and python3.
+# Original README:
 
 COCO is a large image dataset designed for object detection, segmentation, person keypoints detection, stuff segmentation, and caption generation. This package provides Matlab, Python, and Lua APIs that assists in loading, parsing, and visualizing the annotations in COCO. Please visit http://cocodataset.org/ for more information on COCO, including for the data, paper, and tutorials. The exact format of the annotations is also described on the COCO website. The Matlab and Python APIs are complete, the Lua API provides only basic functionality.
 
@@ -9,9 +10,31 @@ In addition to this API, please download both the COCO images and annotations in
 -Please download and place the annotations in: coco/annotations/
 For substantially more details on the API please see http://cocodataset.org/#download.
 
-After downloading the images and annotations, run the Matlab, Python, or Lua demos for example usage.
+# This clone's README:
+90
+To support Windows build and python3 we had to make [minor changes](https://github.com/cocodataset/cocoapi/compare/master...philferriere:master) to:
 
-To install:
--For Matlab, add coco/MatlabApi to the Matlab path (OSX/Linux binaries provided)
--For Python, run "make" under coco/PythonAPI
--For Lua, run “luarocks make LuaAPI/rocks/coco-scm-1.rockspec” under coco/
+- `PythonAPI/Makefile`
+- `PythonAPI/setup.py`
+- `PythonAPI/pycocotools/coco.py`
+
+To install this package, use `pip` as follows:
+
+```
+(dlwin36coco) pferr@MSI d:\repos
+$ pip install git+https://github.com/philferriere/cocoapi.git#egg=pycocotools^&subdirectory=PythonAPI
+Collecting pycocotools from git+https://github.com/philferriere/cocoapi.git#egg=pycocotools&subdirectory=PythonAPI
+  Cloning https://github.com/philferriere/cocoapi.git to c:\users\pferr\appdata\local\temp\pip-build-6n1mxmto\pycocotools
+Installing collected packages: pycocotools
+  Running setup.py install for pycocotools ... done
+Successfully installed pycocotools-2.0
+```
+
+On Windows, for the avove to work, you must have the Visual C++ 2015 build tools on your path. If you don't, make sure to install them from [here](http://landinghub.visualstudio.com/visual-cpp-build-tools):
+
+![](img/download.png)
+
+Then, run `visualcppbuildtools_full.exe` and select default options:
+
+![](img/install.png)
+
