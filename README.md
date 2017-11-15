@@ -25,7 +25,7 @@ To install this package, use `pip` as follows:
 ```
 (dlwin36coco) pferr@MSI d:\repos
 $ pip install git+https://github.com/philferriere/cocoapi.git#egg=pycocotools^&subdirectory=PythonAPI
-Collecting pycocotools from git+https://github.com/philferriere/cocoapi.git#egg=pycocotools&subdirectory=PythonAPI
+Collecting pycocotools from git+https://github.com/philferriere/cocoapi.git#subdirectory=PythonAPI
   Cloning https://github.com/philferriere/cocoapi.git to c:\users\pferr\appdata\local\temp\pip-build-6n1mxmto\pycocotools
 Installing collected packages: pycocotools
   Running setup.py install for pycocotools ... done
@@ -39,4 +39,13 @@ On Windows, for the avove to work, you must have the Visual C++ 2015 build tools
 Then, run `visualcppbuildtools_full.exe` and select default options:
 
 ![](img/install.png)
+
+# Why have the demo notebooks been moved into their own directory?
+
+If you clone/fork the **original** repo, you may hit the following error when running the demo notebooks:
+
+![](img/notebooks.png)
+
+It happens because there is a `pycocotools` directory in the same folder as the notebooks. The python code being imported then is the **local** implementation of `pycocotools`, not the one installed with `pip`. To fix this issue, the demo notebooks have been moved to their own directory.
+
 
