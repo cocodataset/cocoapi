@@ -4,7 +4,7 @@ from distutils.extension import Extension
 import numpy as np
 
 # To install and compile to your anaconda/python site-packages, simply run:
-# $ pip install git+https://github.com/philferriere/cocoapi.git#egg=pycocotools^&subdirectory=PythonAPI
+# $ pip install git+https://github.com/philferriere/cocoapi.git#subdirectory=PythonAPI
 # Note that the original compile flags below are GCC flags unsupported by the Visual C++ 2015 build tools.
 # They can safely be removed.
 
