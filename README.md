@@ -24,7 +24,7 @@ To install this package, use `pip` as follows:
 
 ```
 (dlwin36coco) pferr@MSI d:\repos
-$ pip install git+https://github.com/philferriere/cocoapi.git#egg=pycocotools^&subdirectory=PythonAPI
+$ pip install git+https://github.com/philferriere/cocoapi.git#subdirectory=PythonAPI
 Collecting pycocotools from git+https://github.com/philferriere/cocoapi.git#subdirectory=PythonAPI
   Cloning https://github.com/philferriere/cocoapi.git to c:\users\pferr\appdata\local\temp\pip-build-6n1mxmto\pycocotools
 Installing collected packages: pycocotools
