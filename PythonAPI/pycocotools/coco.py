@@ -55,12 +55,16 @@ import itertools
 from . import mask as maskUtils
 import os
 from collections import defaultdict
-import sys
-PYTHON_VERSION = sys.version_info[0]
-if PYTHON_VERSION == 2:
-    from urllib import urlretrieve
-elif PYTHON_VERSION == 3:
+
+try:                 # Python 3
     from urllib.request import urlretrieve
+except ImportError:  # Python 2
+    from urllib import urlretrieve
+
+try:
+    unicode        # Python 2
+except NameError:
+    unicode = str  # Python 3
 
 
 def _isArrayLike(obj):
@@ -305,7 +309,7 @@ class COCO:
 
         print('Loading and preparing results...')
         tic = time.time()
-        if type(resFile) == str or type(resFile) == unicode:
+        if isinstance(resFile, (str, unicode)):
             anns = json.load(open(resFile))
         elif type(resFile) == np.ndarray:
             anns = self.loadNumpyAnnotations(resFile)
