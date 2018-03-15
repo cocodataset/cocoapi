@@ -49,7 +49,11 @@ def internalToCocoGTDemo(dataType='train2017', dataDir='../..',
     # Define paths
     imgCountStr = ('_%d' % imgCount) if imgCount < float('inf') else ''
     annotFolder = '%s/annotations/internal/%s' % (dataDir, dataType)
-    annPath = '%s/annotations/instances_%s.json' % (dataDir, dataType)
+    if dataType == 'test-dev5k2017':
+        dataTypeInst =  'test-dev2017'
+    else:
+        dataTypeInst = dataType
+    annPath = '%s/annotations/instances_%s.json' % (dataDir, dataTypeInst)
     if outputAnnots:
         jsonPath = '%s/annotations/stuff_%s%s.json' % (dataDir, dataType, imgCountStr)
     else:
@@ -83,8 +87,10 @@ def internalToCocoGTDemo(dataType='train2017', dataDir='../..',
         annIdStart = int(2e7)
     elif dataType == 'test-dev2017':
         annIdStart = int(3e7)
-    elif dataType == 'test2017':
+    elif dataType == 'test-challenge2017':
         annIdStart = int(4e7)
+    elif dataType == 'test-dev5k2017': # Redundant test set annotations
+        annIdStart = int(5e7)
     else:
         raise Exception('Error: Unknown dataType %s specified!' % dataType)
     annId = annIdStart
@@ -232,7 +238,7 @@ def internalToCocoGTDemo(dataType='train2017', dataDir='../..',
                 annotPath = os.path.join(annotFolder, imgName)
                 matfile = scipy.io.loadmat(annotPath)
                 labelMap = matfile['S']
-                if not np.all([i == 0 or i >= stuffStartId for i in np.unique(labelMap)]):
+                if not np.all([j == 0 or j >= stuffStartId for j in np.unique(labelMap)]):
                     raise Exception('Error: .mat annotation files should not contain thing labels!')
 
                 # Merge thing classes
