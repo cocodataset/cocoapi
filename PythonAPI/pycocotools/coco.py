@@ -56,9 +56,9 @@ from . import mask as maskUtils
 import os
 from collections import defaultdict
 
-try:                 # Python 2
-    from urllib.request import urlretriev
-except ImportError:  # Python 3
+try:                 # Python 3
+    from urllib.request import urlretrieve
+except ImportError:  # Python 2
     from urllib import urlretrieve
 
 try:                 # Python 2
