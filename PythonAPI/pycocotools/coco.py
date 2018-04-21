@@ -194,7 +194,7 @@ class COCO:
                 if i == 0 and len(ids) == 0:
                     ids = set(self.catToImgs[catId])
                 else:
-                    ids &= set(self.catToImgs[catId])
+                    ids.update(set(self.catToImgs[catId]))
         return list(ids)
 
     def loadAnns(self, ids=[]):
