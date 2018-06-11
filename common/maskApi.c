@@ -132,12 +132,13 @@ void bbNms( BB dt, siz n, uint *keep, double thr ) {
 
 void rleToBbox( const RLE *R, BB bb, siz n ) {
   siz i; for( i=0; i<n; i++ ) {
-    uint h, w, x, y, xs, ys, xe, ye, cc, t; siz j, m;
+    uint h, w, x, y, xs, ys, xe, ye, xp, cc, t; siz j, m;
     h=(uint)R[i].h; w=(uint)R[i].w; m=R[i].m;
     m=((siz)(m/2))*2; xs=w; ys=h; xe=ye=0; cc=0;
     if(m==0) { bb[4*i+0]=bb[4*i+1]=bb[4*i+2]=bb[4*i+3]=0; continue; }
     for( j=0; j<m; j++ ) {
       cc+=R[i].cnts[j]; t=cc-j%2; y=t%h; x=(t-y)/h;
+      if(j%2==0) xp=x; else if(xp<x) { ys=0; ye=h-1; }
       xs=umin(xs,x); xe=umax(xe,x); ys=umin(ys,y); ye=umax(ye,y);
     }
     bb[4*i+0]=xs; bb[4*i+2]=xe-xs+1;
