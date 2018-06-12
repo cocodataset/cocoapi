@@ -6,6 +6,7 @@ external/
 
 MatlabAPI/analyze*/
 MatlabAPI/visualize*/
+MatlabAPI/private/maskApiMex.*
 
 PythonAPI/pycocotools/__init__.pyc
 PythonAPI/pycocotools/_mask.c
