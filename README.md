@@ -32,7 +32,7 @@ Installing collected packages: pycocotools
 Successfully installed pycocotools-2.0
 ```
 
-On Windows, for the avove to work, you must have the Visual C++ 2015 build tools on your path. If you don't, make sure to install them from [here](http://landinghub.visualstudio.com/visual-cpp-build-tools):
+On Windows, for the avove to work, you must have the Visual C++ 2015 build tools on your path. If you don't, make sure to install them from [here](https://go.microsoft.com/fwlink/?LinkId=691126):
 
 ![](img/download.png)
 
