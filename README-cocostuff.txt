@@ -1,5 +1,9 @@
-# COCO 2017 Stuff Segmentation Challenge API
-The COCO Stuff API extends the [COCO API](https://github.com/pdollar/coco) with additional tools for stuff segmentation. On this page we present all files that are relevant to the COCO 2017 Stuff Segmentation Challenge. The API currently fully supports Matlab and Python. For use with other languages we also provide various scripts below to convert annotations from COCO ground-truth (GT) format to .png format, as well as from .png format back to COCO result format.
+# COCO Stuff Segmentation Challenge API
+The COCO Stuff API extends the [COCO API](https://github.com/cocodataset/cocoapi) with additional tools for stuff segmentation. 
+On this page we present all files that are relevant to the COCO Stuff API. 
+The API currently fully supports Matlab and Python. 
+For use with other languages we also provide various scripts below to convert annotations from COCO ground-truth (GT) format to .png format, 
+as well as from .png format back to COCO result format.
 
 ## COCO API notes
 In addition to this API, please download both the COCO images and annotations in order to run the demos and use the API. Both are available on the project website.
