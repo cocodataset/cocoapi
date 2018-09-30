@@ -623,7 +623,10 @@ class COCOeval:
         self.analyze_figures = {}
         for k, catId in enumerate(catIds):
             nm = self.cocoGt.loadCats(catId)[0]
-            nm = nm['supercategory'] + '-' + nm['name']
+            if 'supercategory' in nm:
+                nm = nm['supercategory'] + '-' + nm['name']
+            else:
+                nm = nm['name']
             print('Analyzing %s (%d):' %(nm, k))
             start_time = time.time()
 
@@ -631,8 +634,10 @@ class COCOeval:
             self.params.keepDtCatIds = [catId]
 
             # compute precision but ignore superclass confusion
-            similar_cat_ids = gt.getCatIds(supNms=gt.loadCats(catId)[0]['supercategory'])
-            self.params.keepGtCatIds = similar_cat_ids
+            cur_cat = gt.loadCats(catId)[0]
+            if 'supercategory' in cur_cat:
+                similar_cat_ids = gt.getCatIds(supNms=cur_cat['supercategory'])
+                self.params.keepGtCatIds = similar_cat_ids
             self.params.targetCatId = catId
 
             #computeIoU need real catIds, we need to recover it
@@ -668,11 +673,14 @@ class COCOeval:
         # reset Dt and Gt, params
         self.params = prm
         self.makeplot(self.params.recThrs, np.mean(ps, axis=2), 'overall-all', save_dir=self.params.outDir)
-        sup = [cat['supercategory'] for cat in self.cocoGt.loadCats(catIds)]
-        for k in set(sup):
-            ps1 = np.mean(ps[:, :, np.array(sup)==k, :, :], axis=2)
-            figures = self.makeplot(self.params.recThrs, ps1, 'overall-%s' % k, save_dir=self.params.outDir)
-            self.analyze_figures.update(figures)
+        if 'supercategory' in self.cocoGt.cats.values()[0]:
+            sup = [cat['supercategory'] for cat in self.cocoGt.loadCats(catIds)]
+            print('all sup cats: %s' %(set(sup)))
+            for k in set(sup):
+                ps1 = np.mean(ps[:, :, np.array(sup)==k, :, :], axis=2)
+                figures = self.makeplot(self.params.recThrs, ps1, 'overall-%s' % k, save_dir=self.params.outDir)
+                self.analyze_figures.update(figures)
+
 
 class Params:
     '''
