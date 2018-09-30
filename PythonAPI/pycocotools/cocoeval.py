@@ -582,7 +582,7 @@ class COCOeval:
 
             # if save_dir is set, figure will be saved to save_dir
             if save_dir is not None:
-                save_file = '%s/%s.pdf' % (save_dir, name)
+                save_file = '%s/%s.pdf' % (save_dir, plotname)
                 print('save figure to %s' % save_file)
                 fig.savefig(save_file)
             fig.canvas.draw()
