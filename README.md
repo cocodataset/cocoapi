@@ -23,12 +23,15 @@ To support Windows build and python3 we had to make [minor changes](https://gith
 To install this package, use `pip` as follows:
 
 ```
-(dlwin36coco) pferr@MSI d:\repos
+(dlwin36coco) Phil@SERVERP E:\repos
 $ pip install git+https://github.com/philferriere/cocoapi.git#subdirectory=PythonAPI
-Collecting pycocotools from git+https://github.com/philferriere/cocoapi.git#subdirectory=PythonAPI
-  Cloning https://github.com/philferriere/cocoapi.git to c:\users\pferr\appdata\local\temp\pip-build-6n1mxmto\pycocotools
+Collecting git+https://github.com/philferriere/cocoapi.git#subdirectory=PythonAPI
+  Cloning https://github.com/philferriere/cocoapi.git to c:\users\phil\appdata\local\temp\pip-req-build-jn698z8p
+Building wheels for collected packages: pycocotools
+  Running setup.py bdist_wheel for pycocotools ... done
+  Stored in directory: C:\Users\Phil\AppData\Local\Temp\pip-ephem-wheel-cache-rde3oevt\wheels\69\2b\12\2fa959e49f73d26cff202c2f4e5079096c9c57c8a8509fd75c
+Successfully built pycocotools
 Installing collected packages: pycocotools
-  Running setup.py install for pycocotools ... done
 Successfully installed pycocotools-2.0
 ```
 
