@@ -48,4 +48,13 @@ If you clone/fork the **original** repo, you may hit the following error when ru
 
 It happens because there is a `pycocotools` directory in the same folder as the notebooks. The python code being imported then is the **local** implementation of `pycocotools`, not the one installed with `pip`. To fix this issue, the demo notebooks have been moved to their own directory.
 
+# why am I getting a `ModuleNotFoundError: No module named 'pycocotools._mask'` error in my code?
+
+If you get this error, it is because the COCO library you are calling is **NOT** our version of the library. Instead, you are (inadvertently) referencing **a local copy** of the library. So, if you get this error, search the tree of import in your code for a reference to a local `pycocotools` library. Then, move or delete the local version.
+
+
+
+
+
+
 
