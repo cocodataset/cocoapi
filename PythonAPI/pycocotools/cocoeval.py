@@ -660,11 +660,12 @@ class COCOeval:
             ps[6, :, k, :] = 1
             end_time = time.time()
 
-            dst_dir = 'py_precision'
-            if not os.path.exists(dst_dir):
-                os.makedirs(dst_dir)
-            result_file = '%s/class_%d' % (dst_dir, k)
-            np.save(result_file, ps)
+            # test
+            # dst_dir = 'py_precision'
+            # if not os.path.exists(dst_dir):
+            #     os.makedirs(dst_dir)
+            # result_file = '%s/class_%d' % (dst_dir, k)
+            # np.save(result_file, ps)
 
             figures = self.makeplot(self.params.recThrs, ps[:, :, k, :, :], nm, save_dir=self.params.outDir)
             self.analyze_figures.update(figures)
