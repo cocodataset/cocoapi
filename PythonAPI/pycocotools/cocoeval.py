@@ -588,7 +588,7 @@ class COCOeval:
             fig.canvas.draw()
             data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
             data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            figures_np[name] = data
+            figures_np[plotname] = data
             plt.close()
 
         return figures_np
@@ -638,13 +638,16 @@ class COCOeval:
             if 'supercategory' in cur_cat:
                 similar_cat_ids = gt.getCatIds(supNms=cur_cat['supercategory'])
                 self.params.keepGtCatIds = similar_cat_ids
-            self.params.targetCatId = catId
+                self.params.targetCatId = catId
 
-            #computeIoU need real catIds, we need to recover it
-            self.params.catIds = catIds
-            self.evaluate()
-            self.accumulate()
-            ps[3, :, k, :, :] = self.eval['precision'][0, :, 0, :, :]
+                # computeIoU need real catIds, we need to recover it
+                self.params.catIds = catIds
+                self.evaluate()
+                self.accumulate()
+                ps[3, :, k, :, :] = self.eval['precision'][0, :, 0, :, :]
+            else:
+                # skip  superclass confusion evaluation
+                ps[3, :, k, :, :] = ps[2, :, k, :, :]
 
             # compute precision but ignore any class confusion
             self.params.targetCatId = catId
@@ -673,7 +676,9 @@ class COCOeval:
 
         # reset Dt and Gt, params
         self.params = prm
-        self.makeplot(self.params.recThrs, np.mean(ps, axis=2), 'overall-all', save_dir=self.params.outDir)
+        figures = self.makeplot(self.params.recThrs, np.mean(ps, axis=2), 
+                       'overall-all', save_dir=self.params.outDir)
+        self.analyze_figures.update(figures)
         if 'supercategory' in self.cocoGt.cats.values()[0]:
             sup = [cat['supercategory'] for cat in self.cocoGt.loadCats(catIds)]
             print('all sup cats: %s' %(set(sup)))
