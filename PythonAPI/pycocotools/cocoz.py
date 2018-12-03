@@ -74,7 +74,7 @@ class ImageZ(dict):
     Working with compressed files under the images
     '''
 
-    def __init__(self, root, dataType, *args, **kwds):
+    def __init__(self, root, imgType, *args, **kwds):
         '''
         dataType in ['test2014', 'test2015',
                     'test2017', 'train2014',
@@ -83,9 +83,10 @@ class ImageZ(dict):
         '''
         super().__init__(*args, **kwds)
         self.__dict__ = self
-        self.shuffle = True if dataType.startswith('train') else False
-        self.Z = self.__get_Z(root, dataType)
+        self.shuffle = True if imgType.startswith('train') else False
+        self.Z = self.__get_Z(root, imgType)
         self.names = self.__get_names(self.Z)
+        self.dataType = self.Z.namelist()[0]
 
     @staticmethod
     def __get_Z(root, dataType):
@@ -98,7 +99,7 @@ class ImageZ(dict):
 
     @staticmethod
     def __get_names(Z):
-        names = [name for name in Z.namelist() if not name.endswith('/')]
+        names = [name.split('/')[1] for name in Z.namelist() if not name.endswith('/')]
         return names
 
     def buffer2array(self, image_name):
@@ -109,9 +110,11 @@ class ImageZ(dict):
         ===========
         Z:: Picture data is a ZipFile object
         '''
+        image_name = self.dataType + image_name
         buffer = self.Z.read(image_name)
         image = np.frombuffer(buffer, dtype="B")  # 将 buffer 转换为 np.uint8 数组
-        img = cv2.imdecode(image, cv2.IMREAD_COLOR)  # BGR 格式
+        img_cv = cv2.imdecode(image, cv2.IMREAD_COLOR)  # BGR 格式
+        img = cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB)
         return img
 
 
@@ -120,7 +123,7 @@ class AnnZ(dict):
     Working with compressed files under annotations
     '''
 
-    def __init__(self, root, dataType, *args, **kwds):
+    def __init__(self, root, annType, *args, **kwds):
         '''
         dataType in [
               'annotations_trainval2014',
@@ -135,17 +138,17 @@ class AnnZ(dict):
         '''
         super().__init__(*args, **kwds)
         self.__dict__ = self
-        self.Z = self.__get_Z(root, dataType)
+        self.Z = self.__get_Z(root, annType)
         self.names = self.__get_names(self.Z)
 
     @staticmethod
-    def __get_Z(root, dataType):
+    def __get_Z(root, annType):
         '''
-        Get the file name of the compressed file under the images
+        Get the file name of the compressed file under the annotations
         '''
-        dataType = dataType + '.zip'
-        img_root = os.path.join(root, 'annotations')
-        return zipfile.ZipFile(os.path.join(img_root, dataType))
+        annType = annType + '.zip'
+        annDir = os.path.join(root, 'annotations')
+        return zipfile.ZipFile(os.path.join(annDir, annType))
 
     @staticmethod
     def __get_names(Z):
@@ -160,14 +163,17 @@ class AnnZ(dict):
 
 
 class COCOZ(COCO, dict):
-    def __init__(self, root, dataType, annotation_file=None, *args, **kwds):
+    def __init__(self, annZ, annFile, *args, **kwds):
         '''
         ptint(coco):: View Coco's Instance object Coco's 'info'
+
+        example
+        ==========
+        annZ = AnnZ(annDir, annType)
         '''
         super().__init__(*args, **kwds)
         self.__dict__ = self
-        annZ = AnnZ(root, dataType)
-        self.dataset = annZ.json2dict(annotation_file)
+        self.dataset = annZ.json2dict(annFile)
         self.createIndex()
 
     @timer
