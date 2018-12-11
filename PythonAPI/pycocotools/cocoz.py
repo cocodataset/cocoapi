@@ -74,8 +74,9 @@ class ImageZ(dict):
     Working with compressed files under the images
     '''
 
-    def __init__(self, root, imgType, *args, **kwds):
+    def __init__(self, root, dataType, *args, **kwds):
         '''
+        root:: root dir
         dataType in ['test2014', 'test2015',
                     'test2017', 'train2014',
                     'train2017', 'unlabeled2017',
@@ -83,8 +84,8 @@ class ImageZ(dict):
         '''
         super().__init__(*args, **kwds)
         self.__dict__ = self
-        self.shuffle = True if imgType.startswith('train') else False
-        self.Z = self.__get_Z(root, imgType)
+        self.shuffle = True if dataType.startswith('train') else False
+        self.Z = self.__get_Z(root, dataType)
         self.names = self.__get_names(self.Z)
         self.dataType = self.Z.namelist()[0]
 
