@@ -50,13 +50,14 @@ import numpy as np
 import cv2
 import json
 import time
-from pycocotools.coco import COCO
+from . coco import COCO
 
 
 
 def timer(func):
     '''
-    Define a timer, pass in one, and return another method with the timing feature attached
+    Define a timer, pass in one, and 
+    return another method with the timing feature attached
     '''
     def wrapper(*args):
         start = time.time()
@@ -69,12 +70,12 @@ def timer(func):
     return wrapper
 
 
-class ImageZ(dict):
+class ImageZ:
     '''
     Working with compressed files under the images
     '''
 
-    def __init__(self, root, dataType, *args, **kwds):
+    def __init__(self, root, dataType):
         '''
         root:: root dir
         dataType in ['test2014', 'test2015',
@@ -82,8 +83,6 @@ class ImageZ(dict):
                     'train2017', 'unlabeled2017',
                     'val2014', 'val2017']
         '''
-        super().__init__(*args, **kwds)
-        self.__dict__ = self
         self.shuffle = True if dataType.startswith('train') else False
         self.Z = self.__get_Z(root, dataType)
         self.names = self.__get_names(self.Z)
@@ -95,12 +94,14 @@ class ImageZ(dict):
         Get the file name of the compressed file under the images
         '''
         dataType = dataType + '.zip'
-        img_root = os.path.join(root, 'images')
-        return zipfile.ZipFile(os.path.join(img_root, dataType))
+        return zipfile.ZipFile(os.path.join(root, dataType))
 
     @staticmethod
     def __get_names(Z):
-        names = [name.split('/')[1] for name in Z.namelist() if not name.endswith('/')]
+        names = [
+            name.split('/')[-1] for name in Z.namelist()
+            if not name.endswith('/')
+        ]
         return names
 
     def buffer2array(self, image_name):
@@ -117,6 +118,20 @@ class ImageZ(dict):
         img_cv = cv2.imdecode(image, cv2.IMREAD_COLOR)  # BGR 格式
         img = cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB)
         return img
+
+    def __getitem__(self, item):
+        names = self.names[item]
+        if isinstance(item, slice):
+            return [self.buffer2array(name) for name in names]
+        else:
+            return self.buffer2array(names)
+
+    def __len__(self):
+        return len(self.Z.namelist())
+
+    def __iter__(self):
+        for name in self.names:
+            yield self.buffer2array(name)
 
 
 class AnnZ(dict):
