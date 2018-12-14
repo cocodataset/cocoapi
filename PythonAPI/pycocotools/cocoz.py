@@ -98,10 +98,10 @@ class ImageZ:
 
     @staticmethod
     def __get_names(Z):
-        names = [
-            name.split('/')[-1] for name in Z.namelist()
-            if not name.endswith('/')
-        ]
+        names = []
+        for name in Z.namelist():
+            if not name.endswith('/'):
+                names.append(name)
         return names
 
     def buffer2array(self, image_name):
@@ -112,7 +112,6 @@ class ImageZ:
         ===========
         Z:: Picture data is a ZipFile object
         '''
-        image_name = self.dataType + image_name
         buffer = self.Z.read(image_name)
         image = np.frombuffer(buffer, dtype="B")  # 将 buffer 转换为 np.uint8 数组
         img_cv = cv2.imdecode(image, cv2.IMREAD_COLOR)  # BGR 格式
