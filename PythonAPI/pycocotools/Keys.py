@@ -3,6 +3,7 @@ class RootKeys():
     images = 'images'
     annotations = 'annotations'
     licenses = 'licenses'
+    categories = 'categories'
 
 class InfoKeys():
     year = "year"
