@@ -126,7 +126,7 @@ class ImageZ:
             return self.buffer2array(names)
 
     def __len__(self):
-        return len(self.Z.namelist())
+        return len(self.names)
 
     def __iter__(self):
         for name in self.names:
