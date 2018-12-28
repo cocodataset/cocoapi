@@ -83,10 +83,8 @@ class ImageZ:
                     'train2017', 'unlabeled2017',
                     'val2014', 'val2017']
         '''
-        self.shuffle = True if dataType.startswith('train') else False
         self.Z = self.__get_Z(root, dataType)
         self.names = self.__get_names(self.Z)
-        self.dataType = self.Z.namelist()[0]
 
     @staticmethod
     def __get_Z(root, dataType):
