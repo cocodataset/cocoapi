@@ -679,7 +679,7 @@ class COCOeval:
         figures = self.makeplot(self.params.recThrs, np.mean(ps, axis=2), 
                        'overall-all', save_dir=self.params.outDir)
         self.analyze_figures.update(figures)
-        if 'supercategory' in self.cocoGt.cats.values()[0]:
+        if 'supercategory' in list(self.cocoGt.cats.values())[0]:
             sup = [cat['supercategory'] for cat in self.cocoGt.loadCats(catIds)]
             print('all sup cats: %s' %(set(sup)))
             for k in set(sup):
