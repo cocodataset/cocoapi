@@ -594,10 +594,14 @@ class COCOeval:
         return figures_np
 
 
-    def analyze(self):
+    def analyze(self, save_to_dir=None):
         '''
         Analyze errors
+        Args:
+          save_to_dir: directory to save figures of analyzing results, if set None,
+            figures will not be saved
         '''
+        self.params.outDir = save_to_dir
         prm = copy.deepcopy(self.params)
         self.params.maxDets = [100]
         catIds = sorted(self.cocoGt.getCatIds())
