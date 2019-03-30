@@ -40,3 +40,6 @@ class Loader:
             return [self.image2dataset(img) for img in imgs]
         else:
             return self.image2dataset(imgs)
+
+    def __len__(self):
+        return len(self.images)
