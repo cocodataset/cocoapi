@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-from "third_party/py/pycocotools/coco.h":
+from "pycocotools/coco.h":
   namespace `pycocotools`:
     class COCO:
       def __init__(self, annotation_file:str, use_mask:bool)

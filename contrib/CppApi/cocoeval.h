@@ -17,7 +17,7 @@
 #include <map>
 #include <set>
 #include "absl/container/flat_hash_map.h"
-#include "third_party/py/pycocotools/coco.h"
+#include "pycocotools/coco.h"
 
 namespace pycocotools {
 

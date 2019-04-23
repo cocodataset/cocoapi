@@ -15,7 +15,7 @@
 #include <cmath>
 
 #include "absl/time/time.h"
-#include "third_party/py/pycocotools/cocoeval.h"
+#include "pycocotools/cocoeval.h"
 
 namespace pycocotools {
 
