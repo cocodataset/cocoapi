@@ -17,3 +17,5 @@ PythonAPI/pycocotools/mask.pyc
 *.pyd
 
 **/.ipynb_checkpoints
+**/.so
+build
