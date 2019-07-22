@@ -24,6 +24,12 @@ __version__ = '2.0'
 #  getAnnIds  - Get ann ids that satisfy given filter conditions.
 #  getCatIds  - Get cat ids that satisfy given filter conditions.
 #  getImgIds  - Get img ids that satisfy given filter conditions.
+#  getVideoIds
+#  getInstanceIds
+#  getImgIdsFromVideoId
+#  getInstanceIdsFromVideoId
+#  loadVideos
+#  loadInstances
 #  loadAnns   - Load anns with the specified ids.
 #  loadCats   - Load cats with the specified ids.
 #  loadImgs   - Load imgs with the specified ids.
@@ -67,7 +73,7 @@ def _isArrayLike(obj):
     return hasattr(obj, '__iter__') and hasattr(obj, '__len__')
 
 
-class COCO:
+class BDD:
 
     def __init__(self, annotation_file=None):
         """
@@ -77,9 +83,11 @@ class COCO:
         :return:
         """
         # load dataset
-        self.dataset, self.anns, self.cats, self.imgs = dict(), dict(), dict(
-        ), dict()
-        self.imgToAnns, self.catToImgs = defaultdict(list), defaultdict(list)
+        self.dataset, self.anns, self.cats, self.imgs, self.videos = dict(
+        ), dict(), dict(), dict(), dict()
+        self.videoToImgs, self.imgToAnns, self.catToImgs, self.instances,
+        self.videoToInstanceIds = defaultdict(list), defaultdict(
+            list), defaultdict(list), defaultdict(list), defaultdict(list)
         if not annotation_file == None:
             print('loading annotations into memory...')
             tic = time.time()
@@ -91,12 +99,19 @@ class COCO:
             print('Done (t={:0.2f}s)'.format(time.time() - tic))
             self.dataset = dataset
             self.createIndex()
+            self.parseInstances()
 
     def createIndex(self):
         # create index
         print('creating index...')
-        anns, cats, imgs = {}, {}, {}
-        imgToAnns, catToImgs = defaultdict(list), defaultdict(list)
+        anns, cats, imgs, videos = {}, {}, {}, {}
+        videoToImgs, imgToAnns, catToImgs = defaultdict(list), defaultdict(
+            list), defaultdict(list)
+
+        if 'videos' in self.dataset:
+            for video in self.dataset['videos']:
+                videos[video['id']] = video
+
         if 'annotations' in self.dataset:
             for ann in self.dataset['annotations']:
                 imgToAnns[ann['image_id']].append(ann)
@@ -104,6 +119,7 @@ class COCO:
 
         if 'images' in self.dataset:
             for img in self.dataset['images']:
+                videoToImgs[img['video_id']].append(img)
                 imgs[img['id']] = img
 
         if 'categories' in self.dataset:
@@ -122,6 +138,40 @@ class COCO:
         self.catToImgs = catToImgs
         self.imgs = imgs
         self.cats = cats
+
+        self.videos = videos
+        self.videoToImgs = videoToImgs
+
+    def parseInstances(self):
+        instances = defaultdict(list)
+        videoToInstanceIds = defaultdict(list)
+
+        video_ids = self.getVideoIds()
+        for video_id in video_ids:
+            tracklets = self.getInstanceFromVideoId(video_id)
+            instances.update(tracklets)
+            videoToInstanceIds[video_id] = list(tracklets.keys())
+
+        self.instances = instances
+        self.videoToInstanceIds = videoToInstanceIds
+
+    def getInstanceFromVideoId(self, videoId):
+        tracklets = defaultdict(list)
+        img_ids = self.getImgIdsFromVideoId(videoId)
+
+        # tracklets = {instance_id: {video_id: 1, img_index: [], ann_ids: []}}
+        for index, img_id in enumerate(img_ids):
+            ann_ids = self.getAnnIds(img_id)
+            anns = self.loadAnns(ann_ids)
+            for ann in anns:
+                instance_id = ann['instance_id']
+                if instance_id not in tracklets.keys():
+                    tracklets[instance_id] = defaultdict(list)
+                    tracklets[instance_id]['video_id'] = videoId
+
+                tracklets[instance_id]['img_indexes'].append(index)
+                tracklets[instance_id]['ann_ids'].append(ann['id'])
+        return tracklets
 
     def info(self):
         """
@@ -195,6 +245,16 @@ class COCO:
         ids = [cat['id'] for cat in cats]
         return ids
 
+    def getVideoIds(self, videoIds=[]):
+        videoIds = videoIds if _isArrayLike(videoIds) else [videoIds]
+
+        if len(videoIds) == 0:
+            ids = self.videos.keys()
+        else:
+            ids = set(videoIds)
+
+        return list(ids)
+
     def getImgIds(self, imgIds=[], catIds=[]):
         '''
         Get img ids that satisfy given filter conditions.
@@ -215,6 +275,41 @@ class COCO:
                 else:
                     ids &= set(self.catToImgs[catId])
         return list(ids)
+
+    def getInstanceIds(self, instanceIds=[]):
+        instanceIds = instanceIds if _isArrayLike(instanceIds) else [
+            instanceIds
+        ]
+
+        if len(instanceIds) == 0:
+            ids = self.instances.keys()
+        else:
+            ids = set(instanceIds)
+
+        return list(ids)
+
+    def getImgIdsFromVideoId(self, videoId):
+        img_infos = self.videoToImgs[videoId]
+        ids = np.zeros([len(img_infos)], dtype=np.int)
+        for img_info in img_infos:
+            ids[img_info['index']] = img_info['id']
+        return list(ids)
+
+    def getInstanceIdsFromVideoId(self, videoId):
+        instance_ids = self.videoToInstanceIds.get(videoId)
+        return list(instance_ids)
+
+    def loadVideos(self, ids=[]):
+        if _isArrayLike(ids):
+            return [self.videos[id] for id in ids]
+        elif type(ids) == int:
+            return [self.videos[ids]]
+
+    def loadInstances(self, ids=[]):
+        if _isArrayLike(ids):
+            return [self.instances[id] for id in ids]
+        elif type(ids) == int:
+            return [self.instances[ids]]
 
     def loadAnns(self, ids=[]):
         """
