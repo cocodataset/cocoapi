@@ -85,9 +85,10 @@ class BDD:
         # load dataset
         self.dataset, self.anns, self.cats, self.imgs, self.videos = dict(
         ), dict(), dict(), dict(), dict()
-        self.videoToImgs, self.imgToAnns, self.catToImgs, self.instances,
-        self.videoToInstanceIds = defaultdict(list), defaultdict(
-            list), defaultdict(list), defaultdict(list), defaultdict(list)
+        self.videoToImgs, self.imgToAnns, self.catToImgs = defaultdict(
+            list), defaultdict(list), defaultdict(list),
+        self.instances, self.videoToInstanceIds = defaultdict(
+            list), defaultdict(list)
         if not annotation_file == None:
             print('loading annotations into memory...')
             tic = time.time()
