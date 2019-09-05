@@ -1,8 +1,7 @@
 theme: minima
 
-gems: ['jekyll-emoji']
-emoji:
-  format: emojione-svg # default html
-  ascii: true # default false
-  shortname: true # default true
-  src: "/assets/imgs/emojis" # defaults to "https://cdn.jsdelivr.net/emojione/assets/#{ext}"
+# For Jekyll >= 3.5.0
+# This will enable each of these plugins automatically.
+plugins:
+  - jekyll-paginate
+  - jemoji
