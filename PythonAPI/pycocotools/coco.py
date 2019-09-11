@@ -230,7 +230,7 @@ class COCO:
         elif type(ids) == int:
             return [self.imgs[ids]]
 
-    def showAnns(self, anns):
+    def showAnns(self, anns, ax=None):
         """
         Display the specified annotations.
         :param anns (array of object): annotations to display
@@ -245,7 +245,8 @@ class COCO:
         else:
             raise Exception('datasetType not supported')
         if datasetType == 'instances':
-            ax = plt.gca()
+            if ax is None:
+                ax = plt.gca()
             ax.set_autoscale_on(False)
             polygons = []
             color = []
