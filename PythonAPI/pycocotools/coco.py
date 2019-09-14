@@ -225,7 +225,9 @@ class COCO:
         :param ids (int array)       : integer ids specifying img
         :return: imgs (object array) : loaded img objects
         """
-        if _isArrayLike(ids):
+        if type(ids) == type(''):
+            return [self.imgs[ids]]
+        elif _isArrayLike(ids):
             return [self.imgs[id] for id in ids]
         elif type(ids) == int:
             return [self.imgs[ids]]
