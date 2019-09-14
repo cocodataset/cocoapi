@@ -64,7 +64,7 @@ elif PYTHON_VERSION == 3:
 
 
 def _isArrayLike(obj):
-    return hasattr(obj, '__iter__') and hasattr(obj, '__len__')
+    return hasattr(obj, '__iter__') and hasattr(obj, '__len__') and not isinstance(obj, str)
 
 
 class COCO:
@@ -225,9 +225,7 @@ class COCO:
         :param ids (int array)       : integer ids specifying img
         :return: imgs (object array) : loaded img objects
         """
-        if type(ids) == type(''):
-            return [self.imgs[ids]]
-        elif _isArrayLike(ids):
+        if _isArrayLike(ids):
             return [self.imgs[id] for id in ids]
         elif type(ids) == int:
             return [self.imgs[ids]]
