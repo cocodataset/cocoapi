@@ -238,7 +238,7 @@ class COCO:
         """
         if len(anns) == 0:
             return 0
-        if 'segmentation' in anns[0] or 'keypoints' in anns[0]:
+        if 'bbox' in anns[0] or 'segmentation' in anns[0] or 'keypoints' in anns[0]:
             datasetType = 'instances'
         elif 'caption' in anns[0]:
             datasetType = 'captions'
@@ -252,6 +252,12 @@ class COCO:
             color = []
             for ann in anns:
                 c = (np.random.random((1, 3))*0.6+0.4).tolist()[0]
+                if 'bbox' in ann and 'segmentation' not in ann:
+                    [bbox_x, bbox_y, bbox_w, bbox_h] = ann['bbox']
+                    poly = [[bbox_x, bbox_y], [bbox_x, bbox_y+bbox_h], [bbox_x+bbox_w, bbox_y+bbox_h], [bbox_x+bbox_w, bbox_y]]
+                    np_poly = np.array(poly).reshape((4,2))
+                    polygons.append(Polygon(np_poly))
+                    color.append(c)
                 if 'segmentation' in ann:
                     if type(ann['segmentation']) == list:
                         # polygon
