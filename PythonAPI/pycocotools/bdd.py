@@ -182,7 +182,7 @@ class BDD:
         for key, value in self.dataset['info'].items():
             print('{}: {}'.format(key, value))
 
-    def getAnnIds(self, imgIds=[], catIds=[], areaRng=[], iscrowd=None):
+    def getAnnIds(self, imgIds=[], vidIds=[], catIds=[], areaRng=[], iscrowd=None):
         """
         Get ann ids that satisfy given filter conditions. default skips that filter
         :param imgIds  (int array)     : get anns for given imgs
@@ -192,11 +192,14 @@ class BDD:
         :return: ids (int array)       : integer array of ann ids
         """
         imgIds = imgIds if _isArrayLike(imgIds) else [imgIds]
+        vidIds = vidIds if _isArrayLike(vidIds) else [vidIds]
         catIds = catIds if _isArrayLike(catIds) else [catIds]
 
-        if len(imgIds) == len(catIds) == len(areaRng) == 0:
+        if len(imgIds) == len(vidIds) == len(catIds) == len(areaRng) == 0:
             anns = self.dataset['annotations']
         else:
+            imgIds = imgIds if (len(imgIds) > 0) or (len(vidIds) == 0) else \
+                     [i['id'] for vidId in vidIds for i in self.videoToImgs[vidId]]
             if not len(imgIds) == 0:
                 lists = [
                     self.imgToAnns[imgId] for imgId in imgIds
@@ -435,12 +438,14 @@ class BDD:
         :param   resFile (str)     : file name of result file
         :return: res (obj)         : result api object
         """
-        res = COCO()
+        res = BDD()
         res.dataset['images'] = [img for img in self.dataset['images']]
+        if self.dataset['videos']:
+            res.dataset['videos'] = [img for img in self.dataset['videos']]
 
         print('Loading and preparing results...')
         tic = time.time()
-        if type(resFile) == str or type(resFile) == unicode:
+        if type(resFile) == str:
             anns = json.load(open(resFile))
         elif type(resFile) == np.ndarray:
             anns = self.loadNumpyAnnotations(resFile)
