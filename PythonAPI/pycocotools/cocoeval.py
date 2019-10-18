@@ -374,11 +374,15 @@ class COCOeval:
                     inds = np.argsort(-dtScores, kind='mergesort')
                     dtScoresSorted = dtScores[inds]
 
+                    # Concatenate all intances along axis=1
+                    # The dtm dtIg which we get here will be of shape [T x N_INST],
+                    # where N_ISNT is the total number of all instances detected in all images
                     dtm  = np.concatenate([e['dtMatches'][:,0:maxDet] for e in E], axis=1)[:,inds]
                     dtIg = np.concatenate([e['dtIgnore'][:,0:maxDet]  for e in E], axis=1)[:,inds]
                     gtIg = np.concatenate([e['gtIgnore'] for e in E])
                     npig = np.count_nonzero(gtIg==0)
                     if npig == 0:
+                        print(f'pycocotools::cocoeval: All gts are ignored for category={p.catIds[k]}, area={p.areaRng[a]}, maxDets={p.maxDets[m]}')
                         continue
                     tps = np.logical_and(dtm >= 0,  np.logical_not(dtIg))
                     fps = np.logical_and(dtm <  0,  np.logical_not(dtIg))
@@ -397,6 +401,7 @@ class COCOeval:
                         if nd:
                             recall[t,k,a,m] = rc[-1]
                         else:
+                            print(f'pycocotools::cocoeval: WARNING! no detections found for {p.catIds[k]}, area={p.areaRng[a]}, maxDets={p.maxDets[m]}, iouThr={p.iouThr[t]}')
                             recall[t,k,a,m] = 0
 
                         # numpy is slow without cython optimization for accessing elements
@@ -454,7 +459,7 @@ class COCOeval:
                 # dimension of recall: [TxKxAxM]
                 s = self.eval['recall']
                 if iouThr is not None:
-                    t = np.where(iouThr == p.iouThrs)[0]
+                    t = np.where(np.isclose(iouThr, p.iouThrs))[0]
                     s = s[t]
                 s = s[:,:,aind,mind]
             if len(s[s>-1])==0:
