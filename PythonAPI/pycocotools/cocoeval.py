@@ -1,5 +1,6 @@
 __author__ = 'tsungyi'
 
+import sys
 import numpy as np
 import datetime
 import time
@@ -424,31 +425,68 @@ class COCOeval:
         Compute and display summary metrics for evaluation results.
         Note this functin can *only* be applied on the default parameter setting
         '''
-        def _summarize( ap=1, iouThr=None, areaRng='all', maxDets=100 ):
+        def _summarize(metric, iouThr=None, areaRng='all', maxDets=100):
             p = self.params
             iStr = ' {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}'
-            titleStr = 'Average Precision' if ap == 1 else 'Average Recall'
-            typeStr = '(AP)' if ap==1 else '(AR)'
-            iouStr = '{:0.2f}:{:0.2f}'.format(p.iouThrs[0], p.iouThrs[-1]) \
+            titleStr = {
+                'af1': 'Average F1',
+                'ap': 'Average Precision',
+                'ar': 'Averge Recall'
+            }[metric]
+            typeStr = {
+                'af1': '(AF1)',
+                'ap': '(AP)',
+                'ar': '(AR)'
+            }[metric]
+            # index starting at 5 because p.iouThrs ranges from 0.25 to 0.95
+            # and the standard evaluation is from 0.5 to 0.95
+            iouStr = '{:0.2f}:{:0.2f}'.format(p.iouThrs[5], p.iouThrs[-1]) \
                 if iouThr is None else '{:0.2f}'.format(iouThr)
 
             aind = [i for i, aRng in enumerate(p.areaRngLbl) if aRng == areaRng]
             mind = [i for i, mDet in enumerate(p.maxDets) if mDet == maxDets]
-            if ap == 1:
+            if metric == 'ap':
                 # dimension of precision: [TxRxKxAxM]
                 s = self.eval['precision']
                 # IoU
                 if iouThr is not None:
                     t = np.where(iouThr == p.iouThrs)[0]
                     s = s[t]
+                else:
+                    # index starting at 5 because p.iouThrs ranges from 0.25 to
+                    # 0.95 and the standard evaluation is from 0.5 to 0.95
+                    s = s[5:, ...]
                 s = s[:,:,:,aind,mind]
-            else:
+            elif metric == 'ar':
                 # dimension of recall: [TxKxAxM]
                 s = self.eval['recall']
                 if iouThr is not None:
                     t = np.where(iouThr == p.iouThrs)[0]
                     s = s[t]
+                else:
+                    # index starting at 5 because p.iouThrs ranges from 0.25 to
+                    # 0.95 and the standard evaluation is from 0.5 to 0.95
+                    s = s[5:, ...]
                 s = s[:,:,aind,mind]
+            else:
+                assert metric == 'af1'
+                recall = self.eval['recall']
+                precision = self.eval['precision']
+                if iouThr is not None:
+                    t = np.where(iouThr == p.iouThrs)[0]
+                    recall = recall[t]
+                    precision = precision[t]
+                else:
+                    # index starting at 5 because p.iouThrs ranges from 0.25 to
+                    # 0.95 and the standard evaluation is from 0.5 to 0.95
+                    recall = recall[5:, ...]
+                    precision = precision[5, ...]
+                precision = precision.mean(axis=1)
+                f1 = (
+                    2 * (precision * recall)
+                    / (precision + recall + sys.float_info.epsilon)
+                )
+                s = f1[:,:,aind,mind]
             if len(s[s>-1])==0:
                 mean_s = -1
             else:
@@ -456,20 +494,39 @@ class COCOeval:
             print(iStr.format(titleStr, typeStr, iouStr, areaRng, maxDets, mean_s))
             return mean_s
         def _summarizeDets():
-            stats = np.zeros((12,))
-            stats[0] = _summarize(1)
-            stats[1] = _summarize(1, iouThr=.5, maxDets=self.params.maxDets[2])
-            stats[2] = _summarize(1, iouThr=.75, maxDets=self.params.maxDets[2])
-            stats[3] = _summarize(1, areaRng='small', maxDets=self.params.maxDets[2])
-            stats[4] = _summarize(1, areaRng='medium', maxDets=self.params.maxDets[2])
-            stats[5] = _summarize(1, areaRng='large', maxDets=self.params.maxDets[2])
-            stats[6] = _summarize(0, maxDets=self.params.maxDets[0])
-            stats[7] = _summarize(0, maxDets=self.params.maxDets[1])
-            stats[8] = _summarize(0, maxDets=self.params.maxDets[2])
-            stats[9] = _summarize(0, areaRng='small', maxDets=self.params.maxDets[2])
-            stats[10] = _summarize(0, areaRng='medium', maxDets=self.params.maxDets[2])
-            stats[11] = _summarize(0, areaRng='large', maxDets=self.params.maxDets[2])
+            stats = np.zeros((27,))
+            stats[0] = _summarize('ap')
+            stats[1] = _summarize('ap', iouThr=.25, maxDets=self.params.maxDets[3])
+            stats[2] = _summarize('ap', iouThr=.5, maxDets=self.params.maxDets[3])
+            stats[3] = _summarize('ap', iouThr=.75, maxDets=self.params.maxDets[3])
+            stats[4] = _summarize('ap', areaRng='small', maxDets=self.params.maxDets[3])
+            stats[5] = _summarize('ap', areaRng='medium', maxDets=self.params.maxDets[3])
+            stats[6] = _summarize('ap', areaRng='large', maxDets=self.params.maxDets[3])
+
+            stats[7] = _summarize('ar', maxDets=self.params.maxDets[0])
+            stats[8] = _summarize('ar', maxDets=self.params.maxDets[1])
+            stats[9] = _summarize('ar', maxDets=self.params.maxDets[2])
+            stats[10] = _summarize('ar', maxDets=self.params.maxDets[3])
+            stats[11] = _summarize('ar', maxDets=self.params.maxDets[4])
+            stats[12] = _summarize('ar', areaRng='small', maxDets=self.params.maxDets[3])
+            stats[13] = _summarize('ar', areaRng='medium', maxDets=self.params.maxDets[3])
+            stats[14] = _summarize('ar', areaRng='large', maxDets=self.params.maxDets[3])
+
+            stats[15] = _summarize('af1', iouThr=.25, maxDets=self.params.maxDets[1])
+            stats[16] = _summarize('af1', iouThr=0.5, maxDets=self.params.maxDets[1])
+            stats[17] = _summarize('af1', iouThr=0.75, maxDets=self.params.maxDets[1])
+            stats[18] = _summarize('af1', iouThr=.25, maxDets=self.params.maxDets[2])
+            stats[19] = _summarize('af1', iouThr=0.5, maxDets=self.params.maxDets[2])
+            stats[20] = _summarize('af1', iouThr=0.75, maxDets=self.params.maxDets[2])
+            stats[21] = _summarize('af1', iouThr=.25, maxDets=self.params.maxDets[3])
+            stats[22] = _summarize('af1', iouThr=0.5, maxDets=self.params.maxDets[3])
+            stats[23] = _summarize('af1', iouThr=0.75, maxDets=self.params.maxDets[3])
+            stats[24] = _summarize('af1', iouThr=.25, maxDets=self.params.maxDets[4])
+            stats[25] = _summarize('af1', iouThr=0.5, maxDets=self.params.maxDets[4])
+            stats[26] = _summarize('af1', iouThr=0.75, maxDets=self.params.maxDets[4])
+
             return stats
+
         def _summarizeKps():
             stats = np.zeros((10,))
             stats[0] = _summarize(1, maxDets=20)
@@ -503,9 +560,9 @@ class Params:
         self.imgIds = []
         self.catIds = []
         # np.arange causes trouble.  the data point on arange is slightly larger than the true value
-        self.iouThrs = np.linspace(.5, 0.95, np.round((0.95 - .5) / .05) + 1, endpoint=True)
+        self.iouThrs = np.linspace(.25, 0.95, np.round((0.95 - .25) / .05) + 1, endpoint=True)
         self.recThrs = np.linspace(.0, 1.00, np.round((1.00 - .0) / .01) + 1, endpoint=True)
-        self.maxDets = [1, 10, 100]
+        self.maxDets = [1, 10, 50, 100, 300]
         self.areaRng = [[0 ** 2, 1e5 ** 2], [0 ** 2, 32 ** 2], [32 ** 2, 96 ** 2], [96 ** 2, 1e5 ** 2]]
         self.areaRngLbl = ['all', 'small', 'medium', 'large']
         self.useCats = 1
