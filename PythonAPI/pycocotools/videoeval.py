@@ -156,12 +156,14 @@ class VideoEval:
             computeIoU = self.computeIoU
         elif p.iouType == 'keypoints':
             computeIoU = self.computeOks
+        print('Computing IoU...')
         self.ious = {(vidId, catId): computeIoU(vidId, catId) \
                         for vidId in p.vidIds
                         for catId in catIds}
 
         evaluateVid = self.evaluateVid
         maxDet = p.maxDets[-1]
+        print('Matching...')
         self.evalVids = [evaluateVid(vidId, catId, areaRng, tempRng, maxDet)
                  for catId in catIds
                  for areaRng in p.areaRng
@@ -390,7 +392,7 @@ class VideoEval:
                     matched_previously_matched = False
                     for gind, g in enumerate(gt):
                         # if this gt already matched, and not a crowd, continue
-                        if det_ious[dind,gind] >= 0.5:
+                        if det_ious[dind,gind] >= iou:
                             matched_previously_matched = True
                         if gtm[tind,gind]>0 and not iscrowd[gind]:
                             # set this prediction to ignored if det IoU > iou
@@ -548,7 +550,7 @@ class VideoEval:
         Compute and display summary metrics for evaluation results.
         Note this functin can *only* be applied on the default parameter setting
         '''
-        def _summarize( ap=1, iouThr=None, catId=None, areaRng='all', tempRng='all', maxDets=10000 ):
+        def _summarize( ap=1, iouThr=None, catId=None, areaRng='all', tempRng='all', maxDets=1000 ):
             p = self.params
             iStr = ' {:<18} {} @[ IoU={:<9} | catId={:>3s} | area={:>6s} | length={:>6s} | maxDets={:>3d} ] = {:0.3f}'
             titleStr = 'Average Precision' if ap == 1 else 'Average Recall'
@@ -641,7 +643,7 @@ class Params:
         # self.iouThrs = np.linspace(.1, 0.95, np.round((0.95 - .1) / .05) + 1, endpoint=True)
         self.iouThrs = np.array([0.5, 0.55, 0.6, 0.65, 0.7, 0.75])
         self.recThrs = np.linspace(.0, 1.00, np.round((1.00 - .0) / .01) + 1, endpoint=True)
-        self.maxDets = [10, 100, 10000]
+        self.maxDets = [10, 100, 1000]
         self.areaRng = [[0 ** 2, 1e5 ** 2], [0 ** 2, 32 ** 2], [32 ** 2, 96 ** 2], [96 ** 2, 1e5 ** 2]]
         self.areaRngLbl = ['all', 'small', 'medium', 'large']
         self.tempRng = [[0, 1e5], [0, 10], [10, 25], [25, 1e5]]
