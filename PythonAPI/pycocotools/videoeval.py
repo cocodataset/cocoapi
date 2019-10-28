@@ -173,6 +173,7 @@ class VideoEval:
         print('DONE (t={:0.2f}s).'.format(toc-tic))
 
     def trackIoU(self, dts, gts):
+        # average overlap
         i = 0
         u = 0
         for (d, g) in zip(dts, gts):
@@ -188,6 +189,45 @@ class VideoEval:
             u += d[2] * d[3] if d is not None else 0
         return i / u if u > 0 else 0
 
+    def avgOverlap(self, dts, gts):
+        dts = dts['track']
+        gts = gts['track']
+        # average overlap
+        num_frames = 0
+        cum_iou = 0
+        for (d, g) in zip(dts, gts):
+            if d is not None and g is not None:
+                x1, y1 = max(d[0], g[0]), max(d[1], g[1])
+                x2 = min(d[2] + d[0] - 1, g[2] + g[0] - 1)
+                y2 = min(d[3] + d[1] - 1, g[3] + g[1] - 1)
+                i = max(0, x2 - x1 + 1) * max(0, y2 - y1 + 1)
+                u = g[2] * g[3] + d[2] * d[3] - i
+                cum_iou += i / float(u)
+            if (d is not None) or (g is not None):
+                num_frames += 1
+        return cum_iou / num_frames if num_frames > 0 else 0
+
+    def avgOverlapAndDetOverlap(self, dts, gts):
+        dts = dts['track']
+        gts = gts['track']
+        # average overlap
+        num_frames = 0
+        det_frames = 0
+        cum_iou = 0
+        for (d, g) in zip(dts, gts):
+            if d is not None and g is not None:
+                x1, y1 = max(d[0], g[0]), max(d[1], g[1])
+                x2 = min(d[2] + d[0] - 1, g[2] + g[0] - 1)
+                y2 = min(d[3] + d[1] - 1, g[3] + g[1] - 1)
+                i = max(0, x2 - x1 + 1) * max(0, y2 - y1 + 1)
+                u = g[2] * g[3] + d[2] * d[3] - i
+                cum_iou += i / float(u)
+            if (d is not None) or (g is not None):
+                num_frames += 1
+            if d is not None:
+                det_frames += 1
+        return cum_iou / num_frames if num_frames > 0 else 0, cum_iou / det_frames if det_frames > 0 else 0
+
     # convert annotations to tracks for a single video
     def anns2Tracks(self, anns, img_ids, vid_id, with_occlusion=True):
         if len(anns) == 0:
@@ -201,12 +241,12 @@ class VideoEval:
                         'video_id': vid_id,
                         'track': [None] * len(img_ids),
                         'avgArea': 0,
-                        'iscrowd': 0,
                         'length': 0
         } for i in ids}
 
         score_counters = defaultdict(int)
         remap_instance_id = defaultdict(int)
+        crowd_count = 0
         for ann in anns:
             img_ind = img_ids.index(ann['image_id'])
             ins_id = ann['instance_id']
@@ -224,15 +264,13 @@ class VideoEval:
                                     'video_id': vid_id,
                                     'track': [None] * len(img_ids),
                                     'avgArea': 0,
-                                    'iscrowd': 0,
                                     'length': 0
                     }
                     ins_id = max_id
 
             ann_by_track = tracks[ins_id]
-            # FIXME: add iscrowd
-#             if 'iscrowd' in ann and not 'iscrowd' in ann_by_track:
-#                 ann_by_track['iscrowd'] = ann['iscrowd']
+            if ('iscrowd' in ann) and not ('iscrowd' in ann_by_track):
+                ann_by_track['iscrowd'] = ann['iscrowd']
             if 'category_id' not in ann_by_track:
                 ann_by_track['category_id'] = ann['category_id']
             # bbox
@@ -272,12 +310,12 @@ class VideoEval:
 
         # compute iou between each dt and gt region
         iscrowd = [int(o['iscrowd']) for o in gt]
-        # FIXME: handle iscrowd
         ious = np.zeros([len(dt), len(gt)])
+        det_ious = np.zeros([len(dt), len(gt)])
 
         for i, j in np.ndindex(ious.shape):
-            ious[i, j] = self.trackIoU(dt[i]['track'], gt[j]['track'])
-        return ious
+            ious[i, j], det_ious[i, j] = self.avgOverlapAndDetOverlap(dt[i], gt[j])
+        return ious, det_ious
 
     def computeOks(self, vidId, catId):
         p = self.params
@@ -351,8 +389,7 @@ class VideoEval:
         dt = [dt[i] for i in dtind[0:maxDet]]
         iscrowd = [int(o['iscrowd']) for o in gt]
         # load computed ious
-        ious = self.ious[vidId, catId][:, gtind] if len(self.ious[vidId, catId]) > 0 else self.ious[vidId, catId]
-
+        ious, det_ious = self.ious[vidId, catId][0][:, gtind], self.ious[vidId, catId][1][:, gtind] if len(self.ious[vidId, catId]) > 0 else self.ious[vidId, catId]
         T = len(p.iouThrs)
         G = len(gt)
         D = len(dt)
@@ -367,9 +404,13 @@ class VideoEval:
                     # information about best match so far (m=-1 -> unmatched)
                     iou = min([t,1-1e-10])
                     m   = -1
+                    matched_previously_matched = False
                     for gind, g in enumerate(gt):
                         # if this gt already matched, and not a crowd, continue
+                        if det_ious[dind,gind] >= 0.5:
+                            matched_previously_matched = True
                         if gtm[tind,gind]>0 and not iscrowd[gind]:
+                            # set this prediction to ignored if det IoU > iou
                             continue
                         # if dt matched to reg gt, and on ignore gt, stop
                         if m>-1 and gtIg[m]==0 and gtIg[gind]==1:
@@ -382,6 +423,8 @@ class VideoEval:
                         m=gind
                     # if match made store id of match for both dt and gt
                     if m ==-1:
+                        if matched_previously_matched:
+                            dtIg[tind, dind] = 1
                         continue
                     dtIg[tind,dind] = gtIg[m]
                     dtm[tind,dind]  = gt[m]['id']
