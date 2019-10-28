@@ -172,23 +172,6 @@ class VideoEval:
         toc = time.time()
         print('DONE (t={:0.2f}s).'.format(toc-tic))
 
-    def trackIoU(self, dts, gts):
-        # average overlap
-        i = 0
-        u = 0
-        for (d, g) in zip(dts, gts):
-            if d is not None and g is not None:
-                x1, y1 = max(d[0], g[0]), max(d[1], g[1])
-                x2 = min(d[2] + d[0] - 1, g[2] + g[0] - 1)
-                y2 = min(d[3] + d[1] - 1, g[3] + g[1] - 1)
-                _i = max(0, x2 - x1 + 1) * max(0, y2 - y1 + 1)
-                i += _i
-                u -= _i
-
-            u += g[2] * g[3] if g is not None else 0
-            u += d[2] * d[3] if d is not None else 0
-        return i / u if u > 0 else 0
-
     def avgOverlap(self, dts, gts):
         dts = dts['track']
         gts = gts['track']
