@@ -408,8 +408,8 @@ class VideoEval:
                         m=gind
                     # if match made store id of match for both dt and gt
                     if m ==-1:
-                        if matched_previously_matched:
-                            dtIg[tind, dind] = 1
+                        # if matched_previously_matched:
+                        #     dtIg[tind, dind] = 1
                         continue
                     dtIg[tind,dind] = gtIg[m]
                     dtm[tind,dind]  = gt[m]['id']
@@ -585,25 +585,26 @@ class VideoEval:
             print(iStr.format(titleStr, typeStr, iouStr, catStr, areaRng, tempRng, maxDets, mean_s))
             return mean_s
         def _summarizeDets(catId=None):
-            stats = np.zeros((18,))
+            stats = np.zeros((19,))
             stats[0] = _summarize(1, catId=catId)
-            stats[1] = _summarize(1, iouThr=.5, maxDets=self.params.maxDets[2], catId=catId)
-            stats[2] = _summarize(1, iouThr=.75, maxDets=self.params.maxDets[2], catId=catId)
-            stats[3] = _summarize(1, areaRng='small', maxDets=self.params.maxDets[2], catId=catId)
-            stats[4] = _summarize(1, areaRng='medium', maxDets=self.params.maxDets[2], catId=catId)
-            stats[5] = _summarize(1, areaRng='large', maxDets=self.params.maxDets[2], catId=catId)
-            stats[6] = _summarize(1, tempRng='short', maxDets=self.params.maxDets[2], catId=catId)
-            stats[7] = _summarize(1, tempRng='medium', maxDets=self.params.maxDets[2], catId=catId)
-            stats[8] = _summarize(1, tempRng='long', maxDets=self.params.maxDets[2], catId=catId)
-            stats[9] = _summarize(0, maxDets=self.params.maxDets[0], catId=catId)
-            stats[10] = _summarize(0, maxDets=self.params.maxDets[1], catId=catId)
-            stats[11] = _summarize(0, maxDets=self.params.maxDets[2], catId=catId)
-            stats[12] = _summarize(0, areaRng='small', maxDets=self.params.maxDets[2], catId=catId)
-            stats[13] = _summarize(0, areaRng='medium', maxDets=self.params.maxDets[2], catId=catId)
-            stats[14] = _summarize(0, areaRng='large', maxDets=self.params.maxDets[2], catId=catId)
-            stats[15] = _summarize(0, tempRng='short', maxDets=self.params.maxDets[2], catId=catId)
-            stats[16] = _summarize(0, tempRng='medium', maxDets=self.params.maxDets[2], catId=catId)
-            stats[17] = _summarize(0, tempRng='long', maxDets=self.params.maxDets[2], catId=catId)
+            stats[1] = _summarize(1, iouThr=.3, maxDets=self.params.maxDets[2], catId=catId)
+            stats[2] = _summarize(1, iouThr=.5, maxDets=self.params.maxDets[2], catId=catId)
+            stats[3] = _summarize(1, iouThr=.75, maxDets=self.params.maxDets[2], catId=catId)
+            stats[4] = _summarize(1, areaRng='small', maxDets=self.params.maxDets[2], catId=catId)
+            stats[5] = _summarize(1, areaRng='medium', maxDets=self.params.maxDets[2], catId=catId)
+            stats[6] = _summarize(1, areaRng='large', maxDets=self.params.maxDets[2], catId=catId)
+            stats[7] = _summarize(1, tempRng='short', maxDets=self.params.maxDets[2], catId=catId)
+            stats[8] = _summarize(1, tempRng='medium', maxDets=self.params.maxDets[2], catId=catId)
+            stats[9] = _summarize(1, tempRng='long', maxDets=self.params.maxDets[2], catId=catId)
+            stats[10] = _summarize(0, maxDets=self.params.maxDets[0], catId=catId)
+            stats[11] = _summarize(0, maxDets=self.params.maxDets[1], catId=catId)
+            stats[12] = _summarize(0, maxDets=self.params.maxDets[2], catId=catId)
+            stats[13] = _summarize(0, areaRng='small', maxDets=self.params.maxDets[2], catId=catId)
+            stats[14] = _summarize(0, areaRng='medium', maxDets=self.params.maxDets[2], catId=catId)
+            stats[15] = _summarize(0, areaRng='large', maxDets=self.params.maxDets[2], catId=catId)
+            stats[16] = _summarize(0, tempRng='short', maxDets=self.params.maxDets[2], catId=catId)
+            stats[17] = _summarize(0, tempRng='medium', maxDets=self.params.maxDets[2], catId=catId)
+            stats[18] = _summarize(0, tempRng='long', maxDets=self.params.maxDets[2], catId=catId)
             return stats
         def _summarizeKps(catId=None):
             stats = np.zeros((10,))
@@ -641,7 +642,7 @@ class Params:
         self.catIds = []
         # np.arange causes trouble.  the data point on arange is slightly larger than the true value
         # self.iouThrs = np.linspace(.1, 0.95, np.round((0.95 - .1) / .05) + 1, endpoint=True)
-        self.iouThrs = np.array([0.5, 0.55, 0.6, 0.65, 0.7, 0.75])
+        self.iouThrs = np.array([0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75])
         self.recThrs = np.linspace(.0, 1.00, np.round((1.00 - .0) / .01) + 1, endpoint=True)
         self.maxDets = [10, 100, 1000]
         self.areaRng = [[0 ** 2, 1e5 ** 2], [0 ** 2, 32 ** 2], [32 ** 2, 96 ** 2], [96 ** 2, 1e5 ** 2]]
