@@ -244,6 +244,7 @@ class COCO:
             np_poly = np.array(poly).reshape((4,2))
             polygons.append(Polygon(np_poly))
             color.append(c)
+            # option for dash-line
             # ax.add_patch(Polygon(np_poly, linestyle='--', facecolor='none', edgecolor=c, linewidth=2))
             if 'score' in ann:
                 ax.text(bbox_x, bbox_y, '%s: %.2f'%(self.loadCats(ann['category_id'])[0]['name'], ann['score']), color='white', bbox=dict(facecolor=c))
