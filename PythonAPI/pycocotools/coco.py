@@ -230,7 +230,12 @@ class COCO:
         elif type(ids) == int:
             return [self.imgs[ids]]
 
-    def showBBox(self, anns):
+    def showBBox(self, anns, label_box=True):
+        """
+        show bounding box of annotations or predictions
+        anns: loadAnns() annotations or predictions subject to coco results format
+        label_box: show label text's bounding box or not
+        """
         if len(anns) == 0:
             return 0
         ax = plt.gca()
@@ -246,10 +251,14 @@ class COCO:
             color.append(c)
             # option for dash-line
             # ax.add_patch(Polygon(np_poly, linestyle='--', facecolor='none', edgecolor=c, linewidth=2))
-            if 'score' in ann:
-                ax.text(bbox_x, bbox_y, '%s: %.2f'%(self.loadCats(ann['category_id'])[0]['name'], ann['score']), color='white', bbox=dict(facecolor=c))
+            if label_box:
+                label_bbox=dict(facecolor=c)
             else:
-                ax.text(bbox_x, bbox_y, '%s'%(self.loadCats(ann['category_id'])[0]['name']), color='white', bbox=dict(facecolor=c))
+                label_bbox=None
+            if 'score' in ann:
+                ax.text(bbox_x, bbox_y, '%s: %.2f'%(self.loadCats(ann['category_id'])[0]['name'], ann['score']), color='white', bbox=label_bbox)
+            else:
+                ax.text(bbox_x, bbox_y, '%s'%(self.loadCats(ann['category_id'])[0]['name']), color='white', bbox=label_bbox)
         p = PatchCollection(polygons, facecolor=color, linewidths=0, alpha=0.4)
         ax.add_collection(p)
         p = PatchCollection(polygons, facecolor='none', edgecolors=color, linewidths=2)
