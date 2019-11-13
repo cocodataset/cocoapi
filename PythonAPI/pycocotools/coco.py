@@ -66,21 +66,6 @@ elif PYTHON_VERSION == 3:
 def _isArrayLike(obj):
     return hasattr(obj, '__iter__') and hasattr(obj, '__len__')
 
-labelmap=('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
-                'train', 'truck', 'boat', 'traffic light', 'fire', 'hydrant',
-                'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
-                'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra',
-                'giraffe', 'backpack', 'umbrella', 'handbag', 'tie',
-                'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
-                'kite', 'baseball bat', 'baseball glove', 'skateboard',
-                'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
-                'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
-                'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza',
-                'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
-                'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote',
-                'keyboard', 'cell phone', 'microwave oven', 'toaster', 'sink',
-                'refrigerator', 'book', 'clock', 'vase', 'scissors',
-                'teddy bear', 'hair drier', 'toothbrush')
 
 class COCO:
     def __init__(self, annotation_file=None):
@@ -260,7 +245,10 @@ class COCO:
             polygons.append(Polygon(np_poly))
             color.append(c)
             # ax.add_patch(Polygon(np_poly, linestyle='--', facecolor='none', edgecolor=c, linewidth=2))
-            ax.text(bbox_x, bbox_y, '%s: %.2f'%(labelmap[ann['category_id']-1], ann['score']), color='white')
+            if 'score' in ann:
+                ax.text(bbox_x, bbox_y, '%s: %.2f'%(self.loadCats(ann['category_id'])[0]['name'], ann['score']), color='white', bbox=dict(facecolor=c))
+            else:
+                ax.text(bbox_x, bbox_y, '%s'%(self.loadCats(ann['category_id'])[0]['name']), color='white', bbox=dict(facecolor=c))
         p = PatchCollection(polygons, facecolor=color, linewidths=0, alpha=0.4)
         ax.add_collection(p)
         p = PatchCollection(polygons, facecolor='none', edgecolors=color, linewidths=2)
