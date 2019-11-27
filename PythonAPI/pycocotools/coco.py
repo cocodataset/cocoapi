@@ -225,9 +225,9 @@ class COCO:
         :param ids (int array)       : integer ids specifying img
         :return: imgs (object array) : loaded img objects
         """
-        if _isArrayLike(ids):
+        if _isArrayLike(ids) and not isinstance(ids, str):
             return [self.imgs[id] for id in ids]
-        elif type(ids) == int:
+        elif type(ids) == int or isinstance(ids, str):
             return [self.imgs[ids]]
 
     def showAnns(self, anns, ax=None):
