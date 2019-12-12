@@ -13,3 +13,7 @@ To install:
 -For Matlab, add coco/MatlabApi to the Matlab path (OSX/Linux binaries provided)
 -For Python, run "make" under coco/PythonAPI
 -For Lua, run “luarocks make LuaAPI/rocks/coco-scm-1.rockspec” under coco/
+
+
+If you wish to install pycocotools directly from this github repository, simply use the following command 
+`pip install "git+https://github.com/ashnair1/cocoapi.git#egg=pycocotools&subdirectory=PythonAPI"`
