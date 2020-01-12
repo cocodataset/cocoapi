@@ -52,7 +52,7 @@ from matplotlib.patches import Polygon
 import numpy as np
 import copy
 import itertools
-from . import mask as maskUtils
+import mask as maskUtils
 import os
 from collections import defaultdict
 import sys
@@ -431,3 +431,7 @@ class COCO:
         rle = self.annToRLE(ann)
         m = maskUtils.decode(rle)
         return m
+    
+
+if __name__ == "__main__":
+    print("pass")
