@@ -431,7 +431,3 @@ class COCO:
         rle = self.annToRLE(ann)
         m = maskUtils.decode(rle)
         return m
-    
-
-if __name__ == "__main__":
-    print("pass")
