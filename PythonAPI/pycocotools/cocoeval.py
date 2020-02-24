@@ -1,11 +1,17 @@
 __author__ = 'tsungyi'
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 import datetime
 import time
 from collections import defaultdict
 from . import mask as maskUtils
 import copy
+import os
+
 
 class COCOeval:
     # Interface for evaluating detection on the Microsoft COCO dataset.
@@ -51,6 +57,21 @@ class COCOeval:
     #  recall     - [TxKxAxM] max recall for every evaluation setting
     # Note: precision and recall==-1 for settings with no gt objects.
     #
+    # summarize(): computes and displays 12 summary metrics based on the
+    # "eval" struct. Note that summarize() assumes the evaluation was
+    # computed with certain default params (including default area ranges),
+    # if not, the display may show NaN outputs for certain metrics. Results
+    # of summarize() are stored in a 12 element vector "stats".
+    #
+    # analyze(): generates plots with detailed breakdown of false positives.
+    # Inspired by "Diagnosing Error in Object Detectors" by D. Hoiem et al.
+    # Generates one plot per category (80), supercategory (12), and overall
+    # (1), multiplied by 4 scales, for a total of (80+12+1)*4=372 plots. Each
+    # plo# t contains a series of precision recall curves where each PR curve
+    # is guaranteed to be strictly higher than the previous as the evaluation
+    # setting becomes more permissive. These plots give insight into errors
+    # made by a detector. A more detailed description is given at mscoco.org.
+    # Note: analyze() is quite slow as it calls evaluate() multiple times.
     # See also coco, mask, pycocoDemo, pycocoEvalDemo
     #
     # Microsoft COCO Toolbox.      version 2.0
@@ -96,8 +117,15 @@ class COCOeval:
             gts=self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
             dts=self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds, catIds=p.catIds))
         else:
-            gts=self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds))
-            dts=self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds))
+            if len(p.keepDtCatIds) > 0:
+                dts = self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds, catIds=p.keepDtCatIds))
+            else:
+                dts=self.cocoDt.loadAnns(self.cocoDt.getAnnIds(imgIds=p.imgIds))
+
+            if len(p.keepGtCatIds) > 0:
+                gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds, catIds=p.keepGtCatIds))
+            else:
+                gts=self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=p.imgIds))
 
         # convert ground truth to mask if iouType == 'segm'
         if p.iouType == 'segm':
@@ -158,7 +186,7 @@ class COCOeval:
              ]
         self._paramsEval = copy.deepcopy(self.params)
         toc = time.time()
-        print('DONE (t={:0.2f}s).'.format(toc-tic))
+        print('Per image evaluation DONE (t={:0.2f}s).'.format(toc-tic))
 
     def computeIoU(self, imgId, catId):
         p = self.params
@@ -246,12 +274,15 @@ class COCOeval:
             dt = [_ for cId in p.catIds for _ in self._dts[imgId,cId]]
         if len(gt) == 0 and len(dt) ==0:
             return None
-
         for g in gt:
             if g['ignore'] or (g['area']<aRng[0] or g['area']>aRng[1]):
                 g['_ignore'] = 1
             else:
                 g['_ignore'] = 0
+
+            #used to fast ignore some gt, avoiding changing the original gt
+            if p.targetCatId >= 0 and g['category_id'] != p.targetCatId:
+                g['_ignore'] = 1
 
         # sort dt highest score first, sort gt ignore last
         gtind = np.argsort([g['_ignore'] for g in gt], kind='mergesort')
@@ -347,6 +378,7 @@ class COCOeval:
         m_list = [m for n, m in enumerate(p.maxDets) if m in setM]
         a_list = [n for n, a in enumerate(map(lambda x: tuple(x), p.areaRng)) if a in setA]
         i_list = [n for n, i in enumerate(p.imgIds)  if i in setI]
+
         I0 = len(_pe.imgIds)
         A0 = len(_pe.areaRng)
         # retrieve E at each category, area range, and max number of detections
@@ -417,7 +449,7 @@ class COCOeval:
             'scores': scores,
         }
         toc = time.time()
-        print('DONE (t={:0.2f}s).'.format( toc-tic))
+        print('Accumulating DONE (t={:0.2f}s).'.format( toc-tic))
 
     def summarize(self):
         '''
@@ -495,6 +527,170 @@ class COCOeval:
     def __str__(self):
         self.summarize()
 
+    def filter_annotations(self, annotations, catIds):
+        if hasattr(catIds, '__iter__') or hasattr(catIds, '__len__'):
+            catIds = catIds
+        else:
+            catIds = [catIds]
+
+        new_annotations = []
+        for anno in annotations:
+            if anno['category_id'] in catIds:
+                new_annotations.append(anno)
+
+        return new_annotations
+
+    def makeplot(self, recThrs, precisions, name, save_dir=None):
+        if save_dir is not None and not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        #precisions  7x101x4x1]
+        assert precisions.shape[2] == 4
+        areaNms = ['all','small','medium','large']
+        figures_np = {}
+        for aidx in range(precisions.shape[2]):
+            plotname = '%s-%s' %(name, areaNms[aidx])
+            #ps shape 7x101
+            ps = precisions[:, :, aidx, 0].squeeze()
+            ap = np.round(np.mean(ps, axis=1)*1000)
+
+            ds = np.concatenate((np.expand_dims(ps[0], axis=0), np.diff(ps, axis=0)))
+            colors = [
+                [1.0, 1.0, 1.0],
+                [0.5, 0.5, 0.5],
+                [.31, .51, .74],
+                [.75, .31, .30],
+                [.36, .90, .38],
+                [.50, .39, .64],
+                [1.0, .6,  0.0]
+            ]
+            # format legend str
+            ls = ['C75','C50','Loc','Sim','Oth','BG','FN']
+            for i in range(precisions.shape[0]):
+                if ap[i] == 1000:
+                    ls[i] = '[1.00] ' + ls[i]
+                else:
+                    ls[i] = '[.%03d] %s' %(ap[i], ls[i])
+
+            fig = plt.figure()
+            plt.stackplot(recThrs, ds, labels=ls, colors=colors)
+            plt.axis([0.0, 1.0, 0.0, 1.0])
+            plt.legend(loc='lower left')
+            plt.xlabel('recall')
+            plt.ylabel('precision')
+            plt.title(plotname)
+
+            # if save_dir is set, figure will be saved to save_dir
+            if save_dir is not None:
+                save_file = '%s/%s.pdf' % (save_dir, plotname)
+                print('save figure to %s' % save_file)
+                fig.savefig(save_file)
+            fig.canvas.draw()
+            data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+            data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            figures_np[plotname] = data
+            plt.close()
+
+        return figures_np
+
+
+    def analyze(self, save_to_dir=None):
+        '''
+        Analyze errors
+        Args:
+          save_to_dir: directory to save figures of analyzing results, if set None,
+            figures will not be saved
+        '''
+        self.params.outDir = save_to_dir
+        prm = copy.deepcopy(self.params)
+        self.params.maxDets = [100]
+        catIds = sorted(self.cocoGt.getCatIds())
+        self.params.catIds = catIds
+        self.params.iouThrs = np.array([0.75, 0.5, 0.1])
+        self.evaluate()
+        self.accumulate()
+        ps = self.eval['precision']
+        # 0 for C75
+        # 1 for C50
+        # 2 for Loc
+        # 3 for Sim
+        # 4 for Other
+        # 5 for BG
+        # 5 for FN
+        ps = np.concatenate((ps, np.zeros([4] + list(ps.shape[1:]))))
+
+        self.params.iouThrs = np.array([0.1])
+        self.params.useCats = 0
+
+        dt = self.cocoDt
+        gt = self.cocoGt
+        self.analyze_figures = {}
+        for k, catId in enumerate(catIds):
+            nm = self.cocoGt.loadCats(catId)[0]
+            if 'supercategory' in nm:
+                nm = nm['supercategory'] + '-' + nm['name']
+            else:
+                nm = nm['name']
+            print('Analyzing %s (%d):' %(nm, k))
+            start_time = time.time()
+
+            # select detections for single category only
+            self.params.keepDtCatIds = [catId]
+
+            # compute precision but ignore superclass confusion
+            cur_cat = gt.loadCats(catId)[0]
+            if 'supercategory' in cur_cat:
+                similar_cat_ids = gt.getCatIds(supNms=cur_cat['supercategory'])
+                self.params.keepGtCatIds = similar_cat_ids
+                self.params.targetCatId = catId
+
+                # computeIoU need real catIds, we need to recover it
+                self.params.catIds = catIds
+                self.evaluate()
+                self.accumulate()
+                ps[3, :, k, :, :] = self.eval['precision'][0, :, 0, :, :]
+            else:
+                # skip  superclass confusion evaluation
+                ps[3, :, k, :, :] = ps[2, :, k, :, :]
+
+            # compute precision but ignore any class confusion
+            self.params.targetCatId = catId
+            self.params.keepGtCatIds = catIds
+            self.params.catIds = catIds
+            self.evaluate()
+            self.accumulate()
+            ps[4, :, k, :, :] = self.eval['precision'][0, :, 0, :, :]
+
+            # fill in background and false negative errors and plot
+            ps[ps == -1] = 0
+            ps[5, :, k, :] = (ps[4, :, k, :] > 0).astype(np.float32)
+            ps[6, :, k, :] = 1
+            end_time = time.time()
+
+            # test
+            # dst_dir = 'py_precision'
+            # if not os.path.exists(dst_dir):
+            #     os.makedirs(dst_dir)
+            # result_file = '%s/class_%d' % (dst_dir, k)
+            # np.save(result_file, ps)
+
+            figures = self.makeplot(self.params.recThrs, ps[:, :, k, :, :], nm, save_dir=self.params.outDir)
+            self.analyze_figures.update(figures)
+            print('Analyzing DONE (t=%0.2fs).' %(end_time-start_time))
+
+        # reset Dt and Gt, params
+        self.params = prm
+        figures = self.makeplot(self.params.recThrs, np.mean(ps, axis=2), 
+                       'overall-all', save_dir=self.params.outDir)
+        self.analyze_figures.update(figures)
+        if 'supercategory' in list(self.cocoGt.cats.values())[0]:
+            sup = [cat['supercategory'] for cat in self.cocoGt.loadCats(catIds)]
+            print('all sup cats: %s' %(set(sup)))
+            for k in set(sup):
+                ps1 = np.mean(ps[:, :, np.array(sup)==k, :, :], axis=2)
+                figures = self.makeplot(self.params.recThrs, ps1, 'overall-%s' % k, save_dir=self.params.outDir)
+                self.analyze_figures.update(figures)
+
+
 class Params:
     '''
     Params for coco evaluation api
@@ -510,6 +706,14 @@ class Params:
         self.areaRngLbl = ['all', 'small', 'medium', 'large']
         self.useCats = 1
 
+        # if set will filter categories in _prepare func
+        self.keepDtCatIds = []
+        self.keepGtCatIds = []
+        # if set greater than 0, annotation whose catId != targetCatId  will be set to ignore
+        self.targetCatId = -1
+
+        self.outDir = None
+
     def setKpParams(self):
         self.imgIds = []
         self.catIds = []
@@ -521,6 +725,14 @@ class Params:
         self.areaRngLbl = ['all', 'medium', 'large']
         self.useCats = 1
         self.kpt_oks_sigmas = np.array([.26, .25, .25, .35, .35, .79, .79, .72, .72, .62,.62, 1.07, 1.07, .87, .87, .89, .89])/10.0
+
+        # if set will filter categories in _prepare func
+        self.keepDtCatIds = []
+        self.keepGtCatIds = []
+        # if set greater than 0, annotation whose catId != targetCatId  will be set to ignore
+        self.targetCatId = -1
+
+        self.outDir = None
 
     def __init__(self, iouType='segm'):
         if iouType == 'segm' or iouType == 'bbox':
