@@ -1,5 +1,17 @@
-from setuptools import setup, Extension
+from setuptools import dist, setup, Extension
+
+
+install_requires=[
+    'setuptools>=18.0',
+    'cython>=0.27.3',
+    'matplotlib>=2.1.0'
+]
+
+dist.Distribution().fetch_build_eggs(install_requires)
+
+
 import numpy as np
+
 
 # To compile and install locally run "python setup.py build_ext --inplace"
 # To install library to Python site-packages run "python setup.py build_ext install"
@@ -16,12 +28,7 @@ ext_modules = [
 setup(
     name='pycocotools',
     packages=['pycocotools'],
-    package_dir = {'pycocotools': 'pycocotools'},
-    install_requires=[
-        'setuptools>=18.0',
-        'cython>=0.27.3',
-        'matplotlib>=2.1.0'
-    ],
+    package_dir={'pycocotools': 'pycocotools'},
     version='2.0',
-    ext_modules= ext_modules
+    ext_modules=ext_modules
 )
