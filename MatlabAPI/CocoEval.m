@@ -194,7 +194,7 @@ classdef CocoEval < handle
       fprintf('DONE (t=%0.2fs).\n',etime(clock,clk));
     end
     
-    function summarize( ev )
+    function [AP, AR] = summarize( ev )
       % Compute and display summary metrics for evaluation results.
       if(isempty(ev.eval)), error('Please run accumulate() first'); end
       if( any(strcmp(ev.params.iouType,{'bbox','segm'})) )
@@ -208,10 +208,13 @@ classdef CocoEval < handle
           {0,':','all',k},{0,.50,'all',k}, {0,.75,'all',k},...
           {0,':','medium',k}, {0,':','large',k}};
       end
+      M_all = {{1,':','all',k}, {0,':','all',k}};
+      AP = summarize1(M_all{1}{:}, false);
+      AR = summarize1(M_all{2}{:}, false);
       k=length(M); ev.stats=zeros(1,k);
       for s=1:k, ev.stats(s)=summarize1(M{s}{:}); end
-      
-      function s = summarize1( ap, iouThr, areaRng, maxDets )
+
+      function s = summarize1( ap, iouThr, areaRng, maxDets, printResults )
         p=ev.params; i=iouThr; m=find(p.maxDets==maxDets);
         if(i~=':'), iStr=sprintf('%.2f     ',i); i=find(p.iouThrs==i);
         else iStr=sprintf('%.2f:%.2f',min(p.iouThrs),max(p.iouThrs)); end
@@ -220,7 +223,10 @@ classdef CocoEval < handle
         if(ap), tStr='Precision (AP)'; s=ev.eval.precision(i,:,:,a,m);
         else    tStr='Recall    (AR)'; s=ev.eval.recall(i,:,a,m); end
         fStr=' Average %s @[ IoU=%s | area=%6s | maxDets=%3i ] = %.3f\n';
-        s=mean(s(s>=0)); fprintf(fStr,tStr,iStr,areaRng,maxDets,s);
+        s=mean(s(s>=0));
+        if ~exist('printResults', 'var') || printResults
+          fprintf(fStr,tStr,iStr,areaRng,maxDets,s);
+        end
       end
     end
     
