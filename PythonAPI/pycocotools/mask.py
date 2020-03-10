@@ -33,6 +33,7 @@ import pycocotools._mask as _mask
 #  merge          - Compute union or intersection of encoded masks.
 #  iou            - Compute intersection over union between masks.
 #  area           - Compute area of encoded masks.
+#  invert         - Compute inverse of encoded masks.
 #  toBbox         - Get bounding boxes surrounding encoded masks.
 #  frPyObjects    - Convert polygon, bbox, and uncompressed RLE to encoded RLE mask.
 #
@@ -42,6 +43,7 @@ import pycocotools._mask as _mask
 #  R      = merge( Rs, intersect=false )
 #  o      = iou( dt, gt, iscrowd )
 #  a      = area( Rs )
+#  Rs     = invert( Rs )
 #  bbs    = toBbox( Rs )
 #  Rs     = frPyObjects( [pyObjects], h, w )
 #
@@ -95,6 +97,12 @@ def area(rleObjs):
         return _mask.area(rleObjs)
     else:
         return _mask.area([rleObjs])[0]
+
+def invert(rleObjs):
+    if type(rleObjs) == list:
+        return _mask.invert(rleObjs)
+    else:
+        return _mask.invert([rleObjs])[0]
 
 def toBbox(rleObjs):
     if type(rleObjs) == list:

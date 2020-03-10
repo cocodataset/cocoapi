@@ -43,6 +43,7 @@ cdef extern from "maskApi.h":
     void rleDecode( const RLE *R, byte *mask, siz n )
     void rleMerge( const RLE *R, RLE *M, siz n, int intersect )
     void rleArea( const RLE *R, siz n, uint *a )
+    void rleInvert( const RLE *R_in, RLE *R_out, siz n )
     void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o )
     void bbIou( BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o )
     void rleToBbox( const RLE *R, BB bb, siz n )
@@ -166,6 +167,14 @@ def area(rleObjs):
     a = np.PyArray_SimpleNewFromData(1, shape, np.NPY_UINT32, _a)
     PyArray_ENABLEFLAGS(a, np.NPY_OWNDATA)
     return a
+
+def invert(rleObjs):
+    cdef RLEs Rs_in = _frString(rleObjs)
+    h, w, n = Rs_in._R[0].h, Rs_in._R[0].w, Rs_in._n
+    cdef RLEs Rs_out = RLEs(n)
+    rleInvert(Rs_in._R, Rs_out._R, n)
+    objs = _toString(Rs_out)
+    return objs
 
 # iou computation. support function overload (RLEs-RLEs and bbox-bbox).
 def iou( dt, gt, pyiscrowd ):

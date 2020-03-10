@@ -19,10 +19,10 @@ classdef MaskApi
   %
   % Many common operations on masks can be computed directly using the RLE
   % (without need for decoding). This includes computations such as area,
-  % union, intersection, etc. All of these operations are linear in the
-  % size of the RLE, in other words they are O(sqrt(n)) where n is the area
-  % of the object. Computing these operations on the original mask is O(n).
-  % Thus, using the RLE can result in substantial computational savings.
+  % union, intersection, inverse etc. All of these operations are linear in
+  % the size of the RLE, in other words they are O(sqrt(n)) where n is the
+  % area of the object. Computing these operations on the original mask is
+  % O(n). Thus, using the RLE can result in substantial computational savings.
   %
   % The following API functions are defined:
   %  encode - Encode binary masks using RLE.
@@ -31,6 +31,7 @@ classdef MaskApi
   %  iou    - Compute intersection over union between masks.
   %  nms    - Compute non-maximum suppression between ordered masks.
   %  area   - Compute area of encoded masks.
+  %  invert - Compute inverse of encoded masks.
   %  toBbox - Get bounding boxes surrounding encoded masks.
   %  frBbox - Convert bounding boxes to encoded masks.
   %  frPoly - Convert polygon to encoded mask.
@@ -42,6 +43,7 @@ classdef MaskApi
   %  o      = MaskApi.iou( dt, gt, [iscrowd=false] )
   %  keep   = MaskApi.nms( dt, thr )
   %  a      = MaskApi.area( Rs )
+  %  Rs     = MaskApi.invert( Rs )
   %  bbs    = MaskApi.toBbox( Rs )
   %  Rs     = MaskApi.frBbox( bbs, h, w )
   %  R      = MaskApi.frPoly( poly, h, w )
@@ -96,8 +98,16 @@ classdef MaskApi
       keep = maskApiMex('nms',dt',thr);
     end
     
+    function Rs_out = area( Rs )
+      Rs_out = maskApiMex( 'invert', Rs );
+    end
+    
     function a = area( Rs )
       a = maskApiMex( 'area', Rs );
+    end
+    
+    function Rs_out = invert( Rs )
+      Rs_out = maskApiMex( 'invert', Rs );
     end
     
     function bbs = toBbox( Rs )

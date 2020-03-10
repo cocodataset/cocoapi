@@ -74,6 +74,20 @@ void rleArea( const RLE *R, siz n, uint *a ) {
     a[i]=0; for( j=1; j<R[i].m; j+=2 ) a[i]+=R[i].cnts[j]; }
 }
 
+void rleInvert(const RLE *R, RLE *M, siz n) {
+  siz i, h=R[0].h, w=R[0].w; uint *cnts;
+  for( i=0; i<n; i++ ) if (R[i].m) {
+    if (R[i].cnts[0] == 0) {
+      rleInit(M+i,h,w,R[i].m-1,R[i].cnts+1);
+    } else {
+      cnts=malloc(sizeof(uint)*(R[i].m+1));
+      cnts[0]=0;
+      memcpy(cnts+1,R[i].cnts,sizeof(uint)*R[i].m);
+      (M + i)->cnts=cnts; (M + i)->h=h; (M + i)->w=w; (M + i)->m=R[i].m + 1;
+    }
+  }
+}
+
 void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o ) {
   siz g, d; BB db, gb; int crowd;
   db=malloc(sizeof(double)*m*4); rleToBbox(dt,db,m);
