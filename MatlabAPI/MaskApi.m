@@ -97,11 +97,7 @@ classdef MaskApi
     function keep = nms( dt, thr )
       keep = maskApiMex('nms',dt',thr);
     end
-    
-    function Rs_out = area( Rs )
-      Rs_out = maskApiMex( 'invert', Rs );
-    end
-    
+  
     function a = area( Rs )
       a = maskApiMex( 'area', Rs );
     end

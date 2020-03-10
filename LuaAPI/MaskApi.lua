@@ -281,6 +281,7 @@ ffi.cdef[[
   void rleDecode( const RLE *R, byte *mask, siz n );
   void rleMerge( const RLE *R, RLE *M, siz n, int intersect );
   void rleArea( const RLE *R, siz n, uint *a );
+  void rleInvert( const RLE *R, RLE *M, siz n );
   void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o );
   void rleNms( RLE *dt, siz n, uint *keep, double thr );
   void bbIou( BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o );
