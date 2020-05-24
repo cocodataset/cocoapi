@@ -26,8 +26,10 @@ jobs:
     - name: Lint with flake8
       run: flake8 --max-complexity 20 .
     - name: Lint with isort
-      run: isort -rc --check-only --diff mmcv/ tests/ examples/
+      run: isort -rc --check-only --diff PythonAPI/
     - name: Format with yapf
-      run: yapf -r -d mmcv/ tests/ examples/
+      run: yapf -r -d PythonAPI
+    - name: Install python dependencies
+      run: pip install numpy
     - name: Build and install
-      run: rm -rf .eggs && pip install -e .
+      run: cd PythonAPI && rm -rf .eggs && pip install -e .
