@@ -141,6 +141,8 @@ images/
 annotations/
 results/
 external/
+.vscode
+.idea
 .DS_Store
 
 MatlabAPI/analyze*/

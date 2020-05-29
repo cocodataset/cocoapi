@@ -49,9 +49,9 @@ import copy
 import itertools
 import json
 import os
-import sys
 import time
 from collections import defaultdict
+from urllib.request import urlretrieve
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -59,12 +59,6 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 
 from . import mask as maskUtils
-
-PYTHON_VERSION = sys.version_info[0]
-if PYTHON_VERSION == 2:
-    from urllib import urlretrieve
-elif PYTHON_VERSION == 3:
-    from urllib.request import urlretrieve
 
 
 def _isArrayLike(obj):
@@ -84,6 +78,8 @@ class COCO:
         self.dataset, self.anns, self.cats, self.imgs = dict(), dict(), dict(
         ), dict()
         self.imgToAnns, self.catToImgs = defaultdict(list), defaultdict(list)
+        self.img_ann_map = self.imgToAnns
+        self.cat_img_map = self.catToImgs
         if annotation_file is not None:
             print('loading annotations into memory...')
             tic = time.time()
@@ -174,7 +170,8 @@ class COCO:
             ids = [ann['id'] for ann in anns]
         return ids
 
-    get_ann_ids = getAnnIds
+    def get_ann_ids(self, img_ids=[], cat_ids=[], area_rng=[], iscrowd=None):
+        return self.getAnnIds(img_ids, cat_ids, area_rng, iscrowd)
 
     def getCatIds(self, catNms=[], supNms=[], catIds=[]):
         """
@@ -204,7 +201,8 @@ class COCO:
         ids = [cat['id'] for cat in cats]
         return ids
 
-    get_cat_ids = getCatIds
+    def get_cat_ids(self, cat_names=[], sup_names=[], cat_ids=[]):
+        return self.getCatIds(cat_names, sup_names, cat_ids)
 
     def getImgIds(self, imgIds=[], catIds=[]):
         '''
@@ -227,7 +225,8 @@ class COCO:
                     ids &= set(self.catToImgs[catId])
         return list(ids)
 
-    get_img_ids = getImgIds
+    def get_img_ids(self, img_ids=[], cat_ids=[]):
+        return self.getImgIds(img_ids, cat_ids)
 
     def loadAnns(self, ids=[]):
         """
