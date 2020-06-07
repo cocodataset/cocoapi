@@ -145,13 +145,9 @@ external/
 .idea
 .DS_Store
 
-MatlabAPI/analyze*/
-MatlabAPI/visualize*/
-MatlabAPI/private/maskApiMex.*
-
-PythonAPI/pycocotools/__init__.pyc
-PythonAPI/pycocotools/_mask.c
-PythonAPI/pycocotools/_mask.so
-PythonAPI/pycocotools/coco.pyc
-PythonAPI/pycocotools/cocoeval.pyc
-PythonAPI/pycocotools/mask.pyc
+pycocotools/pycocotools/__init__.pyc
+pycocotools/pycocotools/_mask.c
+pycocotools/pycocotools/_mask.so
+pycocotools/pycocotools/coco.pyc
+pycocotools/pycocotools/cocoeval.pyc
+pycocotools/pycocotools/mask.pyc

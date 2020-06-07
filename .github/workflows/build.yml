@@ -26,10 +26,12 @@ jobs:
     - name: Lint with flake8
       run: flake8 --max-complexity 20 .
     - name: Lint with isort
-      run: isort -rc --check-only --diff PythonAPI/
+      run: isort -rc --check-only --diff pycocotools/ lvis/
     - name: Format with yapf
-      run: yapf -r -d PythonAPI
+      run: yapf -r -d pycocotools/ lvis/
     - name: Install python dependencies
       run: pip install numpy
-    - name: Build and install
-      run: cd PythonAPI && rm -rf .eggs && pip install -e .
+    - name: Build and install pycocotools
+      run: cd pycocotools && rm -rf *.eggs-info && pip install -e .
+    - name: Build and install lvis
+      run: cd lvis && rm -rf *.eggs-info && pip install -e .
