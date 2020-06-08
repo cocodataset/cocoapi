@@ -32,6 +32,6 @@ jobs:
     - name: Install python dependencies
       run: pip install numpy
     - name: Build and install pycocotools
-      run: cd pycocotools && rm -rf *.eggs-info && pip install .
+      run: cd pycocotools && rm -rf *.eggs-info && pip install -e .
     - name: Build and install lvis
-      run: cd lvis && rm -rf *.eggs-info && pip install .
+      run: cd lvis && rm -rf *.eggs-info && pip install -e .
