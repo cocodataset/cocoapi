@@ -122,6 +122,8 @@ class COCO:
         self.catToImgs = catToImgs
         self.imgs = imgs
         self.cats = cats
+        self.img_ann_map = self.imgToAnns
+        self.cat_img_map = self.catToImgs
 
     def info(self):
         """
