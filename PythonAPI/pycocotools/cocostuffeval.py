@@ -3,7 +3,7 @@ __author__ = 'hcaesar'
 import numpy as np
 import datetime
 import time
-from cocostuffhelper import cocoSegmentationToSegmentationMap
+from .cocostuffhelper import cocoSegmentationToSegmentationMap
 
 class COCOStuffeval:
     # Internal functions for evaluating stuff segmentations against a ground-truth.
