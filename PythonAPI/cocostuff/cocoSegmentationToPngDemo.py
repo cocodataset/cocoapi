@@ -65,7 +65,7 @@ def cocoSegmentationToPngDemo(dataDir='../..', dataTypeAnn='train2017', dataType
 
     # Convert each image to a png
     imgCount = len(imgIds)
-    for i in xrange(0, imgCount):
+    for i in range(0, imgCount):
         imgId = imgIds[i]
         imgName = coco.loadImgs(ids=imgId)[0]['file_name'].replace('.jpg', '')
         print('Exporting image %d of %d: %s' % (i+1, imgCount, imgName))

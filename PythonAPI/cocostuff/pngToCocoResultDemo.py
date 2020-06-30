@@ -54,7 +54,7 @@ def pngToCocoResultDemo(dataDir='../..', resType='examples', indent=None):
         # Annotation start
         output.write(unicode('[\n'))
 
-        for i, imgName in zip(xrange(0, imgCount), imgNames):
+        for i, imgName in zip(range(0, imgCount), imgNames):
             print('Converting png image %d of %d: %s' % (i+1, imgCount, imgName))
 
             # Add stuff annotations

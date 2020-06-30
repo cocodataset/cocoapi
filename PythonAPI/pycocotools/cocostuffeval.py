@@ -208,8 +208,8 @@ class COCOStuffeval:
 
         # Compute confusion matrix for supercategories
         confusionSup = np.zeros((supCatCount, supCatCount))
-        for supCatIdA in xrange(0, supCatCount):
-            for supCatIdB in xrange(0, supCatCount):
+        for supCatIdA in range(0, supCatCount):
+            for supCatIdB in range(0, supCatCount):
                 curLeavesA = np.where([s == supCatIdA for s in supCatIds])[0] + self.stuffStartId - 1
                 curLeavesB = np.where([s == supCatIdB for s in supCatIds])[0] + self.stuffStartId - 1
                 confusionLeaves = confusion[curLeavesA, :]
