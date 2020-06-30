@@ -33,7 +33,7 @@ def segmentationToCocoMask(labelMap, labelId):
 
     return Rs
 
-def segmentationToCocoResult(labelMap, imgId, stuffStartId=92):
+def segmentationToCocoResult(labelMap, imgId, stuffStartId=0):
     '''
     Convert a segmentation map to COCO stuff segmentation result format.
     :param labelMap: [h x w] segmentation map that indicates the label of each pixel
@@ -95,7 +95,7 @@ def cocoSegmentationToSegmentationMap(coco, imgId, checkUniquePixelLabel=True, i
 
     # Combine all annotations of this image in labelMap
     #labelMasks = mask.decode([a['segmentation'] for a in imgAnnots])
-    for a in xrange(0, len(imgAnnots)):
+    for a in range(0, len(imgAnnots)):
         labelMask = coco.annToMask(imgAnnots[a]) == 1
         #labelMask = labelMasks[:, :, a] == 1
         newLabel = imgAnnots[a]['category_id']

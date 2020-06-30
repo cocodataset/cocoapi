@@ -41,7 +41,7 @@ class COCOStuffeval:
     # Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
     # Licensed under the Simplified BSD License [see coco/license.txt]
 
-    def __init__(self, cocoGt, cocoRes, stuffStartId=92, stuffEndId=182, addOther=True):
+    def __init__(self, cocoGt, cocoRes, stuffStartId=0, stuffEndId=100, addOther=True):
         '''
         Initialize COCOStuffeval using COCO APIs for gt and dt
         :param cocoGt: COCO object with ground truth annotations
