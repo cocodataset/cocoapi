@@ -72,7 +72,7 @@ class COCO:
         """
         Constructor of Microsoft COCO helper class for reading and visualizing annotations.
         :param annotation_file (str): location of annotation file
-        :param dataset (bytes object): dynamic annotation file 
+        :param dataset (bytes object): object with annotations, stored in memory
         :return:
         """
         # load dataset
