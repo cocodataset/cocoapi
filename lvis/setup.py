@@ -26,7 +26,7 @@ if __name__ == '__main__':
     setuptools.setup(name=DISTNAME,
                      install_requires=REQUIREMENTS,
                      packages=setuptools.find_packages(),
-                     version='10.5.2',
+                     version='10.5.3',
                      description=DESCRIPTION,
                      long_description=DOCLINES,
                      long_description_content_type='text/markdown',

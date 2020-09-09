@@ -15,18 +15,20 @@ jobs:
       - name: Build mmpycocotools
         run: |
           pip install -r lvis/requirements.txt
-          python pycocotools/setup.py sdist
+          cd pycocotools
+          python setup.py sdist
       - name: Publish distribution to PyPI
         run: |
           pip install twine
           twine upload dist/* -u __token__ -p ${{ secrets.pypi_password }}
-          rm -rf dist
+          cd ..
       - name: Build mmvlis
         run: |
           pip install wheel
-          python lvis/setup.py sdist bdist_wheel
+          cd lvis
+          python setup.py sdist bdist_wheel
       - name: Publish distribution to PyPI
         run: |
           pip install twine
           twine upload dist/* -u __token__ -p ${{ secrets.pypi_password }}
-          rm -rf dist
+          cd ..
