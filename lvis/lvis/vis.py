@@ -114,7 +114,7 @@ class LVISVis:
 
     def load_img(self, img_id):
         img = self.lvis_gt.load_imgs([img_id])[0]
-        img_path = os.path.join(self.img_dir, img['file_name'])
+        img_path = os.path.join(self.img_dir, img['coco_url'].split('/')[-1])
         if not os.path.exists(img_path):
             self.lvis_gt.download(self.img_dir, img_ids=[img_id])
         img = cv2.imread(img_path)

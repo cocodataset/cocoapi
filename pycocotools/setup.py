@@ -18,7 +18,7 @@ ext_modules = [
     )
 ]
 
-setup(name='pycocotools',
+setup(name='mmpycocotools',
       packages=['pycocotools'],
       package_dir={'pycocotools': 'pycocotools'},
       install_requires=[

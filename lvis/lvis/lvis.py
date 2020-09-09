@@ -162,7 +162,7 @@ class LVIS:
             os.makedirs(save_dir)
 
         for img in imgs:
-            file_name = os.path.join(save_dir, img['file_name'])
+            file_name = os.path.join(save_dir, img['coco_url'].split('/')[-1])
             if not os.path.exists(file_name):
                 urlretrieve(img['coco_url'], file_name)
 

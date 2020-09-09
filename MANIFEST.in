@@ -1,0 +1,2 @@
+include pycocotools/pycocotools/*.pyx
+include lvis/requirements.txt

@@ -12,10 +12,11 @@ import setuptools
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lvis'))
 
-with open('requirements.txt') as f:
+dir_path = os.path.dirname(os.path.realpath(__file__))
+with open(os.path.join(dir_path, 'requirements.txt')) as f:
     reqs = f.read()
 
-DISTNAME = 'lvis'
+DISTNAME = 'mmlvis'
 DESCRIPTION = 'Python API for LVIS dataset.'
 AUTHOR = 'Agrim Gupta'
 REQUIREMENTS = (reqs.strip().split('\n'), )
