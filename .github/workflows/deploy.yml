@@ -13,7 +13,9 @@ jobs:
         with:
           python-version: 3.7
       - name: Build mmpycocotools
-        run: python pycocotools/setup.py sdist
+        run: |
+          pip install -r lvis/requirements.txt
+          python pycocotools/setup.py sdist
       - name: Publish distribution to PyPI
         run: |
           pip install twine
