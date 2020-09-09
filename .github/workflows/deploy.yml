@@ -17,11 +17,6 @@ jobs:
           pip install -r lvis/requirements.txt
           cd pycocotools
           python setup.py sdist
-      - name: Publish distribution to PyPI
-        run: |
-          pip install twine
-          twine upload dist/* -u __token__ -p ${{ secrets.pypi_password }}
-          cd ..
       - name: Build mmvlis
         run: |
           pip install wheel
@@ -30,5 +25,5 @@ jobs:
       - name: Publish distribution to PyPI
         run: |
           pip install twine
-          twine upload dist/* -u __token__ -p ${{ secrets.pypi_password }}
-          cd ..
+          twine upload pycocotools/dist/* -u __token__ -p ${{ secrets.pypi_password }}
+          twine upload lvis/dist/* -u __token__ -p ${{ secrets.pypi_password }}
