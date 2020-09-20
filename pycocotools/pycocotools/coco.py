@@ -78,8 +78,6 @@ class COCO:
         self.dataset, self.anns, self.cats, self.imgs = dict(), dict(), dict(
         ), dict()
         self.imgToAnns, self.catToImgs = defaultdict(list), defaultdict(list)
-        self.img_ann_map = self.imgToAnns
-        self.cat_img_map = self.catToImgs
         if annotation_file is not None:
             print('loading annotations into memory...')
             tic = time.time()
@@ -92,6 +90,8 @@ class COCO:
             print('Done (t={:0.2f}s)'.format(time.time() - tic))
             self.dataset = dataset
             self.createIndex()
+        self.img_ann_map = self.imgToAnns
+        self.cat_img_map = self.catToImgs
 
     def createIndex(self):
         # create index
@@ -123,8 +123,6 @@ class COCO:
         self.catToImgs = catToImgs
         self.imgs = imgs
         self.cats = cats
-        self.img_ann_map = self.imgToAnns
-        self.cat_img_map = self.catToImgs
 
     def info(self):
         """
