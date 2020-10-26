@@ -57,7 +57,7 @@ class COCOeval:
     # Data, paper, and tutorials available at:  http://mscoco.org/
     # Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
     # Licensed under the Simplified BSD License [see coco/license.txt]
-    def __init__(self, cocoGt=None, cocoDt=None, iouType='segm'):
+    def __init__(self, cocoGt=None, cocoDt=None, iouType='segm', iouThrs=(0.5, 0.95, 0.05)):
         '''
         Initialize CocoEval using coco APIs for gt and dt
         :param cocoGt: coco object with ground truth annotations
@@ -522,7 +522,7 @@ class Params:
         self.useCats = 1
         self.kpt_oks_sigmas = np.array([.26, .25, .25, .35, .35, .79, .79, .72, .72, .62,.62, 1.07, 1.07, .87, .87, .89, .89])/10.0
 
-    def __init__(self, iouType='segm'):
+    def __init__(self, iouType='segm', iouThrs=(0.5, 0.95, 0.05)):
         if iouType == 'segm' or iouType == 'bbox':
             self.setDetParams()
         elif iouType == 'keypoints':
