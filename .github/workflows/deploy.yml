@@ -1,0 +1,29 @@
+name: deploy
+
+on: push
+
+jobs:
+  build-n-publish:
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.ref, 'refs/tags')
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Build mmpycocotools
+        run: |
+          pip install -r lvis/requirements.txt
+          cd pycocotools
+          python setup.py sdist
+      - name: Build mmvlis
+        run: |
+          pip install wheel
+          cd lvis
+          python setup.py sdist bdist_wheel
+      - name: Publish distribution to PyPI
+        run: |
+          pip install twine
+          twine upload pycocotools/dist/* -u __token__ -p ${{ secrets.pypi_password }}
+          twine upload lvis/dist/* -u __token__ -p ${{ secrets.pypi_password }}

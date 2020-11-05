@@ -1,0 +1,2 @@
+include common/*.cpp common/*.h common/*.c
+include pycocotools/_mask.pyx
