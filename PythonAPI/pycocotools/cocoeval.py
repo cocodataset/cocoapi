@@ -118,6 +118,68 @@ class COCOeval:
         self.evalImgs = defaultdict(list)   # per-image per-category evaluation results
         self.eval     = {}                  # accumulated evaluation results
 
+    # adapted from https://github.com/CAPTAIN-WHU/DOTA_devkit/blob/master/dota-v1.5_evaluation_task1.py#L192
+    def obb_iou(self, dt, gt):
+        '''
+        gt is a list of GT category_id = 1 of img_id = 1
+        dt is a list of candidates category_id = 1 of img_id = 1
+        '''
+
+        if len(gt) == 0:
+            return []
+
+        total_iou_array = []
+        for bb in dt:
+            bb = np.array(bb)
+            bb_xmin = np.min(bb[0::2])
+            bb_ymin = np.min(bb[1::2])
+            bb_xmax = np.max(bb[0::2])
+            bb_ymax = np.max(bb[1::2])
+    
+            # 1. calculate the overlaps between hbbs, if the iou between hbbs are 0, the iou between obbs are 0, too.
+            BBGT = np.array(gt)
+
+            BBGT_xmin =  np.min(BBGT[:, 0::2], axis=1)
+            BBGT_ymin = np.min(BBGT[:, 1::2], axis=1)
+            BBGT_xmax = np.max(BBGT[:, 0::2], axis=1)
+            BBGT_ymax = np.max(BBGT[:, 1::2], axis=1)
+
+            # debugging purpose
+            # print (BBGT, "BBGT")
+            # print (bb, "BB")
+            # print (BBGT_xmin, bb_xmin, "xmin")
+            # print (BBGT_xmax, bb_xmax, "xmax")
+            # print (BBGT_ymin, bb_ymin, "ymin")
+            # print (BBGT_ymax, bb_ymax, "ymax")
+
+            ixmin = np.maximum(BBGT_xmin, bb_xmin)
+            iymin = np.maximum(BBGT_ymin, bb_ymin)
+            ixmax = np.minimum(BBGT_xmax, bb_xmax)
+            iymax = np.minimum(BBGT_ymax, bb_ymax)
+            iw = np.maximum(ixmax - ixmin + 1., 0.)
+            ih = np.maximum(iymax - iymin + 1., 0.)
+            inters = iw * ih
+            
+            # union
+            uni = ((bb_xmax - bb_xmin + 1.) * (bb_ymax - bb_ymin + 1.) +
+                (BBGT_xmax - BBGT_xmin + 1.) *
+                (BBGT_ymax - BBGT_ymin + 1.) - inters)
+            overlaps = inters / uni
+            
+            # debugging purpose
+            # print (inters, "inters")
+            # print (uni , "uni")
+            # print (overlaps, "overlay here")
+            
+            candidate_iou_list = overlaps
+            if total_iou_array == []:
+                total_iou_array = candidate_iou_list
+            else:
+                total_iou_array = np.vstack( (total_iou_array, candidate_iou_list) )
+        
+        # print (total_iou_array)
+        return total_iou_array
+
     def evaluate(self):
         '''
         Run per image evaluation on given images and store results (a list of dict) in self.evalImgs
@@ -141,7 +203,7 @@ class COCOeval:
         # loop through images, area range, max detection number
         catIds = p.catIds if p.useCats else [-1]
 
-        if p.iouType == 'segm' or p.iouType == 'bbox':
+        if p.iouType == 'segm' or p.iouType == 'bbox' or p.iouType == 'obb':
             computeIoU = self.computeIoU
         elif p.iouType == 'keypoints':
             computeIoU = self.computeOks
@@ -175,18 +237,28 @@ class COCOeval:
         if len(dt) > p.maxDets[-1]:
             dt=dt[0:p.maxDets[-1]]
 
+        print (gt, "gt")
+        print (dt, "dt")
         if p.iouType == 'segm':
             g = [g['segmentation'] for g in gt]
             d = [d['segmentation'] for d in dt]
         elif p.iouType == 'bbox':
             g = [g['bbox'] for g in gt]
             d = [d['bbox'] for d in dt]
+        elif p.iouType == 'obb':
+            g = [g['segmentation'][0] for g in gt]
+            d = [d['segmentation'][0] for d in dt]
+            return self.obb_iou(d, g)
+
         else:
             raise Exception('unknown iouType for iou computation')
 
         # compute iou between each dt and gt region
         iscrowd = [int(o['iscrowd']) for o in gt]
         ious = maskUtils.iou(d,g,iscrowd)
+        # print (ious)
+        # if len(ious) > 0:
+        #     print (type(ious[0]), "type")
         return ious
 
     def computeOks(self, imgId, catId):
@@ -458,22 +530,17 @@ class COCOeval:
         def _summarizeDets():
             stats = np.zeros((12,))
             stats[0] = _summarize(1)
-            stats[1] = _summarize(1, iouThr=.2, maxDets=self.params.maxDets[2])
-            stats[2] = _summarize(1, iouThr=.3, maxDets=self.params.maxDets[2])
-            stats[3] = _summarize(1, iouThr=.4, maxDets=self.params.maxDets[2])
-            stats[4] = _summarize(1, iouThr=.5, maxDets=self.params.maxDets[2])
-            # stats[6] = _summarize(1, iouThr=.6, maxDets=self.params.maxDets[2])
-            # stats[7] = _summarize(1, iouThr=.7, maxDets=self.params.maxDets[2])
-            # stats[8] = _summarize(1, iouThr=.8, maxDets=self.params.maxDets[2])
-            #stats[3] = _summarize(1, areaRng='small', maxDets=self.params.maxDets[2])
-            # stats[4] = _summarize(1, areaRng='medium', maxDets=self.params.maxDets[2])
-            # stats[5] = _summarize(1, areaRng='large', maxDets=self.params.maxDets[2])
-            # stats[6] = _summarize(0, maxDets=self.params.maxDets[0])
-            # stats[7] = _summarize(0, maxDets=self.params.maxDets[1])
-            # stats[8] = _summarize(0, maxDets=self.params.maxDets[2])
-            # stats[9] = _summarize(0, areaRng='small', maxDets=self.params.maxDets[2])
-            # stats[10] = _summarize(0, areaRng='medium', maxDets=self.params.maxDets[2])
-            # stats[11] = _summarize(0, areaRng='large', maxDets=self.params.maxDets[2])
+            stats[1] = _summarize(1, iouThr=.5, maxDets=self.params.maxDets[2])
+            stats[2] = _summarize(1, iouThr=.75, maxDets=self.params.maxDets[2])
+            stats[3] = _summarize(1, areaRng='small', maxDets=self.params.maxDets[2])
+            stats[4] = _summarize(1, areaRng='medium', maxDets=self.params.maxDets[2])
+            stats[5] = _summarize(1, areaRng='large', maxDets=self.params.maxDets[2])
+            stats[6] = _summarize(0, maxDets=self.params.maxDets[0])
+            stats[7] = _summarize(0, maxDets=self.params.maxDets[1])
+            stats[8] = _summarize(0, maxDets=self.params.maxDets[2])
+            stats[9] = _summarize(0, areaRng='small', maxDets=self.params.maxDets[2])
+            stats[10] = _summarize(0, areaRng='medium', maxDets=self.params.maxDets[2])
+            stats[11] = _summarize(0, areaRng='large', maxDets=self.params.maxDets[2])
             return stats
         def _summarizeKps():
             stats = np.zeros((10,))
@@ -491,7 +558,7 @@ class COCOeval:
         if not self.eval:
             raise Exception('Please run accumulate() first')
         iouType = self.params.iouType
-        if iouType == 'segm' or iouType == 'bbox':
+        if iouType == 'segm' or iouType == 'bbox' or iouType == 'obb':
             summarize = _summarizeDets
         elif iouType == 'keypoints':
             summarize = _summarizeKps
@@ -508,8 +575,7 @@ class Params:
         self.imgIds = []
         self.catIds = []
         # np.arange causes trouble.  the data point on arange is slightly larger than the true value
-        #self.iouThrs = np.linspace(.5, 0.95, int(np.round((0.95 - .5) / .05)) + 1, endpoint=True)
-        self.iouThrs = np.linspace(.2, .5, int(np.round((.5 - .2) / .05)) + 1, endpoint=True)
+        self.iouThrs = np.linspace(.5, 0.95, int(np.round((0.95 - .5) / .05)) + 1, endpoint=True)
         self.recThrs = np.linspace(.0, 1.00, int(np.round((1.00 - .0) / .01)) + 1, endpoint=True)
         self.maxDets = [1, 10, 100]
         self.areaRng = [[0 ** 2, 1e5 ** 2], [0 ** 2, 32 ** 2], [32 ** 2, 96 ** 2], [96 ** 2, 1e5 ** 2]]
@@ -529,7 +595,7 @@ class Params:
         self.kpt_oks_sigmas = np.array([.26, .25, .25, .35, .35, .79, .79, .72, .72, .62,.62, 1.07, 1.07, .87, .87, .89, .89])/10.0
 
     def __init__(self, iouType='segm'):
-        if iouType == 'segm' or iouType == 'bbox':
+        if iouType == 'segm' or iouType == 'bbox' or iouType == 'obb':
             self.setDetParams()
         elif iouType == 'keypoints':
             self.setKpParams()
