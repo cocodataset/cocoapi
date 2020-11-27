@@ -173,7 +173,7 @@ class COCOeval:
             
             candidate_iou_list = overlaps
             if total_iou_array == []:
-                total_iou_array = candidate_iou_list
+                total_iou_array = np.array([candidate_iou_list])
             else:
                 total_iou_array = np.vstack( (total_iou_array, candidate_iou_list) )
         
@@ -237,8 +237,8 @@ class COCOeval:
         if len(dt) > p.maxDets[-1]:
             dt=dt[0:p.maxDets[-1]]
 
-        print (gt, "gt")
-        print (dt, "dt")
+        # print (gt, "gt")
+        # print (dt, "dt")
         if p.iouType == 'segm':
             g = [g['segmentation'] for g in gt]
             d = [d['segmentation'] for d in dt]
@@ -332,6 +332,12 @@ class COCOeval:
         dt = [dt[i] for i in dtind[0:maxDet]]
         iscrowd = [int(o['iscrowd']) for o in gt]
         # load computed ious
+
+        # try:
+        #     ious = self.ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
+        # except:
+        #     import pdb; pdb.set_trace()
+
         ious = self.ious[imgId, catId][:, gtind] if len(self.ious[imgId, catId]) > 0 else self.ious[imgId, catId]
 
         T = len(p.iouThrs)
