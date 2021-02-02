@@ -132,14 +132,29 @@ void bbNms( BB dt, siz n, uint *keep, double thr ) {
 
 void rleToBbox( const RLE *R, BB bb, siz n ) {
   siz i; for( i=0; i<n; i++ ) {
-    uint h, w, x, y, xs, ys, xe, ye, xp, cc, t; siz j, m;
+    uint h, w, xs, ys, xe, ye, xp, cc; siz j, m;
     h=(uint)R[i].h; w=(uint)R[i].w; m=R[i].m;
     m=((siz)(m/2))*2; xs=w; ys=h; xe=ye=0; cc=0;
     if(m==0) { bb[4*i+0]=bb[4*i+1]=bb[4*i+2]=bb[4*i+3]=0; continue; }
     for( j=0; j<m; j++ ) {
-      cc+=R[i].cnts[j]; t=cc-j%2; y=t%h; x=(t-y)/h;
-      if(j%2==0) xp=x; else if(xp<x) { ys=0; ye=h-1; }
-      xs=umin(xs,x); xe=umax(xe,x); ys=umin(ys,y); ye=umax(ye,y);
+      uint start = cc;   // start of current segment
+      cc+=R[i].cnts[j];  // start of next segment
+      if (j % 2 == 0) continue; // skip background segment
+      if (R[i].cnts[j] == 0) continue; // skip zero-length foreground segment
+      uint y_start = start % h, x_start = (start - y_start) / h;
+      uint y_end = (cc - 1) % h, x_end = (cc - 1 - y_end) / h;
+
+      // x_start <= x_end must be true
+      xs = umin(xs, x_start);
+      xe = umax(xe, x_end);
+
+      if (x_start < x_end) {
+        ys = 0; ye = h - 1;    // foreground segment goes across columns
+      } else {
+        // if x_start == x_end, then y_start <= y_end must be true
+        ys = umin(ys, y_start);
+        ye = umax(ye, y_end);
+      }
     }
     bb[4*i+0]=xs; bb[4*i+2]=xe-xs+1;
     bb[4*i+1]=ys; bb[4*i+3]=ye-ys+1;
