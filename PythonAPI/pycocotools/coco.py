@@ -54,6 +54,7 @@ import copy
 import itertools
 from . import mask as maskUtils
 import os
+import collections
 from collections import defaultdict
 import sys
 PYTHON_VERSION = sys.version_info[0]
@@ -64,7 +65,8 @@ elif PYTHON_VERSION == 3:
 
 
 def _isArrayLike(obj):
-    return hasattr(obj, '__iter__') and hasattr(obj, '__len__')
+    return (isinstance(obj, (collections.Sequence, np.ndarray, collections.abc.Iterable))
+    and not isinstance(obj, (str, bytes)))
 
 
 class COCO:
