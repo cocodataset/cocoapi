@@ -238,7 +238,7 @@ class COCO:
         """
         if len(anns) == 0:
             return 0
-        if 'segmentation' in anns[0] or 'keypoints' in anns[0]:
+        if 'bbox' in anns[0] or 'segmentation' in anns[0] or 'keypoints' in anns[0]:
             datasetType = 'instances'
         elif 'caption' in anns[0]:
             datasetType = 'captions'
