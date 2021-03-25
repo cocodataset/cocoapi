@@ -15,6 +15,7 @@ ext_modules = [
 
 setup(
     name='pycocotools',
+    url="https://github.com/cocodataset/cocoapi/tree/master/PythonAPI",
     packages=['pycocotools'],
     package_dir = {'pycocotools': 'pycocotools'},
     install_requires=[
