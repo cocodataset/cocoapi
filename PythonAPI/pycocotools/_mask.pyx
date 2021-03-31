@@ -146,6 +146,11 @@ def decode(rleObjs):
     cdef RLEs Rs = _frString(rleObjs)
     h, w, n = Rs._R[0].h, Rs._R[0].w, Rs._n
     masks = Masks(h, w, n)
+    count =0
+    for i in range(Rs._R[0].m):
+        count+=Rs._R[0].cnts[i]
+    if count>h*w*n:
+        raise Exception("invalid mask")
     rleDecode(<RLE*>Rs._R, masks._mask, n);
     return np.array(masks)
 
