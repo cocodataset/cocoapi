@@ -194,7 +194,9 @@ class COCO:
                 if i == 0 and len(ids) == 0:
                     ids = set(self.catToImgs[catId])
                 else:
-                    ids &= set(self.catToImgs[catId])
+                    ### https://thispointer.com/python-how-to-add-or-append-values-to-a-set/
+                    ids.update((set(self.catToImgs[catId])))  # update set for multiple categories
+                    # ids &= set(self.catToImgs[catId])  ### this didn't work for me when filtering multiple category ids
         return list(ids)
 
     def loadAnns(self, ids=[]):
