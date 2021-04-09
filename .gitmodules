@@ -1,0 +1,3 @@
+[submodule "tide"]
+	path = tide
+	url = git@github.com:jinmingteo/tide.git

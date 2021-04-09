@@ -14,9 +14,6 @@ RUN pip install scikit-image
 RUN pip install docopt visdom easydict tensorboardX json_tricks
 RUN pip install cython
 
-# if you are running tidecv example
-RUN pip install tidecv
-
 # Testing DOTA installation
 RUN apt-get install -y swig
 
@@ -28,6 +25,10 @@ ENV DISPLAY :0
 RUN mkdir -p /home/dh
 WORKDIR /home/dh
 COPY . /home/dh/
+
+# if you are running tidecv example
+RUN pip install -e tide/
+
 WORKDIR /home/dh/PythonAPI/
 RUN make
 
