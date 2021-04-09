@@ -17,6 +17,9 @@ RUN pip install cython
 # if you are running tidecv example
 RUN pip install tidecv
 
+# Testing DOTA installation
+RUN apt-get install -y swig
+
 RUN pip uninstall -y pycocotools
 RUN python -m pip install pycocotools==2.0.0
 RUN sed -i "s#debugName#uniqueName#g" /opt/conda/lib/python3.6/site-packages/tensorboardX/pytorch_graph.py
@@ -27,4 +30,11 @@ WORKDIR /home/dh
 COPY . /home/dh/
 WORKDIR /home/dh/PythonAPI/
 RUN make
+
+# Testing DOTA installation
+WORKDIR /home/dh/PythonAPI/pycocotools
+RUN swig -c++ -python polyiou.i
+RUN python setup.py build_ext
+RUN python setup.py install
+
 WORKDIR /home/dh

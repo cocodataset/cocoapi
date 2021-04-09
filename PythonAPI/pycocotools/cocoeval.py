@@ -6,6 +6,7 @@ import time
 from collections import defaultdict
 from . import mask as maskUtils
 import copy
+import polyiou
 
 class COCOeval:
     # Interface for evaluating detection on the Microsoft COCO dataset.
@@ -131,53 +132,46 @@ class COCOeval:
         total_iou_array = []
         for bb in dt:
             bb = np.array(bb)
-            bb_xmin = np.min(bb[0::2])
-            bb_ymin = np.min(bb[1::2])
-            bb_xmax = np.max(bb[0::2])
-            bb_ymax = np.max(bb[1::2])
+            # bb_xmin = np.min(bb[0::2])
+            # bb_ymin = np.min(bb[1::2])
+            # bb_xmax = np.max(bb[0::2])
+            # bb_ymax = np.max(bb[1::2])
     
-            # 1. calculate the overlaps between hbbs, if the iou between hbbs are 0, the iou between obbs are 0, too.
+            # # 1. calculate the overlaps between hbbs, if the iou between hbbs are 0, the iou between obbs are 0, too.
             BBGT = np.array(gt)
 
-            BBGT_xmin =  np.min(BBGT[:, 0::2], axis=1)
-            BBGT_ymin = np.min(BBGT[:, 1::2], axis=1)
-            BBGT_xmax = np.max(BBGT[:, 0::2], axis=1)
-            BBGT_ymax = np.max(BBGT[:, 1::2], axis=1)
+            # BBGT_xmin =  np.min(BBGT[:, 0::2], axis=1)
+            # BBGT_ymin = np.min(BBGT[:, 1::2], axis=1)
+            # BBGT_xmax = np.max(BBGT[:, 0::2], axis=1)
+            # BBGT_ymax = np.max(BBGT[:, 1::2], axis=1)
 
-            # debugging purpose
-            # print (BBGT, "BBGT")
-            # print (bb, "BB")
-            # print (BBGT_xmin, bb_xmin, "xmin")
-            # print (BBGT_xmax, bb_xmax, "xmax")
-            # print (BBGT_ymin, bb_ymin, "ymin")
-            # print (BBGT_ymax, bb_ymax, "ymax")
+            # ixmin = np.maximum(BBGT_xmin, bb_xmin)
+            # iymin = np.maximum(BBGT_ymin, bb_ymin)
+            # ixmax = np.minimum(BBGT_xmax, bb_xmax)
+            # iymax = np.minimum(BBGT_ymax, bb_ymax)
+            # iw = np.maximum(ixmax - ixmin + 1., 0.)
+            # ih = np.maximum(iymax - iymin + 1., 0.)
+            # inters = iw * ih
+            
+            # # union
+            # uni = ((bb_xmax - bb_xmin + 1.) * (bb_ymax - bb_ymin + 1.) +
+            #     (BBGT_xmax - BBGT_xmin + 1.) *
+            #     (BBGT_ymax - BBGT_ymin + 1.) - inters)
+            # overlaps = inters / uni
+            # candidate_iou_list = overlaps
 
-            ixmin = np.maximum(BBGT_xmin, bb_xmin)
-            iymin = np.maximum(BBGT_ymin, bb_ymin)
-            ixmax = np.minimum(BBGT_xmax, bb_xmax)
-            iymax = np.minimum(BBGT_ymax, bb_ymax)
-            iw = np.maximum(ixmax - ixmin + 1., 0.)
-            ih = np.maximum(iymax - iymin + 1., 0.)
-            inters = iw * ih
-            
-            # union
-            uni = ((bb_xmax - bb_xmin + 1.) * (bb_ymax - bb_ymin + 1.) +
-                (BBGT_xmax - BBGT_xmin + 1.) *
-                (BBGT_ymax - BBGT_ymin + 1.) - inters)
-            overlaps = inters / uni
-            
-            # debugging purpose
-            # print (inters, "inters")
-            # print (uni , "uni")
-            # print (overlaps, "overlay here")
-            
-            candidate_iou_list = overlaps
+            candidate_iou_list = []
+            for bbgt in BBGT:
+                bbgt = bbgt.astype(float)
+                bb = bb.astype(float)
+                overlap = polyiou.iou_poly(polyiou.VectorDouble(bbgt), polyiou.VectorDouble(bb))
+                candidate_iou_list.append(overlap)
+
             if total_iou_array == []:
                 total_iou_array = np.array([candidate_iou_list])
             else:
                 total_iou_array = np.vstack( (total_iou_array, candidate_iou_list) )
         
-        # print (total_iou_array)
         return total_iou_array
 
     def evaluate(self):
