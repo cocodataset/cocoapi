@@ -1,0 +1,5 @@
+{
+    "python.pythonPath": "/Users/David/opt/anaconda3/bin/python",
+    "jupyter.jupyterServerType": "local",
+    "git.ignoreLimitWarning": true
+}
