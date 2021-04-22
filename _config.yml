@@ -1,0 +1,7 @@
+theme: minima
+
+# For Jekyll >= 3.5.0
+# This will enable each of these plugins automatically.
+plugins:
+  - jekyll-paginate
+  - jemoji
