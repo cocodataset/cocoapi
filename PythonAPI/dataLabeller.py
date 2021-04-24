@@ -11,13 +11,13 @@ import cv2 as cv
 # Create loop to loop through images (check)
 # Show image (check)
 # Allow going backwards (check)
-# Modify label category
-# Save modified annotations
-# Save processed images
+# Modify label category (check)
+# Save modified annotations (check)
+# Save progress
 # Save weird images
-# Print image progress after showing 10 images
+# Print progress (check)
 
-def box_cxcywh_to_xyxy(x):
+def box_xywh_to_xyxy(x):
     # Converts bounding boxes to (x1, y1, x2, y2) coordinates of top left and bottom right corners
     x_c, y_c, w, h = x
     b = [(x_c), (y_c),
@@ -25,39 +25,58 @@ def box_cxcywh_to_xyxy(x):
     box = list(map(int, map(round, b)))
     return box
 
-def save_dataset(imgs, anns, filename):
+def save_dataset(original_filepath, target_filepath, anns, cats):
 
     # Load dataset val to get structure
-    test = '../annotations/instances_valTraffic.json'
-    target_file = json.load(open(test, 'r'))
+    orig_file = json.load(open(original_filepath, 'r'))
 
     # Make final dictionary
-    dataset = dict.fromkeys(target_file.keys())
-    dataset['info'] = target_file['info']
-    dataset['licenses'] = target_file['licenses']
-    dataset['categories'] = target_file['categories']
+    dataset = dict.fromkeys(orig_file.keys())
+    dataset['info'] = orig_file['info']
+    dataset['licenses'] = orig_file['licenses']
+    dataset['categories'] = cats
     dataset['annotations'] = anns
-    dataset['images'] = imgs
+    dataset['images'] = orig_file['images']
 
-    # Save to disk
-    with open('../annotations/instances_'+str(filename)+'.json', 'w', encoding='utf-8') as f:
+    with open(target_filepath + '.json', 'w', encoding='utf-8') as f:
         json.dump(dataset, f, ensure_ascii=False, indent=4)
 
-    print('Saved dataset {} to disk!'.format(filename))
+    print('Saved dataset {}.json to disk!'.format(target_filepath))
+
 
 if __name__ == "__main__":
-    cat_show = ['traffic light']  # Categories that you want shown and relabelled
+    cat_show = [10, 92, 93, 94]  # Categories ids that you want shown and relabelled
 
+    # Annotations file
     dataDir = "."
     dataType = "valTraffic"
-    annFile = "{}/annotations/instances_{}.json".format(dataDir, dataType)
+    annDir = "./annotations/"
+    annFile = "{}instances_{}.json".format(annDir, dataType)
 
+    # Save file
+    saveName = "instances_valTrafficRelabelled"
+    saveFile = annDir + saveName
+
+    # Images folder
     imgDir = "images/valTraffic/"
 
+    # Import from annotations file
     coco=COCO(annFile)
 
     cats = coco.loadCats(coco.getCatIds())
+
+    if len(cats) == 80:
+        cats.append({'supercategory': 'outdoor', 'id': 92, 'name': 'traffic_light_red'})
+        cats.append({'supercategory': 'outdoor', 'id': 93, 'name': 'traffic_light_green'})
+        cats.append({'supercategory': 'outdoor', 'id': 94, 'name': 'traffic_light_other'})
+    else:
+        if cats[80]['name'] != 'traffic_light_red' or \
+            cats[81]['name'] != 'traffic_light_green' or \
+            cats[82]['name'] != 'traffic_light_other':
+            raise Exception("Error: Categories mismatched. Check categories to make sure the 80th category is traffic_light_red")
+    
     nms = [cat['name'] for cat in cats]
+    catId_to_catName = {cats[x]['id']: cats[x]['name'] for x in range(len(cats))}
 
     # Load image Ids
     catIds = coco.getCatIds(catNms=nms)
@@ -68,14 +87,13 @@ if __name__ == "__main__":
     # Load annotations
     annIds = coco.getAnnIds(imgIds)
     anns = coco.loadAnns(annIds)
-    print("Number of annotations: " + str(len(anns)))
+
+    #save_dataset(annFile, "blah", anns)
 
     # Show image
     annId_i = 0
     go_backwards = False
-
-    image = cv.imread("images/valTraffic/000000551647.jpg")
-    print(image.shape)
+    ann_counter = 0 # To tell user how many annotations are left
     
     while annId_i < len(annIds):
 
@@ -87,18 +105,25 @@ if __name__ == "__main__":
         ann = anns[annId_i]
         imgId = ann['image_id']
 
-        if coco.loadCats(ann['category_id'])[0]['name'] in cat_show:
+        if ann['category_id'] in cat_show:
             go_backwards = False
-            
+            ann_counter += 1
+            print()
+
             image = cv.imread(imgDir + (str(imgId)+'.jpg').zfill(16))
             if image is None:
                 raise Exception("Error: Cannot find image {}".format(imgDir + (str(imgId)+'.jpg').zfill(16)))
             
+            # Give progress status
+            if ann_counter >= 50:
+                print("You are on annotation {} / {}".format(str(annId_i + 1), str(len(anns))))
+                ann_counter = 0
+
             b = ann['bbox']
             
             # Convert bounding boxes to (x1, y1, x2, y2)
-            box = box_cxcywh_to_xyxy(b)
-            print(coco.loadCats(ann['category_id'])[0]['name'])
+            box = box_xywh_to_xyxy(b)
+            print("Current label: " + catId_to_catName[ann['category_id']])
 
             # Display bounding box
             image_bboxed = cv.rectangle(image, (box[0], box[1]), (box[2], box[3]), (252, 3, 219), 2)
@@ -117,15 +142,18 @@ if __name__ == "__main__":
                     go_backwards = True
                     break
                 elif inp == "save":
-                    break
+                    save_dataset(annFile, saveFile, anns, cats)
                 elif (inp == "r") or (inp == "1"):
-                    print("r")
+                    print("Changed category id to traffic_light_red")
+                    anns[annId_i]['category_id'] = 92
                     break
                 elif (inp == "g") or (inp == "2"):
-                    print("g")
+                    print("Changed category id to traffic_light_green")
+                    anns[annId_i]['category_id'] = 93
                     break
-                elif (inp == "n") or (inp == "3"):
-                    print("na")
+                elif (inp == "o") or (inp == "3"):
+                    print("Changed category id to traffic_light_other")
+                    anns[annId_i]['category_id'] = 94
                     break
                 else:
                     print("Invalid command")
@@ -139,5 +167,19 @@ if __name__ == "__main__":
         else:
             annId_i -= 1
 
+
     print("Completed image labelling")
+    
+    while True:
+        inp = str(input("Save?\n")).rstrip().lower()
+        if inp in ['yes', 'y']:
+            save_dataset(annFile, "blah", anns, cats)
+            print("Labels Saved")
+            exit()
+        elif inp in ['no', 'n']:
+            inp = str(input("Are you sure?\n")).rstrip().lower()
+            if inp in ['yes', 'y']:
+                print("Labels not saved")
+                exit()
+
 
