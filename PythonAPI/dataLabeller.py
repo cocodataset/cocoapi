@@ -73,7 +73,7 @@ if __name__ == "__main__":
         if cats[80]['name'] != 'traffic_light_red' or \
             cats[81]['name'] != 'traffic_light_green' or \
             cats[82]['name'] != 'traffic_light_other':
-            raise Exception("Error: Categories mismatched. Check categories to make sure the 80th category is traffic_light_red")
+            raise Exception("Error: Categories mismatched. Check categories to make sure the 92nd category id is traffic_light_red")
     
     nms = [cat['name'] for cat in cats]
     catId_to_catName = {cats[x]['id']: cats[x]['name'] for x in range(len(cats))}
@@ -88,12 +88,11 @@ if __name__ == "__main__":
     annIds = coco.getAnnIds(imgIds)
     anns = coco.loadAnns(annIds)
 
-    #save_dataset(annFile, "blah", anns)
-
     # Show image
     annId_i = 0
     go_backwards = False
     ann_counter = 0 # To tell user how many annotations are left
+    save_flag = False
     
     while annId_i < len(annIds):
 
@@ -115,7 +114,7 @@ if __name__ == "__main__":
                 raise Exception("Error: Cannot find image {}".format(imgDir + (str(imgId)+'.jpg').zfill(16)))
             
             # Give progress status
-            if ann_counter >= 50:
+            if ann_counter >= 10:
                 print("You are on annotation {} / {}".format(str(annId_i + 1), str(len(anns))))
                 ann_counter = 0
 
@@ -137,12 +136,18 @@ if __name__ == "__main__":
                 if inp == "":
                     break
                 elif inp == "q":
-                    exit()
+                    if save_flag == False:
+                        inp = str(input("You haven't saved. Are you sure? (y/n)\n")).rstrip().lower()
+                        if inp in ['yes', 'y']:
+                            exit()
+                    else:
+                        exit()
                 elif inp == "z":
                     go_backwards = True
                     break
                 elif inp == "save":
                     save_dataset(annFile, saveFile, anns, cats)
+                    save_flag = True
                 elif (inp == "r") or (inp == "1"):
                     print("Changed category id to traffic_light_red")
                     anns[annId_i]['category_id'] = 92
