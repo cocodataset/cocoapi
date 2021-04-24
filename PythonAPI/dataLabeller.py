@@ -13,17 +13,55 @@ import cv2 as cv
 # Allow going backwards (check)
 # Modify label category (check)
 # Save modified annotations (check)
-# Save progress
-# Save weird images
+# Save progress (check)
+# Save weird images (check)
+# Import tags (check)
 # Print progress (check)
+
+def save_tagged(target_filepath, tagged_images):
+    tags = sorted(list(tagged_images))
+
+    with open(target_filepath + "tagged_images.json", 'w', encoding='utf-8') as f:
+        json.dump(tags, f, ensure_ascii=False, indent=4)
+
+def load_tagged(filepath):
+    try:
+        with open(filepath + "tagged_images.json", 'r') as f:
+            return set(json.load(f))
+    except IOError:
+        print("Unable to load tags. Starting off with all images untagged")
+        return set()
+
+def save_point(target_filepath, imgId):
+    with open(target_filepath + "last_viewed_image.json", 'w') as f:
+        json.dump(imgId, f)
+
+def load_point(filepath, anns):
+    try:
+        with open(filepath + "last_viewed_image.json", 'r') as f:
+            imgId = str(json.load(f)).rstrip()
+            print(imgId)
+    except IOError:
+        print("Unable to load last viewed image. Starting from beginning.")
+        return 0
+
+    for i in range(len(anns)):
+        if int(imgId) == int(anns[i]['image_id']):
+            return i
+
+    print("Unable to find matching image id in annotations. Starting from beginning")
+    return 0
+
 
 def box_xywh_to_xyxy(x):
     # Converts bounding boxes to (x1, y1, x2, y2) coordinates of top left and bottom right corners
     x_c, y_c, w, h = x
+    # Offset for display purposes
     b = [(x_c), (y_c),
         (x_c + w), (y_c + h)]
     box = list(map(int, map(round, b)))
     return box
+
 
 def save_dataset(original_filepath, target_filepath, anns, cats):
 
@@ -88,11 +126,12 @@ if __name__ == "__main__":
     annIds = coco.getAnnIds(imgIds)
     anns = coco.loadAnns(annIds)
 
-    # Show image
-    annId_i = 0
+    # Initialize variables
+    annId_i = load_point(annDir, anns)
     go_backwards = False
-    ann_counter = 0 # To tell user how many annotations are left
+    ann_counter = 0  # To tell user how many annotations are left
     save_flag = False
+    tagged_images = load_tagged(annDir)  # (Set) of saved tagged images
     
     while annId_i < len(annIds):
 
@@ -125,7 +164,8 @@ if __name__ == "__main__":
             print("Current label: " + catId_to_catName[ann['category_id']])
 
             # Display bounding box
-            image_bboxed = cv.rectangle(image, (box[0], box[1]), (box[2], box[3]), (252, 3, 219), 2)
+            offset = 2  # offset bounding boxes to better see object inside
+            image_bboxed = cv.rectangle(image, (box[0]-offset, box[1]-offset), (box[2]+offset, box[3]+offset), (252, 3, 219), 2)
             cv.imshow((str(imgId)+'.jpg'), image)
             if cv.waitKey(1) == ord("q"):
                 break
@@ -139,6 +179,7 @@ if __name__ == "__main__":
                     if save_flag == False:
                         inp = str(input("You haven't saved. Are you sure? (y/n)\n")).rstrip().lower()
                         if inp in ['yes', 'y']:
+                            print("Labels not saved")
                             exit()
                     else:
                         exit()
@@ -146,8 +187,12 @@ if __name__ == "__main__":
                     go_backwards = True
                     break
                 elif inp == "save":
+                    save_tagged(annDir, tagged_images)
+                    save_point(annDir, imgId)
                     save_dataset(annFile, saveFile, anns, cats)
                     save_flag = True
+                elif inp == "tag":
+                    tagged_images.add((str(imgId)+'.jpg').zfill(16))
                 elif (inp == "r") or (inp == "1"):
                     print("Changed category id to traffic_light_red")
                     anns[annId_i]['category_id'] = 92
