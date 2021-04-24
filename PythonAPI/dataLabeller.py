@@ -63,7 +63,7 @@ if __name__ == "__main__":
     annId_i = 0
     go_backwards = False
     
-    while imgId_i < len(imgIds):
+    while (imgId_i < len(imgIds)) and (imgId_i > -1*len(imgIds)):
         imgId = imgIds[imgId_i]
         annIds = coco.getAnnIds(imgId)
         anns = coco.loadAnns(annIds)
@@ -89,13 +89,20 @@ if __name__ == "__main__":
                     break
                 
                 # Ask user for command
-                inp = str(input("Input q to quit\n")).rstrip().lower()
-                if inp == "q":
-                    exit()
-                elif inp == "z":
-                    go_backwards = True
-                elif inp == "r":
-                    print("r")
+                while True:
+                    inp = str(input("Input q to quit, z to go backwards, and nothing to skip\n")).rstrip().lower()
+                    if inp == "":
+                        break
+                    elif inp == "q":
+                        exit()
+                    elif inp == "z":
+                        go_backwards = True
+                        break
+                    elif inp == "r":
+                        print("r")
+                        break
+                    else:
+                        print("Invalid command")
 
 
         # Update image and annotation indices
