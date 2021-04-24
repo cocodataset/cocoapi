@@ -29,7 +29,7 @@ def load_tagged(filepath):
         with open(filepath + "tagged_images.json", 'r') as f:
             return set(json.load(f))
     except IOError:
-        print("Unable to load tags. Starting off with all images untagged")
+        print("Unable to load tags. Starting off with all images untagged.")
         return set()
 
 def save_point(target_filepath, imgId):
@@ -132,6 +132,9 @@ if __name__ == "__main__":
     ann_counter = 0  # To tell user how many annotations are left
     save_flag = False
     tagged_images = load_tagged(annDir)  # (Set) of saved tagged images
+
+    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(o) label other")
+    print("Type help to repeat these commands")
     
     while annId_i < len(annIds):
 
@@ -172,9 +175,11 @@ if __name__ == "__main__":
             
             # Ask user for command
             while True:
-                inp = str(input("Input q to quit, z to go backwards, and nothing to skip\n")).rstrip().lower()
+                inp = str(input("Available commands: help, save, q, <nothing>, tag, 1, 2, 3, r, g, o\n")).rstrip().lower()
                 if inp == "":
                     break
+                elif inp == "help":
+                    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(o) label other")
                 elif inp == "q":
                     if save_flag == False:
                         inp = str(input("You haven't saved. Are you sure? (y/n)\n")).rstrip().lower()
@@ -193,6 +198,7 @@ if __name__ == "__main__":
                     save_flag = True
                 elif inp == "tag":
                     tagged_images.add((str(imgId)+'.jpg').zfill(16))
+                    print("Added tagged image. Make sure to save to save the tag.")
                 elif (inp == "r") or (inp == "1"):
                     print("Changed category id to traffic_light_red")
                     anns[annId_i]['category_id'] = 92
@@ -223,8 +229,9 @@ if __name__ == "__main__":
     while True:
         inp = str(input("Save?\n")).rstrip().lower()
         if inp in ['yes', 'y']:
-            save_dataset(annFile, "blah", anns, cats)
-            print("Labels Saved")
+            save_tagged(annDir, tagged_images)
+            save_point(annDir, imgId)
+            save_dataset(annFile, saveFile, anns, cats)
             exit()
         elif inp in ['no', 'n']:
             inp = str(input("Are you sure?\n")).rstrip().lower()
