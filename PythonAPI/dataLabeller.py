@@ -10,10 +10,12 @@ import cv2 as cv
 # Import annotations (check)
 # Create loop to loop through images (check)
 # Show image (check)
+# Allow going backwards (check)
 # Modify label category
 # Save modified annotations
 # Save processed images
 # Save weird images
+# Print image progress after showing 10 images
 
 def box_cxcywh_to_xyxy(x):
     # Converts bounding boxes to (x1, y1, x2, y2) coordinates of top left and bottom right corners
@@ -47,80 +49,95 @@ if __name__ == "__main__":
     cat_show = ['traffic light']  # Categories that you want shown and relabelled
 
     dataDir = "."
-    dataType = "val_custom"
+    dataType = "valTraffic"
     annFile = "{}/annotations/instances_{}.json".format(dataDir, dataType)
+
+    imgDir = "images/valTraffic/"
+
     coco=COCO(annFile)
 
     cats = coco.loadCats(coco.getCatIds())
     nms = [cat['name'] for cat in cats]
 
+    # Load image Ids
     catIds = coco.getCatIds(catNms=nms)
     imgIdsAll = coco.getImgIds()
     imgIds = imgIdsAll
+    print('Number of images: ' + str(len(imgIds)))
+
+    # Load annotations
+    annIds = coco.getAnnIds(imgIds)
+    anns = coco.loadAnns(annIds)
+    print("Number of annotations: " + str(len(anns)))
 
     # Show image
-    imgId_i = 0
     annId_i = 0
     go_backwards = False
+
+    image = cv.imread("images/valTraffic/000000551647.jpg")
+    print(image.shape)
     
-    while (imgId_i < len(imgIds)) and (imgId_i > -1*len(imgIds)):
-        imgId = imgIds[imgId_i]
-        annIds = coco.getAnnIds(imgId)
-        anns = coco.loadAnns(annIds)
+    while annId_i < len(annIds):
 
-        if len(anns) > 0:
-            img = coco.loadImgs(imgId)
-            ann = anns[annId_i]
-            if coco.loadCats(ann['category_id'])[0]['name'] in cat_show:
-                go_backwards = False
-                
-                image = cv.imread('%s/images/%s/%s'%(dataDir, dataType, img[0]['file_name']))
-                
-                b = ann['bbox']
-                
-                # Convert bounding boxes to (x1, y1, x2, y2)
-                box = box_cxcywh_to_xyxy(b)
-                print(coco.loadCats(ann['category_id'])[0]['name'])
+        if annId_i < 0:
+            print("You have reached the beginning")
+            annId_i = 0
+            go_backwards = False
 
-                # Display bounding box
-                image_bboxed = cv.rectangle(image, (box[0], box[1]), (box[2], box[3]), (252, 3, 219), 2)
-                cv.imshow(img[0]['file_name'], image)
-                if cv.waitKey(1) == ord("q"):
+        ann = anns[annId_i]
+        imgId = ann['image_id']
+
+        if coco.loadCats(ann['category_id'])[0]['name'] in cat_show:
+            go_backwards = False
+            
+            image = cv.imread(imgDir + (str(imgId)+'.jpg').zfill(16))
+            if image is None:
+                raise Exception("Error: Cannot find image {}".format(imgDir + (str(imgId)+'.jpg').zfill(16)))
+            
+            b = ann['bbox']
+            
+            # Convert bounding boxes to (x1, y1, x2, y2)
+            box = box_cxcywh_to_xyxy(b)
+            print(coco.loadCats(ann['category_id'])[0]['name'])
+
+            # Display bounding box
+            image_bboxed = cv.rectangle(image, (box[0], box[1]), (box[2], box[3]), (252, 3, 219), 2)
+            cv.imshow((str(imgId)+'.jpg'), image)
+            if cv.waitKey(1) == ord("q"):
+                break
+            
+            # Ask user for command
+            while True:
+                inp = str(input("Input q to quit, z to go backwards, and nothing to skip\n")).rstrip().lower()
+                if inp == "":
                     break
-                
-                # Ask user for command
-                while True:
-                    inp = str(input("Input q to quit, z to go backwards, and nothing to skip\n")).rstrip().lower()
-                    if inp == "":
-                        break
-                    elif inp == "q":
-                        exit()
-                    elif inp == "z":
-                        go_backwards = True
-                        break
-                    elif inp == "r":
-                        print("r")
-                        break
-                    else:
-                        print("Invalid command")
+                elif inp == "q":
+                    exit()
+                elif inp == "z":
+                    go_backwards = True
+                    break
+                elif inp == "save":
+                    break
+                elif (inp == "r") or (inp == "1"):
+                    print("r")
+                    break
+                elif (inp == "g") or (inp == "2"):
+                    print("g")
+                    break
+                elif (inp == "n") or (inp == "3"):
+                    print("na")
+                    break
+                else:
+                    print("Invalid command")
+
+            cv.destroyAllWindows()
 
 
         # Update image and annotation indices
-        if go_backwards == True:
-            annId_i -= 1
-            if (annId_i < 0):
-                cv.destroyAllWindows()
-                imgId_i -= 1
-                
-                imgId = imgIds[imgId_i]
-                annIds = coco.getAnnIds(imgId)
-                anns = coco.loadAnns(annIds)
-                annId_i = len(anns) - 1
-        else:
+        if go_backwards == False:
             annId_i += 1
+        else:
+            annId_i -= 1
 
-            if (annId_i >= len(annIds)):
-                cv.destroyAllWindows()
-                annId_i = 0
-                imgId_i += 1
+    print("Completed image labelling")
 
