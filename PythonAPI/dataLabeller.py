@@ -21,30 +21,34 @@ import cv2 as cv
 def save_tagged(target_filepath, tagged_images):
     tags = sorted(list(tagged_images))
 
-    with open(target_filepath + "tagged_images.json", 'w', encoding='utf-8') as f:
+    with open(target_filepath + ".json", 'w', encoding='utf-8') as f:
         json.dump(tags, f, ensure_ascii=False, indent=4)
 
 def load_tagged(filepath):
     try:
-        with open(filepath + "tagged_images.json", 'r') as f:
+        with open(filepath + ".json", 'r') as f:
             return set(json.load(f))
     except IOError:
         print("Unable to load tags. Starting off with all images untagged.")
         return set()
 
 def save_point(target_filepath, imgId):
-    with open(target_filepath + "last_viewed_image.json", 'w') as f:
+    with open(target_filepath + ".json", 'w') as f:
         json.dump(imgId, f)
 
 def load_point(filepath, anns):
     try:
-        with open(filepath + "last_viewed_image.json", 'r') as f:
+        with open(filepath + ".json", 'r') as f:
             imgId = str(json.load(f)).rstrip()
             print(imgId)
     except IOError:
         print("Unable to load last viewed image. Starting from beginning.")
         return 0
 
+    if str(imgId) == str(-1):
+        print("Previous session completed going through all annotations. Starting from beginning")
+        return 0
+    
     for i in range(len(anns)):
         if str(imgId) == str(anns[i]['image_id']):
             return i
@@ -86,7 +90,7 @@ if __name__ == "__main__":
     cat_show = [10, 92, 93, 94]  # Categories ids that you want shown and relabelled
 
     # COCO dataset path
-    dataDir = ".."
+    dataDir = "."
     dataType = "valTraffic"
 
     # Annotations file  
@@ -95,6 +99,8 @@ if __name__ == "__main__":
 
     # Save file
     saveFile = dataDir + '/' + annDir + '/instances_' + dataType + 'Relabelled'
+    tagFile = dataDir + '/' + annDir + '/instances_' + dataType + 'Tagged'
+    progressFile = dataDir + '/' + annDir + '/instances_' + dataType + 'LastSave'
 
     # Images folder
     imgDir = dataDir + '/images/' + dataType + '/'
@@ -107,11 +113,11 @@ if __name__ == "__main__":
     if len(cats) == 80:
         cats.append({'supercategory': 'outdoor', 'id': 92, 'name': 'traffic_light_red'})
         cats.append({'supercategory': 'outdoor', 'id': 93, 'name': 'traffic_light_green'})
-        cats.append({'supercategory': 'outdoor', 'id': 94, 'name': 'traffic_light_other'})
+        cats.append({'supercategory': 'outdoor', 'id': 94, 'name': 'traffic_light_na'})
     else:
         if cats[80]['name'] != 'traffic_light_red' or \
             cats[81]['name'] != 'traffic_light_green' or \
-            cats[82]['name'] != 'traffic_light_other':
+            cats[82]['name'] != 'traffic_light_na':
             raise Exception("Error: Categories mismatched. Check categories to make sure the 92nd category id is traffic_light_red")
     
     nms = [cat['name'] for cat in cats]
@@ -128,13 +134,13 @@ if __name__ == "__main__":
     anns = coco.loadAnns(annIds)
 
     # Initialize variables
-    annId_i = load_point(annDir, anns)
+    annId_i = load_point(progressFile, anns)
     go_backwards = False
     ann_counter = 0  # To tell user how many annotations are left
     save_flag = False
-    tagged_images = load_tagged(annDir)  # (Set) of saved tagged images
+    tagged_images = load_tagged(tagFile)  # (Set) of saved tagged images
 
-    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(o) label na")
+    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(n) label na")
     print("Type help to repeat these commands")
     
     # Main loop
@@ -177,11 +183,11 @@ if __name__ == "__main__":
             
             # Ask user for command
             while True:
-                inp = str(input("\nAvailable commands: help, save, q, <nothing>, tag, 1, 2, 3, r, g, o\n")).rstrip().lower()
+                inp = str(input("\nAvailable commands: help, save, q, <blank>, tag, 1, 2, 3, r, g, n\n")).rstrip().lower()
                 if inp == "":
                     break
                 elif inp == "help":
-                    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(o) label na")
+                    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(n) label na")
                 elif inp == "q":
                     if save_flag == False:
                         inp = str(input("You haven't saved. Are you sure? (y/n)\n")).rstrip().lower()
@@ -194,8 +200,8 @@ if __name__ == "__main__":
                     go_backwards = True
                     break
                 elif inp == "save":
-                    save_tagged(annDir, tagged_images)
-                    save_point(annDir, imgId)
+                    save_tagged(tagFile, tagged_images)
+                    save_point(progressFile, imgId)
                     save_dataset(annFile, saveFile, anns, cats)
                     save_flag = True
                 elif inp == "tag":
@@ -209,8 +215,8 @@ if __name__ == "__main__":
                     print("Changed category id to traffic_light_green")
                     anns[annId_i]['category_id'] = 93
                     break
-                elif (inp == "o") or (inp == "3"):
-                    print("Changed category id to traffic_light_other")
+                elif (inp == "n") or (inp == "3"):
+                    print("Changed category id to traffic_light_na")
                     anns[annId_i]['category_id'] = 94
                     break
                 else:
@@ -232,8 +238,8 @@ if __name__ == "__main__":
     while True:
         inp = str(input("Save?\n")).rstrip().lower()
         if inp in ['yes', 'y']:
-            save_tagged(annDir, tagged_images)
-            save_point(annDir, 0)
+            save_tagged(tagFile, tagged_images)
+            save_point(progressFile, -1)
             save_dataset(annFile, saveFile, anns, cats)
             exit()
         elif inp in ['no', 'n']:
