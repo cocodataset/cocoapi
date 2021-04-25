@@ -46,7 +46,7 @@ def load_point(filepath, anns):
         return 0
 
     for i in range(len(anns)):
-        if int(imgId) == int(anns[i]['image_id']):
+        if str(imgId) == str(anns[i]['image_id']):
             return i
 
     print("Unable to find matching image id in annotations. Starting from beginning")
@@ -136,6 +136,7 @@ if __name__ == "__main__":
     print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(o) label other")
     print("Type help to repeat these commands")
     
+    # Main loop
     while annId_i < len(annIds):
 
         if annId_i < 0:
@@ -226,11 +227,12 @@ if __name__ == "__main__":
 
     print("Completed image labelling")
     
+    # End save
     while True:
         inp = str(input("Save?\n")).rstrip().lower()
         if inp in ['yes', 'y']:
             save_tagged(annDir, tagged_images)
-            save_point(annDir, imgId)
+            save_point(annDir, None)
             save_dataset(annFile, saveFile, anns, cats)
             exit()
         elif inp in ['no', 'n']:
