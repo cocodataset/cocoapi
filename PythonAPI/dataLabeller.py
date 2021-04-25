@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     # COCO dataset path
     dataDir = "."
-    dataType = "valTraffic"
+    dataType = "trainTraffic"
 
     # Annotations file  
     annDir = "annotations"
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     save_flag = False
     tagged_images = load_tagged(tagFile)  # (Set) of saved tagged images
 
-    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(n) label na")
+    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(n) label na, (0)(-) label back to traffic light")
     print("Type help to repeat these commands")
     
     # Main loop
@@ -183,11 +183,11 @@ if __name__ == "__main__":
             
             # Ask user for command
             while True:
-                inp = str(input("\nAvailable commands: help, save, q, <blank>, tag, 1, 2, 3, r, g, n\n")).rstrip().lower()
+                inp = str(input("\nAvailable commands: help, save, q, <blank>, tag, 1, 2, 3, 0, r, g, n, -\n")).rstrip().lower()
                 if inp == "":
                     break
                 elif inp == "help":
-                    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(n) label na")
+                    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(n) label na, (0)(-) label back to traffic light")
                 elif inp == "q":
                     if save_flag == False:
                         inp = str(input("You haven't saved. Are you sure? (y/n)\n")).rstrip().lower()
@@ -218,6 +218,10 @@ if __name__ == "__main__":
                 elif (inp == "n") or (inp == "3"):
                     print("Changed category id to traffic_light_na")
                     anns[annId_i]['category_id'] = 94
+                    break
+                elif (inp == "-") or (inp == "0"):
+                    print("Changed category id back to traffic light")
+                    anns[annId_i]['category_id'] = 10
                     break
                 else:
                     print("Invalid command")
