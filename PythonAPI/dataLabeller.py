@@ -232,7 +232,7 @@ if __name__ == "__main__":
         inp = str(input("Save?\n")).rstrip().lower()
         if inp in ['yes', 'y']:
             save_tagged(annDir, tagged_images)
-            save_point(annDir, None)
+            save_point(annDir, 0)
             save_dataset(annFile, saveFile, anns, cats)
             exit()
         elif inp in ['no', 'n']:
