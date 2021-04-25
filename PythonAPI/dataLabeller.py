@@ -40,7 +40,6 @@ def load_point(filepath, anns):
     try:
         with open(filepath + ".json", 'r') as f:
             imgId = str(json.load(f)).rstrip()
-            print(imgId)
     except IOError:
         print("Unable to load last viewed image. Starting from beginning.")
         return 0
@@ -132,6 +131,7 @@ if __name__ == "__main__":
     # Load annotations
     annIds = coco.getAnnIds(imgIds)
     anns = coco.loadAnns(annIds)
+    print('Number of annotations: ' + str(len(anns)))
 
     # Initialize variables
     annId_i = load_point(progressFile, anns)
