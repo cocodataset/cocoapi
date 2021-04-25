@@ -236,14 +236,14 @@ if __name__ == "__main__":
     
     # End save
     while True:
-        inp = str(input("Save?\n")).rstrip().lower()
+        inp = str(input("Save?(y/n)\n")).rstrip().lower()
         if inp in ['yes', 'y']:
             save_tagged(tagFile, tagged_images)
             save_point(progressFile, -1)
             save_dataset(annFile, saveFile, anns, cats)
             exit()
         elif inp in ['no', 'n']:
-            inp = str(input("Are you sure?\n")).rstrip().lower()
+            inp = str(input("Are you sure?(y/n)\n")).rstrip().lower()
             if inp in ['yes', 'y']:
                 print("Labels not saved")
                 exit()
