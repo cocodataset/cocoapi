@@ -85,18 +85,19 @@ def save_dataset(original_filepath, target_filepath, anns, cats):
 if __name__ == "__main__":
     cat_show = [10, 92, 93, 94]  # Categories ids that you want shown and relabelled
 
-    # Annotations file
-    dataDir = "."
+    # COCO dataset path
+    dataDir = ".."
     dataType = "valTraffic"
-    annDir = "./annotations/"
-    annFile = "{}instances_{}.json".format(annDir, dataType)
+
+    # Annotations file  
+    annDir = "annotations"
+    annFile = "{}/{}/instances_{}.json".format(dataDir, annDir, dataType)
 
     # Save file
-    saveName = "instances_valTrafficRelabelled"
-    saveFile = annDir + saveName
+    saveFile = dataDir + '/' + annDir + '/instances_' + dataType + 'Relabelled'
 
     # Images folder
-    imgDir = "images/valTraffic/"
+    imgDir = dataDir + '/images/' + dataType + '/'
 
     # Import from annotations file
     coco=COCO(annFile)
@@ -133,7 +134,7 @@ if __name__ == "__main__":
     save_flag = False
     tagged_images = load_tagged(annDir)  # (Set) of saved tagged images
 
-    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(o) label other")
+    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(o) label na")
     print("Type help to repeat these commands")
     
     # Main loop
@@ -176,11 +177,11 @@ if __name__ == "__main__":
             
             # Ask user for command
             while True:
-                inp = str(input("Available commands: help, save, q, <nothing>, tag, 1, 2, 3, r, g, o\n")).rstrip().lower()
+                inp = str(input("\nAvailable commands: help, save, q, <nothing>, tag, 1, 2, 3, r, g, o\n")).rstrip().lower()
                 if inp == "":
                     break
                 elif inp == "help":
-                    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(o) label other")
+                    print("The available commands are as follows: (save), (q) quit, (z) back, (tag) tag image, () skip, (1)(r) label red, (2)(g) label green, (3)(o) label na")
                 elif inp == "q":
                     if save_flag == False:
                         inp = str(input("You haven't saved. Are you sure? (y/n)\n")).rstrip().lower()
