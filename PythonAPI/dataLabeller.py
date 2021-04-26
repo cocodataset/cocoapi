@@ -104,8 +104,8 @@ if __name__ == "__main__":
     cat_show = [10, 92, 93, 94]  # Categories ids that you want shown and relabelled
 
     # COCO dataset path
-    dataDir = "."
-    dataType = "trainTraffic"
+    dataDir = ".."
+    dataType = "valTraffic"
 
     # Annotations file  
     annDir = "annotations"
