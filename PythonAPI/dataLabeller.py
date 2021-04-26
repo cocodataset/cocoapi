@@ -18,6 +18,21 @@ import cv2 as cv
 # Import tags (check)
 # Print progress (check)
 
+def load_ann(filepath, saveFile):
+    try:
+        coco = COCO(saveFile + ".json")
+        print("Previous session found. Reloading relabelled annotations")
+        return coco
+    except IOError:
+        try:
+            coco = COCO(filepath)
+            print("Unable to find previous session. Starting off from original file")
+            return coco
+        except IOError:
+            raise Exception("Could not find original file")
+    
+
+
 def save_tagged(target_filepath, tagged_images):
     tags = sorted(list(tagged_images))
 
@@ -105,7 +120,9 @@ if __name__ == "__main__":
     imgDir = dataDir + '/images/' + dataType + '/'
 
     # Import from annotations file
-    coco=COCO(annFile)
+    
+
+    coco=load_ann(annFile, saveFile)
 
     cats = coco.loadCats(coco.getCatIds())
 
