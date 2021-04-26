@@ -20,3 +20,5 @@ PythonAPI/val.pdf
 PythonAPI/.ipynb_checkpoints
 PythonAPI/pycocotools/__pycache__
 *.so
+PythonAPI/annotationslast_viewed_image.json
+PythonAPI/annotationstagged_images.json
