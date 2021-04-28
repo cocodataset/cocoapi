@@ -3,18 +3,20 @@ from pathlib import Path
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
+annType = ['segm','bbox','keypoints', 'obb']
 parser = argparse.ArgumentParser()
 parser.add_argument('GTfile')
 parser.add_argument('DTfile')
+parser.add_argument('Type', help=str(annType))
 args = parser.parse_args()
 
 annFile = Path(args.GTfile)
 resFile = Path(args.DTfile)
 assert annFile.is_file()
 assert resFile.is_file()
+assert args.Type in annType
 
-annType = ['segm','bbox','keypoints', 'obb']
-annType = 'obb'      # specify type here
+annType = args.Type      # specify type here
 print ('Running demo for *%s* results.'%(annType))
 
 #initialize COCO ground truth api
