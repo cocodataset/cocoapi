@@ -289,7 +289,7 @@ def frPyObjects(pyobj, h, w):
     # encode rle from a list of python objects
     if type(pyobj) == np.ndarray:
         objs = frBbox(pyobj, h, w)
-    elif type(pyobj) == list and len(pyobj[0]) == 4:
+    elif type(pyobj) == list and len(pyobj[0]) > 4:
         objs = frBbox(pyobj, h, w)
     elif type(pyobj) == list and len(pyobj[0]) > 4:
         objs = frPoly(pyobj, h, w)
@@ -297,7 +297,7 @@ def frPyObjects(pyobj, h, w):
         and 'counts' in pyobj[0] and 'size' in pyobj[0]:
         objs = frUncompressedRLE(pyobj, h, w)
     # encode rle from single python object
-    elif type(pyobj) == list and len(pyobj) == 4:
+    elif type(pyobj) == list and len(pyobj) > 4:
         objs = frBbox([pyobj], h, w)[0]
     elif type(pyobj) == list and len(pyobj) > 4:
         objs = frPoly([pyobj], h, w)[0]
