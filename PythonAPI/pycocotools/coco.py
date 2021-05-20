@@ -176,7 +176,7 @@ class COCO:
         ids = [cat['id'] for cat in cats]
         return ids
 
-    def getImgIds(self, imgIds=[], catIds=[]):
+    def getImgIds(self, imgIds=[], catIds=[], exclCatIds=[]):
         '''
         Get img ids that satisfy given filter conditions.
         :param imgIds (int array) : get imgs for given ids
@@ -185,6 +185,7 @@ class COCO:
         '''
         imgIds = imgIds if _isArrayLike(imgIds) else [imgIds]
         catIds = catIds if _isArrayLike(catIds) else [catIds]
+        exclCatIds = exclCatIds if _isArrayLike(exclCatIds) else [exclCatIds]
 
         if len(imgIds) == len(catIds) == 0:
             ids = self.imgs.keys()
@@ -195,6 +196,10 @@ class COCO:
                     ids = set(self.catToImgs[catId])
                 else:
                     ids &= set(self.catToImgs[catId])
+                    
+            for i, exclCatId in enumerate(exclCatIds):
+                ids -= set(self.catToImgs[exclCatId])
+                
         return list(ids)
 
     def loadAnns(self, ids=[]):
