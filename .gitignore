@@ -11,6 +11,12 @@ MatlabAPI/private/maskApiMex.*
 PythonAPI/pycocotools/__init__.pyc
 PythonAPI/pycocotools/_mask.c
 PythonAPI/pycocotools/_mask.so
+PythonAPI/pycocotools/_mask.*so
 PythonAPI/pycocotools/coco.pyc
 PythonAPI/pycocotools/cocoeval.pyc
 PythonAPI/pycocotools/mask.pyc
+
+__pycache__
+*/__pycache__
+.ipynb_checkpoints
+*/.ipynb_checkpoints
