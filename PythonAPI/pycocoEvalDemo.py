@@ -25,7 +25,8 @@ cocoGt=COCO(annFile)
 #initialize COCO detections api
 cocoDt=cocoGt.loadRes(str(resFile))
 
-imgIds=sorted(cocoGt.getImgIds())
+
+imgIds=sorted(cocoDt.getImgIds())
 imgIds=imgIds
 
 # running evaluation
