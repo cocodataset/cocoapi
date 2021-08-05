@@ -64,7 +64,8 @@ elif PYTHON_VERSION == 3:
 
 
 def _isArrayLike(obj):
-    return hasattr(obj, '__iter__') and hasattr(obj, '__len__')
+    """Check if an object is array like (set, tuple, list, etc.)."""
+    return hasattr(obj, '__iter__') and hasattr(obj, '__len__') and not isinstance(obj, str)
 
 
 class COCO:
