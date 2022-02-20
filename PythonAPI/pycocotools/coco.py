@@ -56,6 +56,7 @@ import mask as maskUtils
 import os
 from collections import defaultdict
 import sys
+from ColorLookUp import color_lut as color_code
 
 PYTHON_VERSION = sys.version_info[0]
 if PYTHON_VERSION == 2:
@@ -236,6 +237,12 @@ class COCO:
         """
         Display the specified annotations.
         :param anns (array of object): annotations to display
+        :param cats (array of object): categories to be considered
+        :param draw_bbox (bool): weather to draw bboxes while showing anns
+        :param bbox_line_width (int): line width while drawing bbox
+        :param class_based_colors (bool): draw bboxes/masks with colors specific to each category
+        :param label_polygons (bool): label category name next to the polygons
+        :param label_font_size (int): change the font-size for labels
         :return: None
         """
 
@@ -265,8 +272,7 @@ class COCO:
             polygons = []
             labels = []
             color = []
-            color_code = {1: "#2f4f4f",2: "#7f0000", 3: "#008000", 4: "#4b0082", 5: "#ff8c00", 6: "#ffff00", 7: "#00ff00",
-            8: "#00ff00", 9: "#00ffff", 10: "#ff00ff", 11: "#6495ed" , 12: "#ffdead", 13: "#ff69b4"}
+
             for ann in anns:
                 if class_based_colors:
                     c = color_code[ann["category_id"]]
