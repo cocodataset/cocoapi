@@ -243,6 +243,7 @@ class COCO:
         :param class_based_colors (bool): draw bboxes/masks with colors specific to each category
         :param label_polygons (bool): label category name next to the polygons
         :param label_font_size (int): change the font-size for labels
+        :param draw_mask (bool): Disable auto drawing of mask and allow the used to choose.
         :return: None
         """
 
