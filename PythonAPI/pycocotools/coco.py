@@ -52,10 +52,12 @@ from matplotlib.patches import Polygon
 import numpy as np
 import copy
 import itertools
-from . import mask as maskUtils
+import mask as maskUtils
 import os
 from collections import defaultdict
 import sys
+from ColorLookUp import color_lut as color_code
+
 PYTHON_VERSION = sys.version_info[0]
 if PYTHON_VERSION == 2:
     from urllib import urlretrieve
@@ -81,7 +83,8 @@ class COCO:
         if not annotation_file == None:
             print('loading annotations into memory...')
             tic = time.time()
-            dataset = json.load(open(annotation_file, 'r'))
+            with open(annotation_file, 'r') as f:
+                dataset = json.load(f)
             assert type(dataset)==dict, 'annotation file format {} not supported'.format(type(dataset))
             print('Done (t={:0.2f}s)'.format(time.time()- tic))
             self.dataset = dataset
@@ -230,12 +233,32 @@ class COCO:
         elif type(ids) == int:
             return [self.imgs[ids]]
 
-    def showAnns(self, anns, draw_bbox=False):
+    def showAnns(self, anns, cats, draw_bbox=False, bbox_line_width=2, class_based_colors=False, label_polygons=False, label_font_size=5, draw_mask=False):
         """
         Display the specified annotations.
         :param anns (array of object): annotations to display
+        :param cats (array of object): categories to be considered
+        :param draw_bbox (bool): weather to draw bboxes while showing anns
+        :param bbox_line_width (int): line width while drawing bbox
+        :param class_based_colors (bool): draw bboxes/masks with colors specific to each category
+        :param label_polygons (bool): label category name next to the polygons
+        :param label_font_size (int): change the font-size for labels
+        :param draw_mask (bool): Disable auto drawing of mask and allow the used to choose.
         :return: None
         """
+
+        def getCategoryName(cats, cat_id):
+            """
+            get Category name given a category id.
+            :cats (dictionary)           : Dictionary containing all the categories.
+            :cat_id (integer)            : Category ID of which the name is required.
+            :return: imgs (object array) : loaded img objects
+            """
+            cat = [cat["name"] for cat in cats if cat["id"] == cat_id]
+            return cat[0]
+
+
+
         if len(anns) == 0:
             return 0
         if 'segmentation' in anns[0] or 'keypoints' in anns[0]:
@@ -248,9 +271,15 @@ class COCO:
             ax = plt.gca()
             ax.set_autoscale_on(False)
             polygons = []
+            labels = []
             color = []
+
             for ann in anns:
-                c = (np.random.random((1, 3))*0.6+0.4).tolist()[0]
+                if class_based_colors:
+                    c = color_code[ann["category_id"]]
+                else:
+                    c = (np.random.random((1, 3))*0.6+0.4).tolist()[0]
+
                 if 'segmentation' in ann:
                     if type(ann['segmentation']) == list:
                         # polygon
@@ -292,12 +321,19 @@ class COCO:
                     poly = [[bbox_x, bbox_y], [bbox_x, bbox_y+bbox_h], [bbox_x+bbox_w, bbox_y+bbox_h], [bbox_x+bbox_w, bbox_y]]
                     np_poly = np.array(poly).reshape((4,2))
                     polygons.append(Polygon(np_poly))
-                    color.append(c)
+                    #color.append(c)
+                if label_polygons:
+                    labels.append([ann["bbox"][0]-2, ann["bbox"][1]-5, getCategoryName(cats, ann["category_id"])])
 
-            p = PatchCollection(polygons, facecolor=color, linewidths=0, alpha=0.4)
+            if draw_mask:
+                p = PatchCollection(polygons, facecolor=color, linewidths=0, alpha=0.4)
+                ax.add_collection(p)
+            p = PatchCollection(polygons, facecolor='none', edgecolors=color, linewidths=bbox_line_width)
             ax.add_collection(p)
-            p = PatchCollection(polygons, facecolor='none', edgecolors=color, linewidths=2)
-            ax.add_collection(p)
+
+            for label in labels:
+                ax.annotate(label[2], (label[0], label[1]), size=label_font_size)
+
         elif datasetType == 'captions':
             for ann in anns:
                 print(ann['caption'])
@@ -314,7 +350,8 @@ class COCO:
         print('Loading and preparing results...')
         tic = time.time()
         if type(resFile) == str or (PYTHON_VERSION == 2 and type(resFile) == unicode):
-            anns = json.load(open(resFile))
+            with open(resFile) as f:
+                anns = json.load(f)
         elif type(resFile) == np.ndarray:
             anns = self.loadNumpyAnnotations(resFile)
         else:
