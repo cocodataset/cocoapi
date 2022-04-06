@@ -28,11 +28,10 @@
 
 3. Comment/uncomment desired conversion format:
 
-  	'# SAMPLE #1: Convert RLE to Polygon
-  	RLE2poly(DATASET_PATH)
-  	
-  	# SAMPLE #2: Convert Polygon to RLE
-  	poly2RLE(DATASET_PATH)'
+  	` # SAMPLE #1: Convert RLE to Polygon
+  	RLE2poly(DATASET_PATH) `
+  	` # SAMPLE #2: Convert Polygon to RLE
+  	poly2RLE(DATASET_PATH) `
 
 - Note 5: when running both (RLE2poly + poly2RLe) output will not be identical (bit-a-bit) to input dataset due to encoding data loosing but after comparing output vs input masks, quite-identical shapes got obtained
 
