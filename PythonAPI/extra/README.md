@@ -29,7 +29,7 @@
 3. Comment/uncomment desired conversion format:
 
   	` # SAMPLE #1: Convert RLE to Polygon
-  	RLE2poly(DATASET_PATH) `
+  	RLE2poly(DATASET_PATH) `<br>
   	` # SAMPLE #2: Convert Polygon to RLE
   	poly2RLE(DATASET_PATH) `
 
