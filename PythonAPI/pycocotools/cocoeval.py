@@ -512,16 +512,16 @@ class COCOeval:
             fpCum = 0
             numGt = 0
             for imageDict in evalImgs:
-                numGt += len(imageDict["gtIds"]) - imageDict["gtIgnore"].astype(int).sum()
+                numGt += len(imageDict['gtIds']) - imageDict['gtIgnore'].astype(int).sum()
 
-                scoreMask = [True if score >= confThr else False for score in imageDict["dtScores"]]
+                scoreMask = [True if score >= confThr else False for score in imageDict['dtScores']]
 
                 if len(scoreMask):
-                    dtIgnore = imageDict["dtIgnore"][iouThrIdx]
+                    dtIgnore = imageDict['dtIgnore'][iouThrIdx]
                     finalMask = scoreMask & ~dtIgnore
 
-                    tp = (imageDict["dtMatches"][iouThrIdx][finalMask] > 0).sum()
-                    fp = (imageDict["dtMatches"][iouThrIdx][finalMask] == 0).sum()
+                    tp = (imageDict['dtMatches'][iouThrIdx][finalMask] > 0).sum()
+                    fp = (imageDict['dtMatches'][iouThrIdx][finalMask] == 0).sum()
                     tpCum += tp
                     fpCum += fp
 
@@ -590,16 +590,16 @@ class COCOeval:
         fpCum = 0
         numGt = 0
         for imageDict in evalImgs:
-            numGt += len(imageDict["gtIds"]) - imageDict["gtIgnore"].astype(int).sum()
+            numGt += len(imageDict['gtIds']) - imageDict['gtIgnore'].astype(int).sum()
 
-            scoreMask = [True if score >= confThr else False for score in imageDict["dtScores"]]
+            scoreMask = [True if score >= confThr else False for score in imageDict['dtScores']]
 
             if len(scoreMask):
-                dtIgnore = imageDict["dtIgnore"][iouThrIdx]
+                dtIgnore = imageDict['dtIgnore'][iouThrIdx]
                 finalMask = scoreMask & ~dtIgnore
 
-                tp = (imageDict["dtMatches"][iouThrIdx][finalMask] > 0).sum()
-                fp = (imageDict["dtMatches"][iouThrIdx][finalMask] == 0).sum()
+                tp = (imageDict['dtMatches'][iouThrIdx][finalMask] > 0).sum()
+                fp = (imageDict['dtMatches'][iouThrIdx][finalMask] == 0).sum()
                 tpCum += tp
                 fpCum += fp
 
@@ -626,7 +626,7 @@ class COCOeval:
 
         p = self.params
 
-        precisions = self.eval["precision"]
+        precisions = self.eval['precision']
 
         if classIdx is not None:
             prArray = precisions[:, :, classIdx, 0, 2]
@@ -636,14 +636,14 @@ class COCOeval:
         x = np.arange(0.0, 1.01, 0.01)
         plt.figure()
         for idx, iouThr in enumerate(p.iouThrs):
-            plt.plot(x, prArray[idx, :], label=f"iou={iouThr:0.2f}")
+            plt.plot(x, prArray[idx, :], label=f'iou={iouThr:0.2f}')
 
-        plt.xlabel("recall")
-        plt.ylabel("precison")
+        plt.xlabel('recall')
+        plt.ylabel('precision')
         plt.xlim(0, 1.0)
         plt.ylim(0, 1.01)
         plt.grid(True)
-        plt.legend(loc="lower left")
+        plt.legend(loc='lower left')
         plt.savefig(filename)
 
     def plotFBetaCurve(self, filename, betas=[1], iouThr=0.5, areaRng='all', classIdx=None):
@@ -676,17 +676,17 @@ class COCOeval:
 
         numGt = 0
         for imageDict in evalImgs:
-            numGt += len(imageDict["gtIds"]) - imageDict["gtIgnore"].astype(int).sum()
+            numGt += len(imageDict['gtIds']) - imageDict['gtIgnore'].astype(int).sum()
 
-            scoreMask = np.full((len(confThrs), len(imageDict["dtScores"])), False)
-            for idx, score in enumerate(imageDict["dtScores"]):
+            scoreMask = np.full((len(confThrs), len(imageDict['dtScores'])), False)
+            for idx, score in enumerate(imageDict['dtScores']):
                 score_idx = np.searchsorted(confThrs, score, side='right')
                 scoreMask[:score_idx, idx] = True
 
-            dtIgnore = imageDict["dtIgnore"][iouThrIdx]
+            dtIgnore = imageDict['dtIgnore'][iouThrIdx]
             finalMask = scoreMask & ~dtIgnore
 
-            filteredArr = np.where(finalMask==True, imageDict["dtMatches"][iouThrIdx], -1)
+            filteredArr = np.where(finalMask==True, imageDict['dtMatches'][iouThrIdx], -1)
             tpCum += np.sum(filteredArr > 0, axis=1)
             fpCum += np.sum(filteredArr == 0, axis=1)
 
@@ -694,23 +694,23 @@ class COCOeval:
         precision = np.divide(tpCum, (tpCum + fpCum), out=np.full(tpCum.shape, np.nan, np.float), where=(tpCum + fpCum)!=0)
 
         plt.figure()
-        plt.plot(confThrs, recall, label="recall")
-        plt.plot(confThrs, precision, label="precision")
+        plt.plot(confThrs, recall, label='recall')
+        plt.plot(confThrs, precision, label='precision')
 
         for beta in betas:
             score = (1 + beta**2) * precision * recall / ((beta**2 * precision) + recall)
-            plt.plot(confThrs, score, label=f"F{beta}")
+            plt.plot(confThrs, score, label=f'F{beta}')
 
             maxIdx = np.nanargmax(score)
-            print(f"Best F{beta} is {score[maxIdx]:0.3f} at confThr {confThrs[maxIdx]}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}")
+            print(f'Best F{beta} is {score[maxIdx]:0.3f} at confThr {confThrs[maxIdx]}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}')
 
-        plt.title(f"Fscores for iouThr={iouThr}")
-        plt.xlabel("confidence threshold")
-        plt.ylabel("score")
+        plt.title(f'Fscores for iouThr={iouThr}')
+        plt.xlabel('confidence threshold')
+        plt.ylabel('score')
         plt.xlim(0, 1.0)
         plt.ylim(0, 1.01)
         plt.grid(True)
-        plt.legend(loc="lower left")
+        plt.legend(loc='lower left')
         plt.savefig(filename)
 
     def __str__(self):
