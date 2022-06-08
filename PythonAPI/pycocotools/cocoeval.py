@@ -494,6 +494,126 @@ class COCOeval:
             summarize = _summarizeKps
         self.stats = summarize()
 
+    def summarizeFBetaScores(self):
+        '''
+        Compute and display summary metrics for F-beta scores.
+        '''
+        def _summarize(beta=1, iouThr=0.5, areaRng='all', confThr=0):
+            p = self.params
+            iStr = ' F{:<1} @[ IoU={:<4} | area={:>6s} | precision={:<5} | recall={:<5} ] = {:0.3f}'
+
+            evalImgs = [evalImg for evalImg in self.evalImgs if evalImg is not None]
+            aRng = p.areaRng[p.areaRngLbl.index(areaRng)]
+            evalImgs = [evalImg for evalImg in evalImgs if evalImg['aRng']==aRng]
+
+            iouThrIdx = np.where(p.iouThrs == iouThr)
+
+            tpCum = 0
+            fpCum = 0
+            numGt = 0
+            for imageDict in evalImgs:
+                numGt += len(imageDict["gtIds"]) - imageDict["gtIgnore"].astype(int).sum()
+
+                scoreMask = [True if score >= confThr else False for score in imageDict["dtScores"]]
+
+                if len(scoreMask):
+                    dtIgnore = imageDict["dtIgnore"][iouThrIdx]
+                    finalMask = scoreMask & ~dtIgnore
+
+                    tp = (imageDict["dtMatches"][iouThrIdx][finalMask] > 0).sum()
+                    fp = (imageDict["dtMatches"][iouThrIdx][finalMask] == 0).sum()
+                    tpCum += tp
+                    fpCum += fp
+
+            recall = np.nan
+            precision = np.nan
+            if numGt > 0:
+                recall = tpCum / numGt
+            if tpCum + fpCum > 0:
+                precision = tpCum / (tpCum + fpCum)
+            precisionStr = f'{precision:0.3f}'
+            recallStr = f'{recall:0.3f}'
+
+            score = (1 + beta**2) * precision * recall / ((beta**2 * precision) + recall)
+
+            print(iStr.format(beta, iouThr, areaRng, precisionStr, recallStr, score))
+            return score
+
+        def _summarizeDets():
+            stats = np.zeros((10,))
+            stats[0] = _summarize(beta=1, iouThr=.5, areaRng='all')
+            stats[1] = _summarize(beta=1, iouThr=.75, areaRng='all')
+            stats[2] = _summarize(beta=1, iouThr=.5, areaRng='small')
+            stats[3] = _summarize(beta=1, iouThr=.5, areaRng='medium')
+            stats[4] = _summarize(beta=1, iouThr=.5, areaRng='large')
+            stats[5] = _summarize(beta=2, iouThr=.5, areaRng='all')
+            stats[6] = _summarize(beta=2, iouThr=.75, areaRng='all')
+            stats[7] = _summarize(beta=2, iouThr=.5, areaRng='small')
+            stats[8] = _summarize(beta=2, iouThr=.5, areaRng='medium')
+            stats[9] = _summarize(beta=2, iouThr=.5, areaRng='large')
+            return stats
+
+        print('Calculating F-beta scores...')
+        if not self.evalImgs:
+            raise Exception('Please run evaluate() first')
+        iouType = self.params.iouType
+        if iouType == 'bbox':
+            self.stats = _summarizeDets()
+        else:
+            print('F-scores calculation only supported for bounding boxes.')
+
+    def getFBetaScore(self, beta=1, iouThr=0.5, areaRng='all', confThr=0, classIdx=None):
+        '''
+        Calculate F-beta scores
+        :param betas: F-beta scores to calculate
+        :param iouThr: IOU threshold
+        :param areaRng: object area range
+        :param confThr: confidence threshold for detections
+        :param classIdx: if want to calculate for a specific class
+        :return: None
+        '''
+        print('Calculating single F-beta scores...')
+        if not self.evalImgs:
+            print('Please run evaluate() first')
+
+        iStr = ' F{} @[ IoU={} | area={} | confThr={} | classIdx={} | precision={:0.3f} | recall={:0.3f} ] = {:0.3f}'
+
+        evalImgs = [evalImg for evalImg in self.evalImgs if evalImg is not None]
+        aRng = self.params.areaRng[self.params.areaRngLbl.index(areaRng)]
+        evalImgs = [evalImg for evalImg in evalImgs if evalImg['aRng']==aRng]
+        if classIdx is not None:
+            evalImgs = [evalImg for evalImg in evalImgs if evalImg['category_id']==classIdx]
+
+        iouThrIdx = np.where(self.params.iouThrs == iouThr)
+
+        tpCum = 0
+        fpCum = 0
+        numGt = 0
+        for imageDict in evalImgs:
+            numGt += len(imageDict["gtIds"]) - imageDict["gtIgnore"].astype(int).sum()
+
+            scoreMask = [True if score >= confThr else False for score in imageDict["dtScores"]]
+
+            if len(scoreMask):
+                dtIgnore = imageDict["dtIgnore"][iouThrIdx]
+                finalMask = scoreMask & ~dtIgnore
+
+                tp = (imageDict["dtMatches"][iouThrIdx][finalMask] > 0).sum()
+                fp = (imageDict["dtMatches"][iouThrIdx][finalMask] == 0).sum()
+                tpCum += tp
+                fpCum += fp
+
+        recall = np.nan
+        precision = np.nan
+        if numGt > 0:
+            recall = tpCum / numGt
+        if tpCum + fpCum > 0:
+            precision = tpCum / (tpCum + fpCum)
+
+        score = (1 + beta**2) * precision * recall / ((beta**2 * precision) + recall)
+
+        print(iStr.format(beta, iouThr, areaRng, confThr, classIdx, precision, recall, score))
+
     def plotPRCurve(self, filename, classIdx=None):
         '''
         Plot Precision-Recall curves
@@ -520,6 +640,73 @@ class COCOeval:
 
         plt.xlabel("recall")
         plt.ylabel("precison")
+        plt.xlim(0, 1.0)
+        plt.ylim(0, 1.01)
+        plt.grid(True)
+        plt.legend(loc="lower left")
+        plt.savefig(filename)
+
+    def plotFBetaCurve(self, filename, betas=[1], iouThr=0.5, areaRng='all', classIdx=None):
+        '''
+        Plot F-beta curves
+        :param filename: output filename
+        :param betas: F-beta scores to plot
+        :param iouThr: IOU threshold
+        :param areaRng: object area range
+        :param classIdx: if want to plot for a specific class
+        :return: None
+        '''
+        if not self.evalImgs:
+            raise Exception('Please run evaluate() first')
+
+        p = self.params
+
+        evalImgs = [evalImg for evalImg in self.evalImgs if evalImg is not None]
+        aRng = p.areaRng[p.areaRngLbl.index(areaRng)]
+        evalImgs = [evalImg for evalImg in evalImgs if evalImg['aRng']==aRng]
+        if classIdx is not None:
+            evalImgs = [evalImg for evalImg in evalImgs if evalImg['category_id']==classIdx]
+
+        confThrs = np.linspace(0, 1, int(np.round((1 - 0) / .01)) + 1, endpoint=True)
+
+        tpCum = np.zeros(len(confThrs))
+        fpCum = np.zeros(len(confThrs))
+
+        iouThrIdx = np.where(p.iouThrs == iouThr)
+
+        numGt = 0
+        for imageDict in evalImgs:
+            numGt += len(imageDict["gtIds"]) - imageDict["gtIgnore"].astype(int).sum()
+
+            scoreMask = np.full((len(confThrs), len(imageDict["dtScores"])), False)
+            for idx, score in enumerate(imageDict["dtScores"]):
+                score_idx = np.searchsorted(confThrs, score, side='right')
+                scoreMask[:score_idx, idx] = True
+
+            dtIgnore = imageDict["dtIgnore"][iouThrIdx]
+            finalMask = scoreMask & ~dtIgnore
+
+            filteredArr = np.where(finalMask==True, imageDict["dtMatches"][iouThrIdx], -1)
+            tpCum += np.sum(filteredArr > 0, axis=1)
+            fpCum += np.sum(filteredArr == 0, axis=1)
+
+        recall = np.divide(tpCum, numGt, out=np.full(tpCum.shape, np.nan, np.float), where=numGt!=0)
+        precision = np.divide(tpCum, (tpCum + fpCum), out=np.full(tpCum.shape, np.nan, np.float), where=(tpCum + fpCum)!=0)
+
+        plt.figure()
+        plt.plot(confThrs, recall, label="recall")
+        plt.plot(confThrs, precision, label="precision")
+
+        for beta in betas:
+            score = (1 + beta**2) * precision * recall / ((beta**2 * precision) + recall)
+            plt.plot(confThrs, score, label=f"F{beta}")
+
+            maxIdx = np.nanargmax(score)
+            print(f"Best F{beta} is {score[maxIdx]:0.3f} at confThr {confThrs[maxIdx]}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}")
+
+        plt.title(f"Fscores for iouThr={iouThr}")
+        plt.xlabel("confidence threshold")
+        plt.ylabel("score")
         plt.xlim(0, 1.0)
         plt.ylim(0, 1.01)
         plt.grid(True)
