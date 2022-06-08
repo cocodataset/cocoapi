@@ -1,11 +1,13 @@
-__author__ = 'tsungyi'
-
-import numpy as np
+import copy
 import datetime
 import time
 from collections import defaultdict
+
+import matplotlib.pyplot as plt
+import numpy as np
+
 from . import mask as maskUtils
-import copy
+
 
 class COCOeval:
     # Interface for evaluating detection on the Microsoft COCO dataset.
@@ -372,7 +374,7 @@ class COCOeval:
                     npig = np.count_nonzero(gtIg==0 )
                     if npig == 0:
                         continue
-                    tps = np.logical_and(               dtm,  np.logical_not(dtIg) )
+                    tps = np.logical_and(dtm, np.logical_not(dtIg) )
                     fps = np.logical_and(np.logical_not(dtm), np.logical_not(dtIg) )
 
                     tp_sum = np.cumsum(tps, axis=1).astype(dtype=np.float)
@@ -492,6 +494,38 @@ class COCOeval:
             summarize = _summarizeKps
         self.stats = summarize()
 
+    def plotPRCurve(self, filename, classIdx=None):
+        '''
+        Plot Precision-Recall curves
+        :param filename: output filename
+        :param classIdx: if want to plot for a specific class
+        :return: None
+        '''
+        if not self.eval:
+            raise Exception('Please run accumulate() first')
+
+        p = self.params
+
+        precisions = self.eval["precision"]
+
+        if classIdx is not None:
+            prArray = precisions[:, :, classIdx, 0, 2]
+        else:
+            prArray = np.mean(precisions[:, :, :, 0, 2], axis=2)
+
+        x = np.arange(0.0, 1.01, 0.01)
+        plt.figure()
+        for idx, iouThr in enumerate(p.iouThrs):
+            plt.plot(x, prArray[idx, :], label=f"iou={iouThr:0.2f}")
+
+        plt.xlabel("recall")
+        plt.ylabel("precison")
+        plt.xlim(0, 1.0)
+        plt.ylim(0, 1.01)
+        plt.grid(True)
+        plt.legend(loc="lower left")
+        plt.savefig(filename)
+
     def __str__(self):
         self.summarize()
 
@@ -504,8 +538,9 @@ class Params:
         self.catIds = []
         # np.arange causes trouble.  the data point on arange is slightly larger than the true value
         self.iouThrs = np.linspace(.5, 0.95, int(np.round((0.95 - .5) / .05)) + 1, endpoint=True)
+        self.iouThrs = np.around(self.iouThrs, 2)
         self.recThrs = np.linspace(.0, 1.00, int(np.round((1.00 - .0) / .01)) + 1, endpoint=True)
-        self.maxDets = [1, 10, 100]
+        self.maxDets = [1, 10, 100, 1000]
         self.areaRng = [[0 ** 2, 1e5 ** 2], [0 ** 2, 32 ** 2], [32 ** 2, 96 ** 2], [96 ** 2, 1e5 ** 2]]
         self.areaRngLbl = ['all', 'small', 'medium', 'large']
         self.useCats = 1
