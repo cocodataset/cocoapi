@@ -725,9 +725,17 @@ class COCOeval:
             filteredArr = np.where(finalMask==True, imageDict['dtMatches'][iouThrIdx], -1)
             tpCum += np.sum(filteredArr > 0, axis=1)
             fpCum += np.sum(filteredArr == 0, axis=1)
+        fnCum = numGt - tpCum
 
         recall = np.divide(tpCum, numGt, out=np.full(tpCum.shape, np.nan, np.float), where=numGt!=0)
         precision = np.divide(tpCum, (tpCum + fpCum), out=np.full(tpCum.shape, np.nan, np.float), where=(tpCum + fpCum)!=0)
+
+        # # take care of edge cases (https://github.com/dice-group/gerbil/wiki/Precision,-Recall-and-F1-measure)
+        for idx, (tp, fp, fn) in enumerate(zip(tpCum, fpCum, fnCum)):
+            if tp == fp == fn == 0:
+                precision[idx] = recall[idx] = 1
+            elif tp == 0 and (fp or fn) > 0:
+                precision[idx] = recall[idx] = 0
 
         plt.figure()
         plt.plot(confThrs, recall, label='recall')
@@ -737,7 +745,7 @@ class COCOeval:
             score = (1 + beta**2) * precision * recall / ((beta**2 * precision) + recall)
             maxIdx = np.nanargmax(score)
             plt.plot(confThrs, score, label=f'F{beta}: {score[maxIdx]:0.3f} at {confThrs[maxIdx]}')
-            print(f'Best F{beta} is {score[maxIdx]:0.3f} at confThr {confThrs[maxIdx]}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}')
+            print(f'Best F{beta} is {score[maxIdx]:0.3f} at confThr {confThrs[maxIdx]:0.2f}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}')
 
         plt.title(f'Fscores for iouThr={iouThr}')
         plt.xlabel('confidence threshold')
