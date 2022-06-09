@@ -76,12 +76,12 @@ class COCOeval:
         self._dts = defaultdict(list)       # dt for evaluation
         self.params = Params(iouType=iouType) # parameters
         self._paramsEval = {}               # parameters for evaluation
-        self.stats = []                     # result summarization
+        self.stats = []                     # result summarization (COCO-style)
+        self.fstats = []                    # result summarization
         self.ious = {}                      # ious between all gts and dts
         if not cocoGt is None:
             self.params.imgIds = sorted(cocoGt.getImgIds())
             self.params.catIds = sorted(cocoGt.getCatIds())
-
 
     def _prepare(self):
         '''
@@ -578,7 +578,7 @@ class COCOeval:
             raise Exception('Please run evaluate() first')
         iouType = self.params.iouType
         if iouType == 'bbox':
-            self.stats = _summarizeDets()
+            self.fstats = _summarizeDets()
         else:
             print('F-scores calculation only supported for bounding boxes.')
 
