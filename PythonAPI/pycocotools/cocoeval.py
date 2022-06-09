@@ -82,6 +82,7 @@ class COCOeval:
         if not cocoGt is None:
             self.params.imgIds = sorted(cocoGt.getImgIds())
             self.params.catIds = sorted(cocoGt.getCatIds())
+            self.params.catNms = sorted(cocoGt.getCatNms())
 
     def _prepare(self):
         '''
@@ -593,15 +594,17 @@ class COCOeval:
         if not self.evalImgs:
             raise Exception('Please run evaluate() first')
 
+        p = self.params
+
         headers = ['precision', 'recall', f'f{beta}-score', 'support']
         average_options = ('micro', 'macro', 'weighted')
-        catNms = self.cocoGt.getCatNms()
+        catNms = p.catNms
 
         precisions = []
         recalls = []
         fscores = []
         supports = []
-        for classIdx in self.params.catIds:
+        for classIdx in p.catIds:
             precision, recall, fscore, support = self._getFBetaScore(
                                                     beta=beta,
                                                     iouThr=iouThr,
