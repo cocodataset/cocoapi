@@ -494,75 +494,7 @@ class COCOeval:
             summarize = _summarizeKps
         self.stats = summarize()
 
-    def summarizeFBetaScores(self):
-        '''
-        Compute and display summary metrics for F-beta scores.
-        '''
-        def _summarize(beta=1, iouThr=0.5, areaRng='all', confThr=0):
-            p = self.params
-            iStr = ' F{:<1} @[ IoU={:<4} | area={:>6s} | precision={:<5} | recall={:<5} ] = {:0.3f}'
-
-            evalImgs = [evalImg for evalImg in self.evalImgs if evalImg is not None]
-            aRng = p.areaRng[p.areaRngLbl.index(areaRng)]
-            evalImgs = [evalImg for evalImg in evalImgs if evalImg['aRng']==aRng]
-
-            iouThrIdx = np.where(p.iouThrs == iouThr)
-
-            tpCum = 0
-            fpCum = 0
-            numGt = 0
-            for imageDict in evalImgs:
-                numGt += len(imageDict['gtIds']) - imageDict['gtIgnore'].astype(int).sum()
-
-                scoreMask = [True if score >= confThr else False for score in imageDict['dtScores']]
-
-                if len(scoreMask):
-                    dtIgnore = imageDict['dtIgnore'][iouThrIdx]
-                    finalMask = scoreMask & ~dtIgnore
-
-                    tp = (imageDict['dtMatches'][iouThrIdx][finalMask] > 0).sum()
-                    fp = (imageDict['dtMatches'][iouThrIdx][finalMask] == 0).sum()
-                    tpCum += tp
-                    fpCum += fp
-
-            recall = np.nan
-            precision = np.nan
-            if numGt > 0:
-                recall = tpCum / numGt
-            if tpCum + fpCum > 0:
-                precision = tpCum / (tpCum + fpCum)
-            precisionStr = f'{precision:0.3f}'
-            recallStr = f'{recall:0.3f}'
-
-            score = (1 + beta**2) * precision * recall / ((beta**2 * precision) + recall)
-
-            print(iStr.format(beta, iouThr, areaRng, precisionStr, recallStr, score))
-            return score
-
-        def _summarizeDets():
-            stats = np.zeros((10,))
-            stats[0] = _summarize(beta=1, iouThr=.5, areaRng='all')
-            stats[1] = _summarize(beta=1, iouThr=.75, areaRng='all')
-            stats[2] = _summarize(beta=1, iouThr=.5, areaRng='small')
-            stats[3] = _summarize(beta=1, iouThr=.5, areaRng='medium')
-            stats[4] = _summarize(beta=1, iouThr=.5, areaRng='large')
-            stats[5] = _summarize(beta=2, iouThr=.5, areaRng='all')
-            stats[6] = _summarize(beta=2, iouThr=.75, areaRng='all')
-            stats[7] = _summarize(beta=2, iouThr=.5, areaRng='small')
-            stats[8] = _summarize(beta=2, iouThr=.5, areaRng='medium')
-            stats[9] = _summarize(beta=2, iouThr=.5, areaRng='large')
-            return stats
-
-        print('Calculating F-beta scores...')
-        if not self.evalImgs:
-            raise Exception('Please run evaluate() first')
-        iouType = self.params.iouType
-        if iouType == 'bbox':
-            self.stats = _summarizeDets()
-        else:
-            print('F-scores calculation only supported for bounding boxes.')
-
-    def getFBetaScore(self, beta=1, iouThr=0.5, areaRng='all', confThr=0, classIdx=None):
+    def _getFBetaScore(self, beta=1, iouThr=0.5, areaRng='all', confThr=0, classIdx=None, verbose=False):
         '''
         Calculate F-beta scores
         :param betas: F-beta scores to calculate
@@ -572,11 +504,7 @@ class COCOeval:
         :param classIdx: if want to calculate for a specific class
         :return: None
         '''
-        print('Calculating single F-beta scores...')
-        if not self.evalImgs:
-            print('Please run evaluate() first')
-
-        iStr = ' F{} @[ IoU={} | area={} | confThr={} | classIdx={} | precision={:0.3f} | recall={:0.3f} ] = {:0.3f}'
+        iStr = ' F{:<1} @[ IoU={:<4} | area={:>6s} | precision={:<5} | recall={:<5} ] = {:0.3f}'
 
         evalImgs = [evalImg for evalImg in self.evalImgs if evalImg is not None]
         aRng = self.params.areaRng[self.params.areaRngLbl.index(areaRng)]
@@ -602,6 +530,7 @@ class COCOeval:
                 fp = (imageDict['dtMatches'][iouThrIdx][finalMask] == 0).sum()
                 tpCum += tp
                 fpCum += fp
+        fnCum = numGt - tpCum
 
         recall = np.nan
         precision = np.nan
@@ -610,12 +539,50 @@ class COCOeval:
         if tpCum + fpCum > 0:
             precision = tpCum / (tpCum + fpCum)
 
-        score = (1 + beta**2) * precision * recall / ((beta**2 * precision) + recall)
+        # take care of edge cases (https://github.com/dice-group/gerbil/wiki/Precision,-Recall-and-F1-measure)
+        if tpCum == fpCum == fnCum == 0:
+            precision = recall = score = 1
+        elif tpCum == 0 and (fpCum or fnCum) > 0:
+            precision = recall = score = 0
+        else:
+            score = (1 + beta**2) * precision * recall / ((beta**2 * precision) + recall)
 
-        print(iStr.format(beta, iouThr, areaRng, confThr, classIdx, precision, recall, score))
+        if verbose:
+            precisionStr = f'{precision:0.3f}'
+            recallStr = f'{recall:0.3f}'
+            print(iStr.format(beta, iouThr, areaRng, precisionStr, recallStr, score))
 
+        return precision, recall, score, numGt
+
+    def summarizeFBetaScores(self):
         '''
+        Compute and display summary metrics for F-beta scores.
+        '''
+        def _summarizeDets():
+            stats = np.zeros((10,))
+            _, _, stats[0], _ = self._getFBetaScore(beta=1, iouThr=.5, areaRng='all', verbose=True)
+            _, _, stats[1], _ = self._getFBetaScore(beta=1, iouThr=.75, areaRng='all', verbose=True)
+            _, _, stats[2], _ = self._getFBetaScore(beta=1, iouThr=.5, areaRng='small', verbose=True)
+            _, _, stats[3], _ = self._getFBetaScore(beta=1, iouThr=.5, areaRng='medium', verbose=True)
+            _, _, stats[4], _ = self._getFBetaScore(beta=1, iouThr=.5, areaRng='large', verbose=True)
+            _, _, stats[5], _ = self._getFBetaScore(beta=2, iouThr=.5, areaRng='all', verbose=True)
+            _, _, stats[6], _ = self._getFBetaScore(beta=2, iouThr=.75, areaRng='all', verbose=True)
+            _, _, stats[7], _ = self._getFBetaScore(beta=2, iouThr=.5, areaRng='small', verbose=True)
+            _, _, stats[8], _ = self._getFBetaScore(beta=2, iouThr=.5, areaRng='medium', verbose=True)
+            _, _, stats[9], _ = self._getFBetaScore(beta=2, iouThr=.5, areaRng='large', verbose=True)
+            return stats
+
+        print('Calculating F-beta scores...')
+        if not self.evalImgs:
+            raise Exception('Please run evaluate() first')
+        iouType = self.params.iouType
+        if iouType == 'bbox':
+            self.stats = _summarizeDets()
+        else:
+            print('F-scores calculation only supported for bounding boxes.')
+
     def plotCocoPRCurve(self, filename, classIdx=None):
+        '''
         Plot COCO-style Precision-Recall curves
         :param filename: output filename
         :param classIdx: if want to plot for a specific class
@@ -699,9 +666,8 @@ class COCOeval:
 
         for beta in betas:
             score = (1 + beta**2) * precision * recall / ((beta**2 * precision) + recall)
-            plt.plot(confThrs, score, label=f'F{beta}')
-
             maxIdx = np.nanargmax(score)
+            plt.plot(confThrs, score, label=f'F{beta}: {score[maxIdx]:0.3f} at {confThrs[maxIdx]}')
             print(f'Best F{beta} is {score[maxIdx]:0.3f} at confThr {confThrs[maxIdx]}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}')
 
         plt.title(f'Fscores for iouThr={iouThr}')
