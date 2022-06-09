@@ -501,8 +501,9 @@ class COCOeval:
         :param iouThr: IOU threshold
         :param areaRng: object area range
         :param confThr: confidence threshold for detections
-        :param classIdx: if want to calculate for a specific class
-        :return: None
+        :param classIdx: to only calculate for a specific class
+        :param verbose: to print result
+        :return: (precision, recall, fscore, numGt)
         '''
         iStr = ' F{:<1} @[ IoU={:<4} | area={:>6s} | precision={:<5} | recall={:<5} ] = {:0.3f}'
 
@@ -582,6 +583,13 @@ class COCOeval:
             print('F-scores calculation only supported for bounding boxes.')
 
     def printReport(self, beta=1, iouThr=0.5, confThr=0):
+        '''
+        Build a text report showing the main metrics
+        :param beta: Which F-beta score to calculate
+        :param iouThr: IOU threshold
+        :param confThr: confidence threshold for detections
+        :return: None
+        '''
         if not self.evalImgs:
             raise Exception('Please run evaluate() first')
 
@@ -646,7 +654,7 @@ class COCOeval:
         '''
         Plot COCO-style Precision-Recall curves
         :param filename: output filename
-        :param classIdx: if want to plot for a specific class
+        :param classIdx: to plot for a specific class
         :return: None
         '''
         if not self.eval:
