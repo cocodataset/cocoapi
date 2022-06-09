@@ -15,9 +15,15 @@ After downloading the images and annotations, run the Matlab, Python, or Lua dem
 - For Python, run "make" under coco/PythonAPI
 - For Lua, run “luarocks make LuaAPI/rocks/coco-scm-1.rockspec” under coco/
 
+```
+pip3 install 'git+https://github.com/yhsmiley/cocoapi.git#subdirectory=PythonAPI'
+```
+
 ## Usage
 
 ```
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
 cocoGt = COCO(true_path)  # initialize COCO ground truth api
 cocoDt = cocoGt.loadRes(pred_path)  # initialize COCO prediction api
 cocoEval = COCOeval(cocoGt, cocoDt, 'bbox')  # initialize COCO evaluation api
@@ -27,18 +33,15 @@ cocoEval.evaluate()
 To get F-beta scores of detections:
 ```
 cocoEval.summarizeFBetaScores()
-
-cocoEval.plotFBetaCurve(filename, betas=[1], iouThr=0.5, areaRng='all', classIdx=None)
-
-cocoEval.getFBetaScore(beta=1, iouThr=0.5, areaRng='all', confThr=0, classIdx=None)
+cocoEval.printReport(beta=1, iouThr=0.5, confThr=0)
+cocoEval.plotFBetaCurve(filename, betas=[1], iouThr=0.5)
 ```
 
 For original COCO-style evaluation:
 ```
 cocoEval.accumulate()
 cocoEval.summarize()
-
 mapAll, map50 = cocoEval.stats[:2]
 
-cocoEval.plotPRCurve(filename, classIdx=None)
+cocoEval.plotCocoPRCurve(filename, classIdx=None)
 ```
