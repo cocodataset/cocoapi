@@ -572,7 +572,7 @@ class COCOeval:
             _, _, stats[9], _ = self._getFBetaScore(beta=2, iouThr=.5, areaRng='large', verbose=True)
             return stats
 
-        print('Calculating F-beta scores...')
+        print('Calculating (micro) F-beta scores...')
         if not self.evalImgs:
             raise Exception('Please run evaluate() first')
         iouType = self.params.iouType
@@ -580,6 +580,67 @@ class COCOeval:
             self.stats = _summarizeDets()
         else:
             print('F-scores calculation only supported for bounding boxes.')
+
+    def printReport(self, beta=1, iouThr=0.5, confThr=0):
+        if not self.evalImgs:
+            raise Exception('Please run evaluate() first')
+
+        headers = ['precision', 'recall', f'f{beta}-score', 'support']
+        average_options = ('micro', 'macro', 'weighted')
+        catNms = self.cocoGt.getCatNms()
+
+        precisions = []
+        recalls = []
+        fscores = []
+        supports = []
+        for classIdx in self.params.catIds:
+            precision, recall, fscore, support = self._getFBetaScore(
+                                                    beta=beta,
+                                                    iouThr=iouThr,
+                                                    confThr=confThr,
+                                                    classIdx=classIdx)
+            precisions.append(precision)
+            recalls.append(recall)
+            fscores.append(fscore)
+            supports.append(support)
+        supports_sum = sum(supports)
+        rows = zip(catNms, precisions, recalls, fscores, supports)
+
+        longest_last_line_heading = 'weighted avg'
+        name_width = max(len(cn) for cn in catNms)
+        width = max(name_width, len(longest_last_line_heading))
+        head_fmt = '{:>{width}s} ' + ' {:>9}' * len(headers)
+        report = head_fmt.format('', *headers, width=width)
+        report += '\n\n'
+        row_fmt = '{:>{width}s} ' + ' {:>9.2f}' * 3 + ' {:>9}\n'
+        for row in rows:
+            report += row_fmt.format(*row, width=width)
+        report += '\n'
+
+        for average in average_options:
+            line_heading = f'{average} avg'
+            if average == 'micro':
+                avg_precision, avg_recall, avg_fscore, _ = self._getFBetaScore(
+                                                                beta=beta,
+                                                                iouThr=iouThr,
+                                                                confThr=confThr,
+                                                                classIdx=None)
+            elif average == 'macro':
+                avg_precision = np.mean(precisions)
+                avg_recall = np.mean(recalls)
+                avg_fscore = np.mean(fscores)
+            elif average == 'weighted':
+                avg_precision = sum([p * s for p, s in zip(precisions, supports)]) / supports_sum
+                avg_recall = sum([r * s for r, s in zip(recalls, supports)]) / supports_sum
+                avg_fscore = sum([f * s for f, s in zip(fscores, supports)]) / supports_sum
+            else:
+                raise Exception(f'{average} average is not supported')
+
+            avg = [avg_precision, avg_recall, avg_fscore, supports_sum]
+            report += row_fmt.format(line_heading, *avg, width=width)
+
+        print(f'F{beta} for IOU threshold {iouThr} and confidence threshold {confThr}:')
+        print(report)
 
     def plotCocoPRCurve(self, filename, classIdx=None):
         '''
