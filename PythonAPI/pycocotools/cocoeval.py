@@ -685,7 +685,7 @@ class COCOeval:
         plt.legend(loc='lower left')
         plt.savefig(filename)
 
-    def plotFBetaCurve(self, filename, betas=[1], iouThr=0.5, areaRng='all', classIdx=None):
+    def plotFBetaCurve(self, filename, betas=[1], iouThr=0.5, areaRng='all', classIdx=None, average='macro'):
         '''
         Plot F-beta curves
         :param filename: output filename
@@ -705,52 +705,82 @@ class COCOeval:
         evalImgs = [evalImg for evalImg in evalImgs if evalImg['aRng']==aRng]
         if classIdx is not None:
             evalImgs = [evalImg for evalImg in evalImgs if evalImg['category_id']==classIdx]
+            numCats = 1
+        else:
+            numCats = len(p.catIds)
 
-        confThrs = np.linspace(0, 1, int(np.round((1 - 0) / .01)) + 1, endpoint=True)
-
-        tpCum = np.zeros(len(confThrs))
-        fpCum = np.zeros(len(confThrs))
+        tpCum = np.zeros((numCats, len(p.confThrs)))
+        fpCum = np.zeros((numCats, len(p.confThrs)))
 
         iouThrIdx = np.where(p.iouThrs == iouThr)
 
-        numGt = 0
+        numGtCum = np.zeros((numCats, 1))
         for imageDict in evalImgs:
-            numGt += len(imageDict['gtIds']) - imageDict['gtIgnore'].astype(int).sum()
+            if classIdx is None:
+                class_idx = imageDict['category_id'] - 1
+            else:
+                class_idx = 0
 
-            scoreMask = np.full((len(confThrs), len(imageDict['dtScores'])), False)
+            numGtCum[class_idx] += len(imageDict['gtIds']) - imageDict['gtIgnore'].astype(int).sum()
+
+            scoreMask = np.full((len(p.confThrs), len(imageDict['dtScores'])), False)
             for idx, score in enumerate(imageDict['dtScores']):
-                score_idx = np.searchsorted(confThrs, score, side='right')
+                score_idx = np.searchsorted(p.confThrs, score, side='right')
                 scoreMask[:score_idx, idx] = True
 
             dtIgnore = imageDict['dtIgnore'][iouThrIdx]
             finalMask = scoreMask & ~dtIgnore
 
             filteredArr = np.where(finalMask==True, imageDict['dtMatches'][iouThrIdx], -1)
-            tpCum += np.sum(filteredArr > 0, axis=1)
-            fpCum += np.sum(filteredArr == 0, axis=1)
-        fnCum = numGt - tpCum
+            tpCum[class_idx] += np.sum(filteredArr > 0, axis=1)
+            fpCum[class_idx] += np.sum(filteredArr == 0, axis=1)
+        fnCum = numGtCum - tpCum
 
-        recall = np.divide(tpCum, numGt, out=np.full(tpCum.shape, np.nan, np.float), where=numGt!=0)
+        if average == 'micro':
+            tpCum = np.sum(tpCum, axis=0)
+            fpCum = np.sum(fpCum, axis=0)
+            fnCum = np.sum(fnCum, axis=0)
+            numGtCum = np.sum(numGtCum, axis=0)
+
         precision = np.divide(tpCum, (tpCum + fpCum), out=np.full(tpCum.shape, np.nan, np.float), where=(tpCum + fpCum)!=0)
+        recall = np.divide(tpCum, numGtCum, out=np.full(tpCum.shape, np.nan, np.float), where=numGtCum!=0)
 
-        # # take care of edge cases (https://github.com/dice-group/gerbil/wiki/Precision,-Recall-and-F1-measure)
-        for idx, (tp, fp, fn) in enumerate(zip(tpCum, fpCum, fnCum)):
-            if tp == fp == fn == 0:
-                precision[idx] = recall[idx] = 1
-            elif tp == 0 and (fp or fn) > 0:
-                precision[idx] = recall[idx] = 0
+        # take care of edge cases (https://github.com/dice-group/gerbil/wiki/Precision,-Recall-and-F1-measure)
+        edge1 = np.isin(tpCum, 0) & np.isin(fpCum, 0) & np.isin(fnCum, 0)
+        precision[edge1] = recall[edge1] = 1
+        edge2 = np.isin(tpCum, 0) & (np.isin(fpCum, 0, invert=True) | np.isin(fnCum, 0, invert=True))
+        precision[edge2] = recall[edge2] = 0
+
+        if average == 'macro':
+            precision = np.mean(precision, axis=0)
+            recall = np.mean(recall, axis=0)
+        elif average == 'weighted':
+            precision = np.average(precision, axis=0, weights=numGtCum.squeeze(axis=1))
+            recall = np.average(recall, axis=0, weights=numGtCum.squeeze(axis=1))
 
         plt.figure()
-        plt.plot(confThrs, recall, label='recall')
-        plt.plot(confThrs, precision, label='precision')
+        plt.plot(p.confThrs, precision, label='precision')
+        plt.plot(p.confThrs, recall, label='recall')
 
         for beta in betas:
-            score = (1 + beta**2) * precision * recall / ((beta**2 * precision) + recall)
-            maxIdx = np.nanargmax(score)
-            plt.plot(confThrs, score, label=f'F{beta}: {score[maxIdx]:0.3f} at {confThrs[maxIdx]}')
-            print(f'Best F{beta} is {score[maxIdx]:0.3f} at confThr {confThrs[maxIdx]:0.2f}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}')
+            score = np.divide(
+                        (1 + beta**2) * precision * recall,
+                        (beta**2 * precision) + recall,
+                        out=np.full(precision.shape, 0, np.float),
+                        where=(precision + recall)!=0)
 
-        plt.title(f'Fscores for iouThr={iouThr}')
+            maxIdx = np.argmax(score)
+            plt.plot(p.confThrs, score, label=f'F{beta}: {score[maxIdx]:0.3f} at {p.confThrs[maxIdx]}')
+            if classIdx is None:
+                print(f'Best {average} F{beta} is {score[maxIdx]:0.3f} at confThr {p.confThrs[maxIdx]:0.2f}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}')
+            else:
+                print(f'Best F{beta} for classIdx {classIdx} is {score[maxIdx]:0.3f} at confThr {p.confThrs[maxIdx]:0.2f}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}')
+
+        if classIdx is None:
+            title = f'{average} Fscores for iouThr={iouThr}'
+        else:
+            title = f'Fscores for classIdx={classIdx}, iouThr={iouThr}'
+        plt.title(title)
         plt.xlabel('confidence threshold')
         plt.ylabel('score')
         plt.xlim(0, 1.0)
@@ -773,6 +803,7 @@ class Params:
         self.iouThrs = np.linspace(.5, 0.95, int(np.round((0.95 - .5) / .05)) + 1, endpoint=True)
         self.iouThrs = np.around(self.iouThrs, 2)
         self.recThrs = np.linspace(.0, 1.00, int(np.round((1.00 - .0) / .01)) + 1, endpoint=True)
+        self.confThrs = np.linspace(0, 0.99, int(np.round((0.99 - 0) / .01)) + 1, endpoint=True)
         self.maxDets = [1, 10, 100, 1000]
         self.areaRng = [[0 ** 2, 1e5 ** 2], [0 ** 2, 32 ** 2], [32 ** 2, 96 ** 2], [96 ** 2, 1e5 ** 2]]
         self.areaRngLbl = ['all', 'small', 'medium', 'large']
