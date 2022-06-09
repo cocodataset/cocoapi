@@ -35,7 +35,7 @@ class COCOeval:
     # Note: multiple areaRngs [Ax2] and maxDets [Mx1] can be specified.
     #
     # evaluate(): evaluates detections on every image and every category and
-    # concats the results into the "evalImgs" with fields:
+    # concats the results into the 'evalImgs' with fields:
     #  dtIds      - [1xD] id for each of the D detections (dt)
     #  gtIds      - [1xG] id for each of the G ground truths (gt)
     #  dtMatches  - [TxD] matching gt id at each IoU or 0
@@ -45,7 +45,7 @@ class COCOeval:
     #  dtIgnore   - [TxD] ignore flag for each dt at each IoU
     #
     # accumulate(): accumulates the per-image, per-category evaluation
-    # results in "evalImgs" into the dictionary "eval" with fields:
+    # results in 'evalImgs' into the dictionary 'eval' with fields:
     #  params     - parameters used for evaluation
     #  date       - date evaluation was performed
     #  counts     - [T,R,K,A,M] parameter dimensions (see above)
@@ -614,9 +614,9 @@ class COCOeval:
 
         print(iStr.format(beta, iouThr, areaRng, confThr, classIdx, precision, recall, score))
 
-    def plotPRCurve(self, filename, classIdx=None):
         '''
-        Plot Precision-Recall curves
+    def plotCocoPRCurve(self, filename, classIdx=None):
+        Plot COCO-style Precision-Recall curves
         :param filename: output filename
         :param classIdx: if want to plot for a specific class
         :return: None
