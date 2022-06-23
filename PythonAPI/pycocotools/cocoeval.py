@@ -1,12 +1,16 @@
 import copy
 import datetime
 import time
+import warnings
 from collections import defaultdict
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from . import mask as maskUtils
+
+
+warnings.filterwarnings(action='ignore', message='Mean of empty slice')
 
 
 class COCOeval:
@@ -72,6 +76,7 @@ class COCOeval:
         self.cocoDt   = cocoDt              # detections COCO API
         self.evalImgs = defaultdict(list)   # per-image per-category evaluation results [KxAxI] elements
         self.eval     = {}                  # accumulated evaluation results
+        self.evalFBeta = {}                 # accumulated F-beta evaluation results
         self._gts = defaultdict(list)       # gt for evaluation
         self._dts = defaultdict(list)       # dt for evaluation
         self.params = Params(iouType=iouType) # parameters
@@ -82,7 +87,8 @@ class COCOeval:
         if not cocoGt is None:
             self.params.imgIds = sorted(cocoGt.getImgIds())
             self.params.catIds = sorted(cocoGt.getCatIds())
-            self.params.catNms = sorted(cocoGt.getCatNms())
+            self.params.catNms = cocoGt.getCatNms()
+            self.params.catIdsToCatNms = dict(zip(self.params.catIds, self.params.catNms))
 
     def _prepare(self):
         '''
@@ -495,164 +501,6 @@ class COCOeval:
             summarize = _summarizeKps
         self.stats = summarize()
 
-    def _getFBetaScore(self, beta=1, iouThr=0.5, areaRng='all', confThr=0, classIdx=None, verbose=False):
-        '''
-        Calculate F-beta scores
-        :param betas: F-beta scores to calculate
-        :param iouThr: IOU threshold
-        :param areaRng: object area range
-        :param confThr: confidence threshold for detections
-        :param classIdx: to only calculate for a specific class
-        :param verbose: to print result
-        :return: (precision, recall, fscore, numGt)
-        '''
-        iStr = ' F{:<1} @[ IoU={:<4} | area={:>6s} | precision={:<5} | recall={:<5} ] = {:0.3f}'
-
-        evalImgs = [evalImg for evalImg in self.evalImgs if evalImg is not None]
-        aRng = self.params.areaRng[self.params.areaRngLbl.index(areaRng)]
-        evalImgs = [evalImg for evalImg in evalImgs if evalImg['aRng']==aRng]
-        if classIdx is not None:
-            evalImgs = [evalImg for evalImg in evalImgs if evalImg['category_id']==classIdx]
-
-        iouThrIdx = np.where(self.params.iouThrs == iouThr)
-
-        tpCum = 0
-        fpCum = 0
-        numGt = 0
-        for imageDict in evalImgs:
-            numGt += len(imageDict['gtIds']) - imageDict['gtIgnore'].astype(int).sum()
-
-            scoreMask = [True if score >= confThr else False for score in imageDict['dtScores']]
-
-            if len(scoreMask):
-                dtIgnore = imageDict['dtIgnore'][iouThrIdx]
-                finalMask = scoreMask & ~dtIgnore
-
-                tp = (imageDict['dtMatches'][iouThrIdx][finalMask] > 0).sum()
-                fp = (imageDict['dtMatches'][iouThrIdx][finalMask] == 0).sum()
-                tpCum += tp
-                fpCum += fp
-        fnCum = numGt - tpCum
-
-        recall = np.nan
-        precision = np.nan
-        if numGt > 0:
-            recall = tpCum / numGt
-        if tpCum + fpCum > 0:
-            precision = tpCum / (tpCum + fpCum)
-
-        # take care of edge cases (https://github.com/dice-group/gerbil/wiki/Precision,-Recall-and-F1-measure)
-        if tpCum == fpCum == fnCum == 0:
-            precision = recall = score = 1
-        elif tpCum == 0 and (fpCum or fnCum) > 0:
-            precision = recall = score = 0
-        else:
-            score = (1 + beta**2) * precision * recall / ((beta**2 * precision) + recall)
-
-        if verbose:
-            precisionStr = f'{precision:0.3f}'
-            recallStr = f'{recall:0.3f}'
-            print(iStr.format(beta, iouThr, areaRng, precisionStr, recallStr, score))
-
-        return precision, recall, score, numGt
-
-    def summarizeFBetaScores(self):
-        '''
-        Compute and display summary metrics for F-beta scores.
-        '''
-        def _summarizeDets():
-            stats = np.zeros((10,))
-            _, _, stats[0], _ = self._getFBetaScore(beta=1, iouThr=.5, areaRng='all', verbose=True)
-            _, _, stats[1], _ = self._getFBetaScore(beta=1, iouThr=.75, areaRng='all', verbose=True)
-            _, _, stats[2], _ = self._getFBetaScore(beta=1, iouThr=.5, areaRng='small', verbose=True)
-            _, _, stats[3], _ = self._getFBetaScore(beta=1, iouThr=.5, areaRng='medium', verbose=True)
-            _, _, stats[4], _ = self._getFBetaScore(beta=1, iouThr=.5, areaRng='large', verbose=True)
-            _, _, stats[5], _ = self._getFBetaScore(beta=2, iouThr=.5, areaRng='all', verbose=True)
-            _, _, stats[6], _ = self._getFBetaScore(beta=2, iouThr=.75, areaRng='all', verbose=True)
-            _, _, stats[7], _ = self._getFBetaScore(beta=2, iouThr=.5, areaRng='small', verbose=True)
-            _, _, stats[8], _ = self._getFBetaScore(beta=2, iouThr=.5, areaRng='medium', verbose=True)
-            _, _, stats[9], _ = self._getFBetaScore(beta=2, iouThr=.5, areaRng='large', verbose=True)
-            return stats
-
-        print('Calculating (micro) F-beta scores...')
-        if not self.evalImgs:
-            raise Exception('Please run evaluate() first')
-        iouType = self.params.iouType
-        if iouType == 'bbox':
-            self.fstats = _summarizeDets()
-        else:
-            print('F-scores calculation only supported for bounding boxes.')
-
-    def printReport(self, beta=1, iouThr=0.5, confThr=0):
-        '''
-        Build a text report showing the main metrics
-        :param beta: Which F-beta score to calculate
-        :param iouThr: IOU threshold
-        :param confThr: confidence threshold for detections
-        :return: None
-        '''
-        if not self.evalImgs:
-            raise Exception('Please run evaluate() first')
-
-        p = self.params
-
-        headers = ['precision', 'recall', f'f{beta}-score', 'support']
-        average_options = ('micro', 'macro', 'weighted')
-        catNms = p.catNms
-
-        precisions = []
-        recalls = []
-        fscores = []
-        supports = []
-        for classIdx in p.catIds:
-            precision, recall, fscore, support = self._getFBetaScore(
-                                                    beta=beta,
-                                                    iouThr=iouThr,
-                                                    confThr=confThr,
-                                                    classIdx=classIdx)
-            precisions.append(precision)
-            recalls.append(recall)
-            fscores.append(fscore)
-            supports.append(support)
-        supports_sum = sum(supports)
-        rows = zip(catNms, precisions, recalls, fscores, supports)
-
-        longest_last_line_heading = 'weighted avg'
-        name_width = max(len(cn) for cn in catNms)
-        width = max(name_width, len(longest_last_line_heading))
-        head_fmt = '{:>{width}s} ' + ' {:>9}' * len(headers)
-        report = head_fmt.format('', *headers, width=width)
-        report += '\n\n'
-        row_fmt = '{:>{width}s} ' + ' {:>9.2f}' * 3 + ' {:>9}\n'
-        for row in rows:
-            report += row_fmt.format(*row, width=width)
-        report += '\n'
-
-        for average in average_options:
-            line_heading = f'{average} avg'
-            if average == 'micro':
-                avg_precision, avg_recall, avg_fscore, _ = self._getFBetaScore(
-                                                                beta=beta,
-                                                                iouThr=iouThr,
-                                                                confThr=confThr,
-                                                                classIdx=None)
-            elif average == 'macro':
-                avg_precision = np.mean(precisions)
-                avg_recall = np.mean(recalls)
-                avg_fscore = np.mean(fscores)
-            elif average == 'weighted':
-                avg_precision = sum([p * s for p, s in zip(precisions, supports)]) / supports_sum
-                avg_recall = sum([r * s for r, s in zip(recalls, supports)]) / supports_sum
-                avg_fscore = sum([f * s for f, s in zip(fscores, supports)]) / supports_sum
-            else:
-                raise Exception(f'{average} average is not supported')
-
-            avg = [avg_precision, avg_recall, avg_fscore, supports_sum]
-            report += row_fmt.format(line_heading, *avg, width=width)
-
-        print(f'F{beta} for IOU threshold {iouThr} and confidence threshold {confThr}:')
-        print(report)
-
     def plotCocoPRCurve(self, filename, classIdx=None):
         '''
         Plot COCO-style Precision-Recall curves
@@ -665,6 +513,9 @@ class COCOeval:
 
         p = self.params
 
+        if classIdx is not None:
+            className = p.catIdsToCatNms[classIdx]
+
         precisions = self.eval['precision']
 
         if classIdx is not None:
@@ -674,9 +525,15 @@ class COCOeval:
 
         x = np.arange(0.0, 1.01, 0.01)
         plt.figure()
+        if classIdx is None:
+            title = f'P-R curve'
+        else:
+            title = f'P-R curve for class={className}'
+
         for idx, iouThr in enumerate(p.iouThrs):
             plt.plot(x, prArray[idx, :], label=f'iou={iouThr:0.2f}')
 
+        plt.title(title)
         plt.xlabel('recall')
         plt.ylabel('precision')
         plt.xlim(0, 1.0)
@@ -685,71 +542,117 @@ class COCOeval:
         plt.legend(loc='lower left')
         plt.savefig(filename)
 
-    def plotFBetaCurve(self, filename, betas=[1], iouThr=0.5, areaRng='all', classIdx=None, average='macro'):
-        '''
-        Plot F-beta curves
-        :param filename: output filename
-        :param betas: F-beta scores to plot
-        :param iouThr: IOU threshold
-        :param areaRng: object area range
-        :param classIdx: if want to plot for a specific class
-        :return: None
-        '''
+    def accumulateFBeta(self):
+        print('Accumulating F-beta evaluation results...')
+        tic = time.time()
         if not self.evalImgs:
-            raise Exception('Please run evaluate() first')
-
+            print('Please run evaluate() first')
         p = self.params
 
-        evalImgs = [evalImg for evalImg in self.evalImgs if evalImg is not None]
-        aRng = p.areaRng[p.areaRngLbl.index(areaRng)]
-        evalImgs = [evalImg for evalImg in evalImgs if evalImg['aRng']==aRng]
+        T           = len(p.iouThrs)
+        A           = len(p.areaRng)
+        K           = len(p.catIds) if p.useCats else 1
+        tpCum = np.zeros((A, K, T, len(p.confThrs)))
+        fpCum = np.zeros((A, K, T, len(p.confThrs)))
+        fnCum = np.zeros((A, K, T, len(p.confThrs)))
+        numGtCum = np.zeros((A, K), dtype=np.int32)
+
+        # create dictionary for future indexing
+        _pe = self._paramsEval
+        catIds = _pe.catIds if _pe.useCats else [-1]
+        setK = set(catIds)
+        setA = set(map(tuple, _pe.areaRng))
+        setI = set(_pe.imgIds)
+        # get inds to evaluate
+        k_list = [n for n, k in enumerate(p.catIds)  if k in setK]
+        a_list = [n for n, a in enumerate(map(lambda x: tuple(x), p.areaRng)) if a in setA]
+        i_list = [n for n, i in enumerate(p.imgIds)  if i in setI]
+        I0 = len(_pe.imgIds)
+        A0 = len(_pe.areaRng)
+        # retrieve evalImgs at each category and area range
+        for k, k0 in enumerate(k_list):
+            Nk = k0*A0*I0
+            for a, a0 in enumerate(a_list):
+                Na = a0*I0
+                evalImgs = [self.evalImgs[Nk + Na + i] for i in i_list]
+                evalImgs = [e for e in evalImgs if not e is None]
+                if len(evalImgs) == 0:
+                    continue
+
+                for imageDict in evalImgs:
+                    numGtCum[a,k] += len(imageDict['gtIds']) - imageDict['gtIgnore'].astype(int).sum()
+
+                    scoreMask = np.full((len(p.confThrs), T, len(imageDict['dtScores'])), False)
+                    for idx, score in enumerate(imageDict['dtScores']):
+                        score_idx = np.searchsorted(p.confThrs, score, side='right')
+                        scoreMask[:score_idx, :, idx] = True
+
+                    dtIgnore = imageDict['dtIgnore']
+                    finalMask = scoreMask & ~dtIgnore
+                    filteredArr = np.where(finalMask==True, imageDict['dtMatches'], -np.ones((10,1)))
+                    filteredArr = np.swapaxes(filteredArr, 0, 1)
+
+                    tpCum[a,k,:,:] += np.sum(filteredArr > 0, axis=2)
+                    fpCum[a,k,:,:] += np.sum(filteredArr == 0, axis=2)
+                fnCum = numGtCum[:, :, np.newaxis, np.newaxis] - tpCum
+
+        self.evalFBeta = {
+            'tp': tpCum,
+            'fp': fpCum,
+            'fn': fnCum,
+            'numGt': numGtCum,
+        }
+        toc = time.time()
+        print('DONE (t={:0.2f}s).'.format(toc-tic))
+
+    def _filterCum(self, iouThr, areaRng='all', classIdx=None, confThr=None):
+        p = self.params
+
+        tpCums = self.evalFBeta['tp'] # (A, K, T, len(p.confThrs))
+        fpCums = self.evalFBeta['fp'] # (A, K, T, len(p.confThrs))
+        fnCums = self.evalFBeta['fn'] # (A, K, T, len(p.confThrs))
+        numGtCum = self.evalFBeta['numGt'] # (A, K)
+
+        iouThrIdx = np.where(p.iouThrs == iouThr)[0].item()
+        areaIdx = p.areaRngLbl.index(areaRng)
+
+        tpCum = tpCums[areaIdx, :, iouThrIdx, :]
+        fpCum = fpCums[areaIdx, :, iouThrIdx, :]
+        fnCum = fnCums[areaIdx, :, iouThrIdx, :]
+        numGtCum = numGtCum[areaIdx]
+        numGtCum = numGtCum[:, np.newaxis]
+
         if classIdx is not None:
-            evalImgs = [evalImg for evalImg in evalImgs if evalImg['category_id']==classIdx]
-            numCats = 1
-        else:
-            numCats = len(p.catIds)
+            classIdIdx = p.catIds.index(classIdx)
+            numGtCum = numGtCum[classIdIdx]
+            tpCum = tpCum[classIdIdx, np.newaxis]
+            fpCum = fpCum[classIdIdx, np.newaxis]
+            fnCum = fnCum[classIdIdx, np.newaxis]
 
-        tpCum = np.zeros((numCats, len(p.confThrs)))
-        fpCum = np.zeros((numCats, len(p.confThrs)))
+        if confThr is not None:
+            confThrIdx = np.where(p.confThrs == confThr)[0].item()
+            tpCum = tpCum[:, confThrIdx, np.newaxis]
+            fpCum = fpCum[:, confThrIdx, np.newaxis]
+            fnCum = fnCum[:, confThrIdx, np.newaxis]
 
-        iouThrIdx = np.where(p.iouThrs == iouThr)
+        return tpCum, fpCum, fnCum, numGtCum
 
-        numGtCum = np.zeros((numCats, 1))
-        for imageDict in evalImgs:
-            if classIdx is None:
-                class_idx = imageDict['category_id'] - 1
-            else:
-                class_idx = 0
-
-            numGtCum[class_idx] += len(imageDict['gtIds']) - imageDict['gtIgnore'].astype(int).sum()
-
-            scoreMask = np.full((len(p.confThrs), len(imageDict['dtScores'])), False)
-            for idx, score in enumerate(imageDict['dtScores']):
-                score_idx = np.searchsorted(p.confThrs, score, side='right')
-                scoreMask[:score_idx, idx] = True
-
-            dtIgnore = imageDict['dtIgnore'][iouThrIdx]
-            finalMask = scoreMask & ~dtIgnore
-
-            filteredArr = np.where(finalMask==True, imageDict['dtMatches'][iouThrIdx], -1)
-            tpCum[class_idx] += np.sum(filteredArr > 0, axis=1)
-            fpCum[class_idx] += np.sum(filteredArr == 0, axis=1)
-        fnCum = numGtCum - tpCum
-
+    @staticmethod
+    def _calculatePrecisionRecall(tpCum, fpCum, fnCum, numGtCum, average=None):
         if average == 'micro':
             tpCum = np.sum(tpCum, axis=0)
             fpCum = np.sum(fpCum, axis=0)
             fnCum = np.sum(fnCum, axis=0)
             numGtCum = np.sum(numGtCum, axis=0)
 
-        precision = np.divide(tpCum, (tpCum + fpCum), out=np.full(tpCum.shape, np.nan, np.float), where=(tpCum + fpCum)!=0)
-        recall = np.divide(tpCum, numGtCum, out=np.full(tpCum.shape, np.nan, np.float), where=numGtCum!=0)
+        precision = np.divide(tpCum, (tpCum + fpCum), out=np.full(tpCum.shape, np.nan, np.float), where=(tpCum + fpCum)>0)
+        recall = np.divide(tpCum, numGtCum, out=np.full(tpCum.shape, np.nan, np.float), where=numGtCum>0)
 
         # take care of edge cases (https://github.com/dice-group/gerbil/wiki/Precision,-Recall-and-F1-measure)
-        edge1 = np.isin(tpCum, 0) & np.isin(fpCum, 0) & np.isin(fnCum, 0)
+        edge1 = np.equal(tpCum, 0) & np.equal(fpCum, 0) & np.equal(fnCum, 0) & np.greater(numGtCum, 0)
         precision[edge1] = recall[edge1] = 1
-        edge2 = np.isin(tpCum, 0) & (np.isin(fpCum, 0, invert=True) | np.isin(fnCum, 0, invert=True))
-        precision[edge2] = recall[edge2] = 0
+        edge2 = np.equal(tpCum, 0) & np.equal(fpCum, 0) & np.greater(fnCum, 0)
+        precision[edge2] = 1
 
         if average == 'macro':
             precision = np.mean(precision, axis=0)
@@ -757,6 +660,186 @@ class COCOeval:
         elif average == 'weighted':
             precision = np.average(precision, axis=0, weights=numGtCum.squeeze(axis=1))
             recall = np.average(recall, axis=0, weights=numGtCum.squeeze(axis=1))
+
+        return precision, recall
+
+    @staticmethod
+    def _calculateFBetaScore(beta, precision, recall, tpCum, fpCum, fnCum, numGtCum):
+        precision = np.copy(precision)
+        recall = np.copy(recall)
+
+        # take care of edge cases (https://github.com/dice-group/gerbil/wiki/Precision,-Recall-and-F1-measure)
+        edge1 = np.equal(tpCum, 0) & np.equal(fpCum, 0) & np.equal(fnCum, 0) & np.greater(numGtCum, 0)
+        precision[edge1] = recall[edge1] = 1
+        edge2 = np.equal(tpCum, 0) & np.equal(fpCum, 0) & np.greater(fnCum, 0)
+        precision[edge2] = 1
+
+        score = np.divide(
+                    (1 + beta**2) * precision * recall,
+                    (beta**2 * precision) + recall,
+                    out=np.full(precision.shape, 0, np.float),
+                    where=(precision + recall)!=0)
+        return score
+
+    def _getFBetaScore(self, beta=1, iouThr=0.5, areaRng='all', average='macro'):
+        '''
+        Calculate F-beta scores
+        :param beta: F-beta score to calculate
+        :param iouThr: IOU threshold
+        :param areaRng: object area range (options: 'all', 'small', 'medium', 'large')
+        :param average: averaging method (options: 'micro', 'macro', 'weighted')
+        :return: (precision, recall, fscore, numGt)
+        '''
+        iStr = ' F{:<1} @[ IoU={:<4} | area={:>6s} | precision={:<5} | recall={:<5} ] = {:0.3f}'
+
+        tpCum, fpCum, fnCum, numGtCum = self._filterCum(iouThr, areaRng, confThr=0)
+        precisions, recalls = self._calculatePrecisionRecall(tpCum, fpCum, fnCum, numGtCum)
+        fscores = self._calculateFBetaScore(beta, precisions, recalls, tpCum, fpCum, fnCum, numGtCum)
+
+        if average == 'micro':
+            avg_precision, avg_recall = self._calculatePrecisionRecall(tpCum, fpCum, fnCum, numGtCum, average='micro')
+            avg_fscore = self._calculateFBetaScore(beta, avg_precision, avg_recall, sum(tpCum), sum(fpCum), sum(fnCum), sum(numGtCum))
+            avg_precision = avg_precision.item()
+            avg_recall = avg_recall.item()
+            avg_fscore = avg_fscore.item()
+        elif average == 'macro':
+            avg_precision = np.nanmean(precisions)
+            avg_recall = np.nanmean(recalls)
+            avg_fscore = np.nanmean(fscores)
+        elif average == 'weighted':
+            avg_precision = 0
+            masked_precision = np.ma.masked_array(precisions, mask=np.isnan(precisions))
+            if np.all(np.isnan(precisions)):
+                avg_precision = np.nan
+            elif np.any(masked_precision):
+                avg_precision = np.ma.average(masked_precision, weights=numGtCum)
+
+            avg_recall = np.nan
+            if not np.all(np.isnan(recalls)):
+                masked_recall = np.ma.masked_array(recalls, mask=np.isnan(recalls))
+                avg_recall = np.ma.average(masked_recall, weights=numGtCum)
+
+            avg_fscore = np.nan
+            if not np.all(np.isnan(fscores)):
+                masked_fscore = np.ma.masked_array(fscores, mask=np.isnan(fscores))
+                avg_fscore = np.ma.average(masked_fscore, weights=numGtCum)
+
+        precisionStr = f'{avg_precision:0.3f}'
+        recallStr = f'{avg_recall:0.3f}'
+        print(iStr.format(beta, iouThr, areaRng, precisionStr, recallStr, avg_fscore))
+
+        return avg_fscore
+
+    def summarizeFBetaScores(self, average='macro'):
+        '''
+        Compute and display summary metrics for F-beta scores.
+        :param average: averaging method (options: 'micro', 'macro', 'weighted')
+        :return: None
+        '''
+        def _summarizeDets():
+            stats = np.zeros((10,))
+            stats[0] = self._getFBetaScore(beta=1, iouThr=.5, areaRng='all', average=average)
+            stats[1] = self._getFBetaScore(beta=1, iouThr=.75, areaRng='all', average=average)
+            stats[2] = self._getFBetaScore(beta=1, iouThr=.5, areaRng='small', average=average)
+            stats[3] = self._getFBetaScore(beta=1, iouThr=.5, areaRng='medium', average=average)
+            stats[4] = self._getFBetaScore(beta=1, iouThr=.5, areaRng='large', average=average)
+            stats[5] = self._getFBetaScore(beta=2, iouThr=.5, areaRng='all', average=average)
+            stats[6] = self._getFBetaScore(beta=2, iouThr=.75, areaRng='all', average=average)
+            stats[7] = self._getFBetaScore(beta=2, iouThr=.5, areaRng='small', average=average)
+            stats[8] = self._getFBetaScore(beta=2, iouThr=.5, areaRng='medium', average=average)
+            stats[9] = self._getFBetaScore(beta=2, iouThr=.5, areaRng='large', average=average)
+            return stats
+
+        print(f'\nCalculating ({average}) F-beta scores...')
+        if not self.evalFBeta:
+            raise Exception('Please run accumulateFBeta() first')
+        iouType = self.params.iouType
+        if iouType == 'bbox':
+            self.fstats = _summarizeDets()
+            print()
+        else:
+            print('F-scores calculation only supported for bounding boxes.')
+
+    def printReport(self, beta=1, iouThr=0.5, confThr=0):
+        '''
+        Build a text report showing the main metrics
+        :param beta: F-beta score to calculate
+        :param iouThr: IOU threshold
+        :param confThr: confidence threshold for detections
+        :return: None
+        '''
+        if not self.evalFBeta:
+            raise Exception('Please run accumulateFBeta() first')
+
+        p = self.params
+
+        headers = ['precision', 'recall', f'f{beta}-score', 'support']
+        average_options = ('micro', 'macro', 'weighted')
+        catNms = p.catNms
+
+        tpCum, fpCum, fnCum, numGtCum = self._filterCum(iouThr, confThr=confThr)
+        precisions, recalls = self._calculatePrecisionRecall(tpCum, fpCum, fnCum, numGtCum)
+        fscores = self._calculateFBetaScore(beta, precisions, recalls, tpCum, fpCum, fnCum, numGtCum)
+        rows = zip(catNms, precisions.flatten(), recalls.flatten(), fscores.flatten(), numGtCum.flatten())
+        numGtCum_sum = sum(numGtCum).item()
+
+        longest_last_line_heading = 'weighted avg'
+        name_width = max(len(cn) for cn in catNms)
+        width = max(name_width, len(longest_last_line_heading))
+        head_fmt = '{:>{width}s} ' + ' {:>9}' * len(headers)
+        report = head_fmt.format('', *headers, width=width)
+        report += '\n\n'
+        row_fmt = '{:>{width}s} ' + ' {:>9.3f}' * 3 + ' {:>9}\n'
+        for row in rows:
+            report += row_fmt.format(*row, width=width)
+        report += '\n'
+
+        for average in average_options:
+            line_heading = f'{average} avg'
+            if average == 'micro':
+                avg_precision, avg_recall = self._calculatePrecisionRecall(tpCum, fpCum, fnCum, numGtCum, average='micro')
+                avg_fscore = self._calculateFBetaScore(beta, avg_precision, avg_recall, sum(tpCum), sum(fpCum), sum(fnCum), sum(numGtCum))
+                avg_precision = avg_precision.item()
+                avg_recall = avg_recall.item()
+                avg_fscore = avg_fscore.item()
+            elif average == 'macro':
+                avg_precision = np.mean(precisions)
+                avg_recall = np.mean(recalls)
+                avg_fscore = np.mean(fscores)
+            elif average == 'weighted':
+                avg_precision = sum([p * s for p, s in zip(precisions, numGtCum)]).item() / numGtCum_sum
+                avg_recall = sum([r * s for r, s in zip(recalls, numGtCum)]).item() / numGtCum_sum
+                avg_fscore = sum([f * s for f, s in zip(fscores, numGtCum)]).item() / numGtCum_sum
+            else:
+                raise Exception(f'{average} average is not supported')
+
+            avg = [avg_precision, avg_recall, avg_fscore, numGtCum_sum]
+            report += row_fmt.format(line_heading, *avg, width=width)
+
+        print(f'F{beta} for IOU threshold {iouThr} and confidence threshold {confThr}:')
+        print(report)
+
+    def plotFBetaCurve(self, filename, betas=[1], iouThr=0.5, areaRng='all', classIdx=None, average='macro'):
+        '''
+        Plot F-beta curves
+        :param filename: output filename
+        :param betas: F-beta scores to plot
+        :param iouThr: IOU threshold
+        :param areaRng: object area range (options: 'all', 'small', 'medium', 'large')
+        :param classIdx: to plot for a specific class
+        :param average: averaging method (options: 'micro', 'macro', 'weighted')
+        :return: None
+        '''
+        if not self.evalFBeta:
+            raise Exception('Please run accumulateFBeta() first')
+
+        p = self.params
+
+        if classIdx is not None:
+            className = p.catIdsToCatNms[classIdx]
+
+        tpCum, fpCum, fnCum, numGtCum = self._filterCum(iouThr, areaRng, classIdx)
+        precision, recall = self._calculatePrecisionRecall(tpCum, fpCum, fnCum, numGtCum, average)
 
         plt.figure()
         plt.plot(p.confThrs, precision, label='precision')
@@ -770,19 +853,63 @@ class COCOeval:
                         where=(precision + recall)!=0)
 
             maxIdx = np.argmax(score)
-            plt.plot(p.confThrs, score, label=f'F{beta}: {score[maxIdx]:0.3f} at {p.confThrs[maxIdx]}')
+            plt.plot(p.confThrs, score, label=f'F{beta}: {score[maxIdx]:0.3f} at {p.confThrs[maxIdx]:0.2f}')
             if classIdx is None:
-                print(f'Best {average} F{beta} is {score[maxIdx]:0.3f} at confThr {p.confThrs[maxIdx]:0.2f}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}')
+                print(f'Best {average} F{beta} for iouThr {iouThr} is {score[maxIdx]:0.3f} at confThr {p.confThrs[maxIdx]:0.2f}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}')
             else:
-                print(f'Best F{beta} for classIdx {classIdx} is {score[maxIdx]:0.3f} at confThr {p.confThrs[maxIdx]:0.2f}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}')
+                print(f'Best F{beta} for class {className} is {score[maxIdx]:0.3f} at confThr {p.confThrs[maxIdx]:0.2f}: precision {precision[maxIdx]:0.3f}, recall {recall[maxIdx]:0.3f}')
+        print()
 
         if classIdx is None:
             title = f'{average} Fscores for iouThr={iouThr}'
         else:
-            title = f'Fscores for classIdx={classIdx}, iouThr={iouThr}'
+            title = f'Fscores for class={className}, iouThr={iouThr}'
         plt.title(title)
         plt.xlabel('confidence threshold')
         plt.ylabel('score')
+        plt.xlim(0, 1.0)
+        plt.ylim(0, 1.01)
+        plt.grid(True)
+        plt.legend(loc='lower left')
+        plt.savefig(filename)
+
+    def plotPRCurve(self, filename, areaRng='all', classIdx=None, average='macro'):
+        '''
+        Plot PR curves
+        :param filename: output filename
+        :param classIdx: to plot for a specific class
+        :param average: averaging method (options: 'micro', 'macro', 'weighted')
+        :return: None
+        '''
+        if not self.evalFBeta:
+            raise Exception('Please run accumulateFBeta() first')
+
+        p = self.params
+
+        if classIdx is not None:
+            className = p.catIdsToCatNms[classIdx]
+
+        tpCums = self.evalFBeta['tp']
+        fpCums = self.evalFBeta['fp']
+        fnCums = self.evalFBeta['fn']
+        numGtCum = self.evalFBeta['numGt']
+
+        plt.figure()
+        if classIdx is None:
+            title = f'P-R curve'
+        else:
+            title = f'P-R curve for class={className}'
+
+        for iouThr in p.iouThrs:
+            tpCum, fpCum, fnCum, numGtCum = self._filterCum(iouThr, areaRng, classIdx)
+            precision, recall = self._calculatePrecisionRecall(tpCum, fpCum, fnCum, numGtCum, average=average)
+            precision = np.insert(precision, 0, [0, 0])
+            recall = np.insert(recall, 0, [1, recall[0]+0.01])
+            plt.plot(recall, precision, label=f'iou={iouThr}')
+
+        plt.title(title)
+        plt.xlabel('recall')
+        plt.ylabel('precision')
         plt.xlim(0, 1.0)
         plt.ylim(0, 1.01)
         plt.grid(True)
@@ -803,7 +930,7 @@ class Params:
         self.iouThrs = np.linspace(.5, 0.95, int(np.round((0.95 - .5) / .05)) + 1, endpoint=True)
         self.iouThrs = np.around(self.iouThrs, 2)
         self.recThrs = np.linspace(.0, 1.00, int(np.round((1.00 - .0) / .01)) + 1, endpoint=True)
-        self.confThrs = np.linspace(0, 0.99, int(np.round((0.99 - 0) / .01)) + 1, endpoint=True)
+        self.confThrs = np.linspace(0, 1, int(np.round((1 - 0) / .01)) + 1, endpoint=True)
         self.maxDets = [1, 10, 100, 1000]
         self.areaRng = [[0 ** 2, 1e5 ** 2], [0 ** 2, 32 ** 2], [32 ** 2, 96 ** 2], [96 ** 2, 1e5 ** 2]]
         self.areaRngLbl = ['all', 'small', 'medium', 'large']
