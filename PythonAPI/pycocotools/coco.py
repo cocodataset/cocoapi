@@ -195,7 +195,8 @@ class COCO:
             cats = cats if len(catNms) == 0 else [cat for cat in cats if cat['name']          in catNms]
             cats = cats if len(supNms) == 0 else [cat for cat in cats if cat['supercategory'] in supNms]
             cats = cats if len(catIds) == 0 else [cat for cat in cats if cat['id']            in catIds]
-        names = [cat['name'] for cat in cats]
+        cats_sorted = sorted(cats, key=lambda d: d['id'])
+        names = [cat['name'] for cat in cats_sorted]
         return names
 
     def getImgIds(self, imgIds=[], catIds=[]):
