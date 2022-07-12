@@ -9,6 +9,8 @@ import numpy as np
 
 from . import mask as maskUtils
 
+from ocr_metric import eval_ocr_metric
+
 
 warnings.filterwarnings(action='ignore', message='Mean of empty slice')
 
@@ -307,19 +309,65 @@ class COCOeval:
         a = np.array([d['area']<aRng[0] or d['area']>aRng[1] for d in dt]).reshape((1, len(dt)))
         dtIg = np.logical_or(dtIg, np.logical_and(dtm==0, np.repeat(a,T,0)))
         # store results for given image and category
-        return {
-                'image_id':     imgId,
-                'category_id':  catId,
-                'aRng':         aRng,
-                'maxDet':       maxDet,
-                'dtIds':        [d['id'] for d in dt],
-                'gtIds':        [g['id'] for g in gt],
-                'dtMatches':    dtm,
-                'gtMatches':    gtm,
-                'dtScores':     [d['score'] for d in dt],
-                'gtIgnore':     gtIg,
-                'dtIgnore':     dtIg,
-            }
+        
+        '''
+        for dtm, the ids in each line represents the gt_id that each dt matched with (ids start from 1; 0 = match with nothing)
+        Each line should represent the scale of the detection based on cocoapi
+
+        So, how to compare?
+        1. Walk through dt and line at the same time
+        2. Match each dt with the gt[id-1] for each id in line
+        3. ???
+        4. Profit! 
+        '''
+        try:
+            ### BEGIN ADDITION ###
+            gt = sorted(gt, key=lambda item: item['id'])
+            dtm = np.where(dtIg == True, 0, dtm).astype(int)
+            dtmWord = []
+            gtmWord = []
+            for line in dtm:
+                temp1, temp2 = [], []
+                for id, x in zip(line, dt):
+                    # print(int(id)-1, gt[int(id)-1]['attributes']['Text'], x['attributes']['Text'], line, [(g['id'], g['attributes']['Text']) for g in gt])
+                    temp1.append(gt[int(id)-1]['attributes']['Text'] if int(id) > 0 else None)
+                    temp2.append(x['attributes']['Text'])
+                # print(line, temp1, temp2)
+                dtmWord.append(temp1)
+                gtmWord.append(temp2)
+            ### END ADDITION ###
+            return {
+                    'image_id':     imgId,
+                    'category_id':  catId,
+                    'aRng':         aRng,
+                    'maxDet':       maxDet,
+                    'dtIds':        [d['id'] for d in dt],
+                    'gtIds':        [g['id'] for g in gt],
+                    'dtMatches':    dtm,
+                    'gtMatches':    gtm,
+                    ### BEGIN ADDITION ###
+                    'dtMatchWord':  dtmWord, 
+                    'gtMatchWord':  gtmWord,
+                    ### BEGIN ADDITION ###
+                    'dtScores':     [d['score'] for d in dt],
+                    'gtIgnore':     gtIg,
+                    'dtIgnore':     dtIg,
+                }
+        except Exception as e:
+            print('WARNING: {}, defaulting output'.format(e))
+            return {
+                    'image_id':     imgId,
+                    'category_id':  catId,
+                    'aRng':         aRng,
+                    'maxDet':       maxDet,
+                    'dtIds':        [d['id'] for d in dt],
+                    'gtIds':        [g['id'] for g in gt],
+                    'dtMatches':    dtm,
+                    'gtMatches':    gtm,
+                    'dtScores':     [d['score'] for d in dt],
+                    'gtIgnore':     gtIg,
+                    'dtIgnore':     dtIg,
+                }
 
     def accumulate(self, p = None):
         '''
@@ -428,6 +476,130 @@ class COCOeval:
         toc = time.time()
         print('DONE (t={:0.2f}s).'.format( toc-tic))
 
+    def accumulateText(self, p = None):
+        '''
+        Accumulate per image evaluation results and store the result in self.eval
+        :param p: input params for evaluation
+        :return: None
+        '''
+        print('Accumulating evaluation results...')
+        tic = time.time()
+        if not self.evalImgs:
+            print('Please run evaluate() first')
+        # allows input customized parameters
+        if p is None:
+            p = self.params
+        p.catIds = p.catIds if p.useCats == 1 else [-1]
+        T           = len(p.iouThrs)
+        R           = len(p.recThrs)
+        K           = len(p.catIds) if p.useCats else 1
+        A           = len(p.areaRng)
+        M           = len(p.maxDets)
+        precision   = -np.ones((T,R,K,A,M)) # -1 for the precision of absent categories
+        recall      = -np.ones((T,K,A,M))
+        scores      = -np.ones((T,R,K,A,M))
+        '''
+        Notes:
+        text_scores size can be of size T, x, K, A, M, 
+        where x is the absolute maximum # of detections possible, or maybe just set it to 1?
+        IT'S NOT M, because M is the maximum matches, which can be less than absolute maximum # of detections
+
+        So this test case should have shape of (10,4,1,4,3)
+        '''
+        text_scores = np.zeros((T,6,K,A,M))
+
+        # create dictionary for future indexing
+        _pe = self._paramsEval
+        catIds = _pe.catIds if _pe.useCats else [-1]
+        setK = set(catIds)
+        setA = set(map(tuple, _pe.areaRng))
+        setM = set(_pe.maxDets)
+        setI = set(_pe.imgIds)
+        # get inds to evaluate
+        k_list = [n for n, k in enumerate(p.catIds)  if k in setK]
+        m_list = [m for n, m in enumerate(p.maxDets) if m in setM]
+        a_list = [n for n, a in enumerate(map(lambda x: tuple(x), p.areaRng)) if a in setA]
+        i_list = [n for n, i in enumerate(p.imgIds)  if i in setI]
+        I0 = len(_pe.imgIds)
+        A0 = len(_pe.areaRng)
+        # retrieve E at each category, area range, and max number of detections
+        for k, k0 in enumerate(k_list):
+            Nk = k0*A0*I0
+            for a, a0 in enumerate(a_list):
+                Na = a0*I0
+                for m, maxDet in enumerate(m_list):
+                    E = [self.evalImgs[Nk + Na + i] for i in i_list]
+                    E = [e for e in E if not e is None]
+                    if len(E) == 0:
+                        continue
+                    dtScores = np.concatenate([e['dtScores'][0:maxDet] for e in E])
+
+                    # different sorting method generates slightly different results.
+                    # mergesort is used to be consistent as Matlab implementation.
+                    inds = np.argsort(-dtScores, kind='mergesort')
+                    dtScoresSorted = dtScores[inds]
+
+                    dtm  = np.concatenate([e['dtMatches'][:,0:maxDet] for e in E], axis=1)
+                    dtw  = [x[:len(dtm[0])] for x in [e['dtMatchWord'] for e in E][0]]
+                    gtw  = [x[:len(dtm[0])] for x in [e['gtMatchWord'] for e in E][0]]
+                    # print('data?', dtm, dtw, gtw)
+
+                    dtIg = np.concatenate([e['dtIgnore'][:,0:maxDet]  for e in E], axis=1)[:,inds]
+                    gtIg = np.concatenate([e['gtIgnore'] for e in E])
+                    npig = np.count_nonzero(gtIg==0 )
+                    if npig == 0:
+                        continue
+                    tps = np.logical_and(               dtm,  np.logical_not(dtIg) )
+                    fps = np.logical_and(np.logical_not(dtm), np.logical_not(dtIg) )
+                    # print('TPS',tps)
+                    tp_sum = np.cumsum(tps, axis=1).astype(dtype=np.float)
+                    fp_sum = np.cumsum(fps, axis=1).astype(dtype=np.float)
+                    for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum)):
+                        tp = np.array(tp)
+                        fp = np.array(fp)
+                        nd = len(tp)
+                        rc = tp / npig
+                        pr = tp / (fp+tp+np.spacing(1))
+                        q  = np.zeros((R,))
+                        ss = np.zeros((R,))
+
+                        if nd:
+                            recall[t,k,a,m] = rc[-1]
+                        else:
+                            recall[t,k,a,m] = 0
+
+                        # numpy is slow without cython optimization for accessing elements
+                        # use python array gets significant speed improvement
+                        pr = pr.tolist(); q = q.tolist()
+
+                        for i in range(nd-1, 0, -1):
+                            if pr[i] > pr[i-1]:
+                                pr[i-1] = pr[i]
+
+                        inds = np.searchsorted(rc, p.recThrs, side='left')
+                        try:
+                            for ri, pi in enumerate(inds):
+                                q[ri] = pr[pi]
+                                ss[ri] = dtScoresSorted[pi]
+                        except:
+                            pass
+                        precision[t,:,k,a,m] = np.array(q)
+                        scores[t,:,k,a,m] = np.array(ss)
+                        ocr_score = np.array([value for key, value in eval_ocr_metric(dtw[t], gtw[t]).items()])
+                        print('sanity', dtw[t], gtw[t], ocr_score)
+                        text_scores[t,:,k,a,m] = ocr_score
+        self.eval = {
+            'params': p,
+            'counts': [T, R, K, A, M],
+            'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'precision': precision,
+            'recall':   recall,
+            'scores': scores,
+            'ocr_scores': text_scores
+        }
+        toc = time.time()
+        print('DONE (t={:0.2f}s).'.format( toc-tic))
+
     def summarize(self):
         '''
         Compute and display summary metrics for evaluation results.
@@ -464,6 +636,36 @@ class COCOeval:
                 mean_s = np.mean(s[s>-1])
             print(iStr.format(titleStr, typeStr, iouStr, areaRng, maxDets, mean_s))
             return mean_s
+
+        def _summarizeRecog( iouThr=None, areaRng='all', maxDets=100 ):
+            p = self.params
+            iStr = ' {:<10} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {}'
+            titleStr = 'OCR Results'
+            iouStr = '{:0.2f}:{:0.2f}'.format(p.iouThrs[0], p.iouThrs[-1]) \
+                if iouThr is None else '{:0.2f}'.format(iouThr)
+
+            aind = [i for i, aRng in enumerate(p.areaRngLbl) if aRng == areaRng]
+            mind = [i for i, mDet in enumerate(p.maxDets) if mDet == maxDets]
+            text_result = 'N/A'
+            ### BEGIN ADDITION ###
+            ocr_result = self.eval['ocr_scores']
+            ### END ADDITION ###
+            # dimension of precision: [TxRxKxAxM]
+            # IoU
+            if iouThr is not None:
+                t = np.where(iouThr == p.iouThrs)[0]
+                ocr_result = ocr_result[t]
+            ocr_result = ocr_result[:,:,:,aind,mind]
+            ### BEGIN ADDITION ###
+            # print('OCR Result', np.concatenate(np.mean([np.concatenate(x) for x in ocr_result], axis=0)), len(ocr_result), len(ocr_result[0]))
+            keys = ['word_acc', 'word_acc_ignore_case', 'word_acc_ignore_case_symbol', 'char_recall', 'char_precision', '1-N.E.D']
+            values = np.concatenate(np.mean([np.concatenate(x) for x in ocr_result], axis=0))
+            
+            text_result = {key : round(value, 4) for key, value in zip(keys, values)}
+            ### END ADDITION ###
+            print(iStr.format(titleStr, iouStr, areaRng, maxDets, text_result)) ### Added text_result ###
+            return text_result['1-N.E.D']
+
         def _summarizeDets():
             stats = np.zeros((12,))
             stats[0] = _summarize(1)
@@ -479,6 +681,26 @@ class COCOeval:
             stats[10] = _summarize(0, areaRng='medium', maxDets=self.params.maxDets[2])
             stats[11] = _summarize(0, areaRng='large', maxDets=self.params.maxDets[2])
             return stats
+        def _summarizeDetRecogs():
+            '''
+            - word_acc: Accuracy in word level.
+            - word_acc_ignore_case: Accuracy in word level, ignore letter case.
+            - word_acc_ignore_case_symbol: Accuracy in word level, ignore
+                letter case and symbol. (default metric for
+                academic evaluation)
+            - char_recall: Recall in character level, ignore
+                letter case and symbol.
+            - char_precision: Precision in character level, ignore
+                letter case and symbol.
+            - 1-N.E.D: 1 - normalized_edit_distance.
+            '''
+            stats = np.zeros((12,))
+            stats[0] = _summarizeRecog()
+            stats[1] = _summarizeRecog(iouThr=.5, maxDets=self.params.maxDets[2])
+            stats[2] = _summarizeRecog(iouThr=.75, maxDets=self.params.maxDets[2])
+            stats[3] = _summarizeRecog(areaRng='small', maxDets=self.params.maxDets[2])
+            stats[4] = _summarizeRecog(areaRng='medium', maxDets=self.params.maxDets[2])
+            stats[5] = _summarizeRecog(areaRng='large', maxDets=self.params.maxDets[2])
         def _summarizeKps():
             stats = np.zeros((10,))
             stats[0] = _summarize(1, maxDets=20)
@@ -500,6 +722,8 @@ class COCOeval:
         elif iouType == 'keypoints':
             summarize = _summarizeKps
         self.stats = summarize()
+        if 'ocr_scores' in self.eval:
+            _summarizeDetRecogs()
 
     def plotCocoPRCurve(self, filename, classIdx=None):
         '''
