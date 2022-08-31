@@ -342,6 +342,11 @@ class COCO:
             anns = self.loadNumpyAnnotations(resFile)
         else:
             anns = resFile
+        try:
+            if type(anns) == dict:
+                anns = anns['annotations']
+        except:
+            print("Loaded annotations was of type dict but did not contain annotations. Skipping...")
         assert type(anns) == list, 'results in not an array of objects'
         annsImgIds = [ann['image_id'] for ann in anns]
         assert set(annsImgIds) == (set(annsImgIds) & set(self.getImgIds())), \
