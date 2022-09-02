@@ -57,7 +57,7 @@ import numpy as np
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 
-from .mask import *
+from .maskutils import *
 
 PYTHON_VERSION = sys.version_info[0]
 if PYTHON_VERSION == 2:
@@ -285,8 +285,7 @@ class COCO:
                         # mask
                         t = self.imgs[ann['image_id']]
                         if type(ann['segmentation']['counts']) == list:
-                            m = rle_to_mask(ann['segmentation']['counts'],
-                                            t['height'], t['width'])
+                            m = rle_to_mask(ann['segmentation'])
                         else:
                             # compressed rle is not supported
                             ValueError("compressed rle is not supported")
@@ -396,13 +395,16 @@ class COCO:
                 t = self.imgs[ann['image_id']]
                 h, w = t['height'], t['width']
                 if type(ann['segmentation']) == list:
-                    k = len(ann['segmentation'][0]) // 2
-                    rle_mask = forpoly(ann['segmentation'][0], k, h, w)
+                    rle_mask = seg_to_rle(ann['segmentation'], h, w)
+                elif "counts" in ann['segmentation']:
+                    rle_mask = ann['segmentation']
                 else:
-                    rle_mask = ann['segmentation']['counts']
-                ann['area'] = seg_area(rle_mask)
+                    ValueError("Not supported segmentation format")
+                print(rle_mask)
+                ann['area'] = seg_area(rle_mask['counts'])
+
                 if not 'bbox' in ann:
-                    ann['bbox'] = seg_to_box(ann['segmentation'], h, w)
+                    ann['bbox'] = rleToBbox(rle_mask)
                 ann['id'] = id + 1
                 ann['iscrowd'] = 0
         elif 'keypoints' in anns[0]:
@@ -484,17 +486,7 @@ class COCO:
             # polygon -- a single object might consist of multiple parts
             # we merge all parts into one mask rle code
             if type(segm) == list:
-                rles = []
-                if type(segm[0]) == int:
-                    polygons = [segm]
-                else:
-                    polygons = segm
-
-                for poly in polygons:
-                    k = len(poly) // 2
-                    rles.append(rle_poly(poly, k, h, w))
-
-                rle = rle_merge(rles)[0]
+                rle = seg_to_rle(segm, h, w)
             else:
                 rle = segm
             # uncompressed RLE
