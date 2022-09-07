@@ -76,7 +76,6 @@ import math
 from itertools import groupby
 
 import numpy as np
-import skimage
 
 
 def mask_to_rle(binary_mask):
@@ -102,6 +101,41 @@ def mask_to_rle(binary_mask):
             counts.append(len(list(elements)))
         rles.append(rle)
     return rles
+
+
+def rle_to_mask_v2(rle):
+    """
+        Convert RLE to binary mask
+
+        Input:
+            rle: Run length encoded binary masks of size n.
+
+        Output:
+            mask: Binary mask of shape (h, w).
+    """
+    h, w = rle['size']
+    segm = rle['counts']
+    k = []
+    mask = np.zeros((w, h), dtype=np.uint8)
+    b = 1
+    c = 0
+    for _, value in enumerate(segm):
+        if b:
+            c += value
+            b = 0
+        else:
+            b = 1
+            i = c // h
+            j = c % h
+            while value:
+                mask[i, j] = 1
+                j += 1
+                if j >= h:
+                    j = 0
+                    i += 1
+                value -= 1
+                c += 1
+    return mask.T
 
 
 def rle_to_mask(rle):
@@ -134,11 +168,9 @@ def rles_to_mask(rles):
         Output:
             masks: Binary mask of shape (h, w, n).
     """
-    n = len(rles)
     masks = []
-    for i in range(n):
-        rle = rles[i]
-        mask = rle_to_mask(rle)
+    for i, rle in enumerate(rles):
+        mask = rle_to_mask_v2(rle)
         masks.append(np.expand_dims(mask, axis=-1))
     return np.concatenate(masks, axis=-1)
 
@@ -206,13 +238,13 @@ def rle_poly(xy, k, h, w, scale=5):
             rle: Dictionary of run length encoded mask and image size.
 
     """
-    x = []
-    y = []
+    x = [0] * (k + 1)
+    y = [0] * (k + 1)
     for j in range(k):
-        x.append(int(scale * xy[j * 2 + 0] + 0.5))
-        y.append(int(scale * xy[j * 2 + 1] + 0.5))
-    x.append(x[0])
-    y.append(y[0])
+        x[j] = int(scale * xy[j * 2 + 0] + 0.5)
+        y[j] = int(scale * xy[j * 2 + 1] + 0.5)
+    x[k] = x[0]
+    y[k] = y[0]
 
     u = []
     v = []
@@ -239,13 +271,13 @@ def rle_poly(xy, k, h, w, scale=5):
 
     k = len(u)
     m = 0
-    x = []
-    y = []
+    x = [0] * k
+    y = [0] * k
     for j in range(1, len(u)):
         if u[j] != u[j - 1]:
             xd = float(u[j] if u[j] < u[j - 1] else u[j] - 1)
             xd = ((xd + .5) / scale) - .5
-            if math.floor(xd) != xd or xd < 0 or xd > w - 1:
+            if int(xd) != xd or xd < 0 or xd > w - 1:
                 continue
 
             yd = float(v[j] if v[j] < v[j - 1] else v[j - 1])
@@ -255,15 +287,23 @@ def rle_poly(xy, k, h, w, scale=5):
                 yd = 0
             elif yd > h:
                 yd = h
-            yd = math.ceil(yd)
-            x.append(int(xd))
-            y.append(int(yd))
+            yd = int(yd)
+            x[m] = int(xd)
+            y[m] = yd
+            m += 1
 
-    a = []
+    if m == 0:
+        x = []
+        y = []
+    else:
+        x = x[:m]
+        y = y[:m]
+
     k = len(x)
-    for j in range(k):
-        a.append(int(x[j] * int(h) + y[j]))
-    a.append(int(h * w))
+    a = [0] * (k + 1)
+    for j, value in enumerate(x):
+        a[j] = int(value * int(h) + y[j])
+    a[k] = int(h * w)
     a.sort()
     k += 1
 
@@ -343,7 +383,7 @@ def rles_area(rles):
             area: list of area of the mask
     """
     areas = []
-    for rle in rles:
+    for _, rle in enumerate(rles):
         areas.append(seg_area(rle['counts']))
     return areas
 
@@ -398,23 +438,14 @@ def seg_to_rle(segm, h, w):
     else:
         polygons = segm
 
-    for poly in polygons:
+    no_of_polygons = len(polygons)
+    rles = [None] * no_of_polygons
+    for i, poly in enumerate(polygons):
         k = len(poly) // 2
-        rles.append(rle_poly(poly, k, h, w))
+        rles[i] = rle_poly(poly, k, h, w)
 
     rle_mask = rle_merge(rles)[0]
     return rle_mask
-
-
-'''def rle_to_mask(rle):
-    h, w = rle['size']
-    segm = rle['counts']
-    mask = []
-    for i, value in enumerate(segm):
-        mask += [0] * value if i % 2 == 0 else [1] * value
-    mask = np.array(mask)
-    mask.resize(w, h)
-    return mask.astype(np.uint8).T'''
 
 
 def rleToBbox(rle):
@@ -466,9 +497,7 @@ def rle_merge(rles, intersect=False):
     """
     """
     n = len(rles)
-    if n == 0:
-        return rles
-    elif n == 1:
+    if n <= 1:
         return rles
 
     cnts = rles[0]['counts']

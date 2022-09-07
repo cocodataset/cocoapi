@@ -490,7 +490,7 @@ class COCO:
             else:
                 rle = segm
             # uncompressed RLE
-            m = rle_to_mask(rle)
+            m = rle_to_mask_v2(rle)
         else:
             # compressed rle
             ValueError("compressed rle is not supported")
