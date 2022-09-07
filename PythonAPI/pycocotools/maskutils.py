@@ -119,7 +119,7 @@ def rle_to_mask_v2(rle):
     mask = np.zeros((w, h), dtype=np.uint8)
     b = 1
     c = 0
-    for _, value in enumerate(segm):
+    for value in segm:
         if b:
             c += value
             b = 0
@@ -168,11 +168,15 @@ def rles_to_mask(rles):
         Output:
             masks: Binary mask of shape (h, w, n).
     """
-    masks = []
+    no_rles = len(rles)
+    if no_rles == 0:
+        return None
+    h, w = rle[0]['size']
+    masks = np.zeros((w, h, no_rles), dtype=np.uint8)
     for i, rle in enumerate(rles):
         mask = rle_to_mask_v2(rle)
-        masks.append(np.expand_dims(mask, axis=-1))
-    return np.concatenate(masks, axis=-1)
+        masks[:, :, i] = mask
+    return masks
 
 
 def compute_iou(box, boxes, box_area, boxes_area):
@@ -245,9 +249,14 @@ def rle_poly(xy, k, h, w, scale=5):
         y[j] = int(scale * xy[j * 2 + 1] + 0.5)
     x[k] = x[0]
     y[k] = y[0]
+    m = 0
+    for j in range(k):
+        m += max(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1
 
-    u = []
-    v = []
+    u = [None] * m
+    v = [None] * m
+
+    m = 0
     for j in range(k):
         xs, xe, ys, ye = x[j], x[j + 1], y[j], y[j + 1]
         dx, dy = abs(xe - xs), abs(ys - ye)
@@ -261,18 +270,20 @@ def rle_poly(xy, k, h, w, scale=5):
         if dx >= dy:
             for d in range(0, dx + 1):
                 t = dx - d if flip else d
-                u.append(t + xs)
-                v.append(int(ys + s * t + 0.5))
+                u[m] = t + xs
+                v[m] = int(ys + s * t + 0.5)
+                m += 1
         else:
             for d in range(0, dy + 1):
                 t = dy - d if flip else d
-                v.append(t + ys)
-                u.append(int(xs + s * t + 0.5))
+                v[m] = t + ys
+                u[m] = int(xs + s * t + 0.5)
+                m += 1
 
-    k = len(u)
-    m = 0
+    k = m
     x = [0] * k
     y = [0] * k
+    m = 0
     for j in range(1, len(u)):
         if u[j] != u[j - 1]:
             xd = float(u[j] if u[j] < u[j - 1] else u[j] - 1)
@@ -314,12 +325,16 @@ def rle_poly(xy, k, h, w, scale=5):
         p = t
 
     j = 0
-    b = []
-    b.append(a[0])
+    jb = 0
+    b = [0] * k
+    b[j] = a[0]
+    jb += 1
     j += 1
+
     while j < k:
         if a[j] > 0:
-            b.append(a[j])
+            b[jb] = a[j]
+            jb += 1
             j += 1
         else:
             j += 1
