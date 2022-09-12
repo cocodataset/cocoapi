@@ -1,5 +1,3 @@
-__author__ = 'tsungyi'
-
 # Interface for manipulating masks stored in RLE format.
 #
 # RLE is a simple yet efficient format for storing binary masks. RLE
@@ -149,13 +147,26 @@ def rle_to_mask(rle):
             mask: Binary mask of shape (h, w).
     """
     h, w = rle['size']
-    segm = rle['counts']
-    mask = []
-    for i, value in enumerate(segm):
-        mask += [i % 2] * value
-    mask = np.array(mask)
-    mask.resize(w, h)
-    return mask.astype(np.uint8).T
+    mask = np.zeros((w, h), dtype=np.uint8)
+    c = 0
+    b = 0
+    for value in rle['counts']:
+        end = c + value
+        if b:
+            start_x, start_y = c // h, c % h
+            end_x, end_y = end // h, end % h
+
+            while start_x < end_x:
+                mask[start_x, start_y:] = 1
+                start_y = 0
+                start_x += 1
+
+            start_x = min(start_x, w - 1)
+            mask[start_x, start_y:end_y] = 1
+        b = int(not b)
+        c += value
+
+    return mask.T
 
 
 def rles_to_mask(rles):
@@ -170,13 +181,30 @@ def rles_to_mask(rles):
     """
     no_rles = len(rles)
     if no_rles == 0:
-        return None
+        return []
     h, w = rle[0]['size']
     masks = np.zeros((w, h, no_rles), dtype=np.uint8)
     for i, rle in enumerate(rles):
-        mask = rle_to_mask_v2(rle)
+        mask = rle_to_mask(rle)
         masks[:, :, i] = mask
     return masks
+
+
+def rle_iou(rles1, rles2):
+    n = len(rles1)
+    m = len(rles2)
+    bboxes1 = get_boxes(rles1)
+    bboxes2 = get_boxes(rles2)
+
+    overlaps = compute_overlaps(bboxes1, bboxes2)
+    for i in range(n):
+        for j in range(m):
+            if overlaps[i][j] > 0:
+                if rles1[i]['size'] != rles2[j]['size']:
+                    overlaps[i][j] = -1
+                    continue
+
+    return overlaps
 
 
 def compute_iou(box, boxes, box_area, boxes_area):
@@ -242,16 +270,11 @@ def rle_poly(xy, k, h, w, scale=5):
             rle: Dictionary of run length encoded mask and image size.
 
     """
-    x = [0] * (k + 1)
-    y = [0] * (k + 1)
-    for j in range(k):
-        x[j] = int(scale * xy[j * 2 + 0] + 0.5)
-        y[j] = int(scale * xy[j * 2 + 1] + 0.5)
-    x[k] = x[0]
-    y[k] = y[0]
-    m = 0
-    for j in range(k):
-        m += max(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1
+    k = len(xy) // 2
+    x = [int(scale * xy[j] + 0.5) for j in range(0, 2 * k, 2)]
+    y = [int(scale * xy[j] + 0.5) for j in range(1, 2 * k, 2)]
+    x.append(x[0])
+    y.append(y[0])
 
     u = [None] * m
     v = [None] * m
@@ -280,10 +303,9 @@ def rle_poly(xy, k, h, w, scale=5):
                 u[m] = int(xs + s * t + 0.5)
                 m += 1
 
-    k = m
-    x = [0] * k
-    y = [0] * k
-    m = 0
+    k = len(u)
+    x = []
+    y = []
     for j in range(1, len(u)):
         if u[j] != u[j - 1]:
             xd = float(u[j] if u[j] < u[j - 1] else u[j] - 1)
@@ -311,10 +333,7 @@ def rle_poly(xy, k, h, w, scale=5):
         y = y[:m]
 
     k = len(x)
-    a = [0] * (k + 1)
-    for j, value in enumerate(x):
-        a[j] = int(value * int(h) + y[j])
-    a[k] = int(h * w)
+    a = [int(x[j] * int(h) + y[j]) for j in range(k)] + [int(h * w)]
     a.sort()
     k += 1
 
@@ -324,13 +343,8 @@ def rle_poly(xy, k, h, w, scale=5):
         a[j] -= p
         p = t
 
-    j = 0
-    jb = 0
-    b = [0] * k
-    b[j] = a[0]
-    jb += 1
-    j += 1
-
+    b = [a[0]]
+    j = 1
     while j < k:
         if a[j] > 0:
             b[jb] = a[j]
@@ -356,16 +370,6 @@ def get_box_area(boxes):
             area: area of the bounding boxes. [N]
     """
     return boxes[:, 2] * boxes[:, 3]
-
-
-'''def seg_mask(segm, height, width):
-    mask = np.zeros([height, width], dtype=np.uint8)
-    for seg in segm:
-        seg = [round(i) - 1 for i in seg]
-        poly = np.array(seg).reshape((int(len(seg) / 2), 2))
-        rr, cc = skimage.draw.polygon(poly[:, 1], poly[:, 0])
-        mask[rr, cc] = 1
-    return mask'''
 
 
 def seg_area(segm):
@@ -403,7 +407,31 @@ def rles_area(rles):
     return areas
 
 
+def get_boxes(rles):
+    """Get the bounding boxes of the Run length encoded masks.
+
+        Inputs:
+            rles: list of Run length encoded(list) mask.
+
+        Returns:
+            boxes: array of bounding boxes.
+    """
+    boxes = []
+    for rle in rles:
+        boxes.append(get_box(rle))
+    boxes = np.array(boxes)
+    return boxes
+
+
 def get_box(rle):
+    """Find the bounding box of the Run length encoded mask.
+
+        Inputs:
+            rle:  Run length encoded mask.
+
+        Returns:
+            box: bounding box.
+    """
     h, w = rle['size']
     rle_mask = rle['counts']
     m = int(len(rle_mask) / 2) * 2
@@ -429,6 +457,16 @@ def get_box(rle):
 
 
 def seg_to_box(segm, h, w):
+    """Find the bounding box of the segmentation polygon.
+
+        Inputs:
+            segm: list/single segmentation polygons.
+            h: height of the image
+            w: width of the image
+
+        Returns:
+            box: list of bounding boxes.
+    """
     bbox = []
     if type(segm) == list:
         if type(segm[0]) == list:
@@ -444,6 +482,16 @@ def seg_to_box(segm, h, w):
 
 
 def seg_to_rle(segm, h, w):
+    """Convert the segmentation polygon to run length encoded mask.
+
+        Inputs:
+            segm: list/single segmentation polygons.
+            h: height of the image
+            w: width of the image
+
+        Returns:
+            rles: list of run length encoded masks.
+    """
     rles = []
     if len(segm) == 0:
         return [{'counts': [], 'size': [0, 0]}]
@@ -464,6 +512,14 @@ def seg_to_rle(segm, h, w):
 
 
 def rleToBbox(rle):
+    """Convert run length encoded mask to bounding box.
+
+        Inputs:
+            rle: run length encoded mask.
+
+        Returns:
+            bounding_box: bounding box.
+    """
     h, w = rle['size']
     cnts = rle['counts']
     m = len(cnts)
@@ -501,15 +557,30 @@ def rleToBbox(rle):
 
 
 def rlesToBbox(rles):
+    """Convert run length encoded masks to bounding boxes.
+
+        Inputs:
+            rle: list of run length encoded mask.
+
+        Returns:
+            bounding_box: list of bounding boxes.
+    """
     bounding_box = []
-    for _, rle in enumerate(rles):
+    for rle in rles:
         bounding_box.append(rleToBbox(rle))
 
     return bounding_box
 
 
 def rle_merge(rles, intersect=False):
-    """
+    """Merge list of run length encoded masks to single rle.
+
+        Inputs:
+            rles: list of run length encoded masks.
+            intersect: whether to apply intersection between two masks
+
+        Returns:
+            rles: run length encoded mask.
     """
     n = len(rles)
     if n <= 1:

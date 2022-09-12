@@ -1,5 +1,3 @@
-__author__ = 'tylin'
-__version__ = '2.0'
 # Interface for accessing the Microsoft COCO dataset.
 
 # Microsoft COCO is a large image dataset designed for object detection,
@@ -400,7 +398,6 @@ class COCO:
                     rle_mask = ann['segmentation']
                 else:
                     ValueError("Not supported segmentation format")
-                print(rle_mask)
                 ann['area'] = seg_area(rle_mask['counts'])
 
                 if not 'bbox' in ann:
@@ -473,9 +470,9 @@ class COCO:
             }]
         return ann
 
-    def annToMask(self, ann):
+    def annToRLE(self, ann):
         """
-        Convert annotation which can be polygons, uncompressed RLE, or RLE to binary mask.
+        Convert annotation which can be polygons, uncompressed RLE to RLE.
         :return: binary mask (numpy 2D array)
         """
         t = self.imgs[ann['image_id']]
@@ -489,9 +486,17 @@ class COCO:
                 rle = seg_to_rle(segm, h, w)
             else:
                 rle = segm
-            # uncompressed RLE
-            m = rle_to_mask_v2(rle)
         else:
             # compressed rle
             ValueError("compressed rle is not supported")
+        return rle
+
+    def annToMask(self, ann):
+        """
+        Convert annotation which can be polygons, uncompressed RLE, or RLE to binary mask.
+        :return: binary mask (numpy 2D array)
+        """
+        rle = self.annToRLE(ann)
+        # uncompressed RLE
+        m = rle_to_mask(rle)
         return m

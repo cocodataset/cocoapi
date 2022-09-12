@@ -6,7 +6,8 @@ import time
 from collections import defaultdict
 
 import numpy as np
-from .mask import compute_overlaps
+
+from .maskutils import compute_overlaps, rle_iou
 
 
 class COCOeval:
@@ -187,10 +188,11 @@ class COCOeval:
         if p.iouType == 'segm':
             g = [g['segmentation'] for g in gt]
             d = [d['segmentation'] for d in dt]
+            ious = rle_iou(g, d)
         elif p.iouType == 'bbox':
             g = [g['bbox'] for g in gt]
             d = [d['bbox'] for d in dt]
-            ious = compute_overlaps(d, g)
+            ious = compute_overlaps(np.array(d), np.array(g))
         else:
             raise Exception('unknown iouType for iou computation')
 
