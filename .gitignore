@@ -18,3 +18,6 @@ PythonAPI/build/
 PythonAPI/pycocotools.egg-info/
 PythonAPI/pycocotools/__pycache__/
 PythonAPI/pycocotools/_mask.cpython-36m-x86_64-linux-gnu.so
+PythonAPI/__pycache__/
+PythonAPI/build/
+PythonAPI/pycocotools.egg-info/

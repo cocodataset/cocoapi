@@ -586,7 +586,6 @@ class COCOeval:
                         precision[t,:,k,a,m] = np.array(q)
                         scores[t,:,k,a,m] = np.array(ss)
                         ocr_score = np.array([value for key, value in eval_ocr_metric(dtw[t], gtw[t]).items()])
-                        print('sanity', dtw[t], gtw[t], ocr_score)
                         text_scores[t,:,k,a,m] = ocr_score
         self.eval = {
             'params': p,
