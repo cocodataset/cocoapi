@@ -323,6 +323,7 @@ class COCOeval:
         try:
             ### BEGIN ADDITION ###
             gt = sorted(gt, key=lambda item: item['id'])
+            gtIds = [g['id'] for g in gt]
             dtm = np.where(dtIg == True, 0, dtm).astype(int)
             dtmWord = []
             gtmWord = []
@@ -330,8 +331,14 @@ class COCOeval:
                 temp1, temp2 = [], []
                 for id, x in zip(line, dt):
                     # print(int(id)-1, gt[int(id)-1]['attributes']['Text'], x['attributes']['Text'], line, [(g['id'], g['attributes']['Text']) for g in gt])
-                    temp1.append(gt[int(id)-1]['attributes']['Text'] if int(id) > 0 else None)
+                    try:
+                        # temp1.append(gt[int(id)-1]['attributes']['Text'] if int(id) > 0 else None)
+                        temp1.append(gt[gtIds.index(id)]['attributes']['Text'] if int(id) > 0 else None)
+                    except Exception:
+                        temp1.append(None)
                     temp2.append(x['attributes']['Text'])
+                    #     print('gtdt', gt[list(gtind).index(id)]['attributes']['Text'], x['attributes']['Text'])
+                    # print(id, x, gtIds)
                 # print(line, temp1, temp2)
                 dtmWord.append(temp1)
                 gtmWord.append(temp2)
@@ -342,7 +349,7 @@ class COCOeval:
                     'aRng':         aRng,
                     'maxDet':       maxDet,
                     'dtIds':        [d['id'] for d in dt],
-                    'gtIds':        [g['id'] for g in gt],
+                    'gtIds':        gtIds,
                     'dtMatches':    dtm,
                     'gtMatches':    gtm,
                     ### BEGIN ADDITION ###
@@ -539,7 +546,7 @@ class COCOeval:
                     inds = np.argsort(-dtScores, kind='mergesort')
                     dtScoresSorted = dtScores[inds]
 
-                    dtm  = np.concatenate([e['dtMatches'][:,0:maxDet] for e in E], axis=1)
+                    dtm  = np.concatenate([e['dtMatches'][:,0:maxDet] for e in E], axis=1) 
                     dtw  = [x[:len(dtm[0])] for x in [e['dtMatchWord'] for e in E][0]]
                     gtw  = [x[:len(dtm[0])] for x in [e['gtMatchWord'] for e in E][0]]
                     # print('data?', dtm, dtw, gtw)
