@@ -1,7 +1,3 @@
-__author__ = 'tsungyi'
-
-import pycocotools._mask as _mask
-
 # Interface for manipulating masks stored in RLE format.
 #
 # RLE is a simple yet efficient format for storing binary masks. RLE
@@ -9,16 +5,7 @@ import pycocotools._mask as _mask
 # constant regions and then for each piece simply stores the length of
 # that piece. For example, given M=[0 0 1 1 1 0 1] the RLE counts would
 # be [2 3 1 1], or for M=[1 1 1 1 1 1 0] the counts would be [0 6 1]
-# (note that the odd counts are always the numbers of zeros). Instead of
-# storing the counts directly, additional compression is achieved with a
-# variable bitrate representation based on a common scheme called LEB128.
-#
-# Compression is greatest given large piecewise constant regions.
-# Specifically, the size of the RLE is proportional to the number of
-# *boundaries* in M (or for an image the number of boundaries in the y
-# direction). Assuming fairly simple shapes, the RLE representation is
-# O(sqrt(n)) where n is number of pixels in the object. Hence space usage
-# is substantially lower, especially for large simple objects (large n).
+# (note that the odd counts are always the numbers of zeros).
 #
 # Many common operations on masks can be computed directly using the RLE
 # (without need for decoding). This includes computations such as area,
@@ -72,32 +59,33 @@ import pycocotools._mask as _mask
 # Data, paper, and tutorials available at:  http://mscoco.org/
 # Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
 # Licensed under the Simplified BSD License [see coco/license.txt]
+from .maskutils import mask_to_rle, rles_area, rles_to_mask, rlesToBbox
 
-iou         = _mask.iou
-merge       = _mask.merge
-frPyObjects = _mask.frPyObjects
 
 def encode(bimask):
     if len(bimask.shape) == 3:
-        return _mask.encode(bimask)
+        return mask_to_rle(bimask)
     elif len(bimask.shape) == 2:
         h, w = bimask.shape
-        return _mask.encode(bimask.reshape((h, w, 1), order='F'))[0]
+        return mask_to_rle(bimask.reshape((h, w, 1), order='F'))[0]
+
 
 def decode(rleObjs):
     if type(rleObjs) == list:
-        return _mask.decode(rleObjs)
+        return rles_to_mask(rleObjs)
     else:
-        return _mask.decode([rleObjs])[:,:,0]
+        return rles_to_mask([rleObjs])[:, :, 0]
+
 
 def area(rleObjs):
     if type(rleObjs) == list:
-        return _mask.area(rleObjs)
+        return rles_area(rleObjs)
     else:
-        return _mask.area([rleObjs])[0]
+        return rles_area([rleObjs])[0]
+
 
 def toBbox(rleObjs):
     if type(rleObjs) == list:
-        return _mask.toBbox(rleObjs)
+        return rlesToBbox(rleObjs)
     else:
-        return _mask.toBbox([rleObjs])[0]
+        return rlesToBbox([rleObjs])[0]
