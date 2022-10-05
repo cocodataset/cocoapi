@@ -70,7 +70,6 @@
 # Licensed under the Simplified BSD License [see coco/license.txt]
 
 import copy
-import math
 from itertools import groupby
 
 import numpy as np
@@ -101,41 +100,6 @@ def mask_to_rle(binary_mask):
     return rles
 
 
-def rle_to_mask_v2(rle):
-    """
-        Convert RLE to binary mask
-
-        Input:
-            rle: Run length encoded binary masks of size n.
-
-        Output:
-            mask: Binary mask of shape (h, w).
-    """
-    h, w = rle['size']
-    segm = rle['counts']
-    k = []
-    mask = np.zeros((w, h), dtype=np.uint8)
-    b = 1
-    c = 0
-    for value in segm:
-        if b:
-            c += value
-            b = 0
-        else:
-            b = 1
-            i = c // h
-            j = c % h
-            while value:
-                mask[i, j] = 1
-                j += 1
-                if j >= h:
-                    j = 0
-                    i += 1
-                value -= 1
-                c += 1
-    return mask.T
-
-
 def rle_to_mask(rle):
     """
         Convert RLE to binary mask
@@ -147,25 +111,25 @@ def rle_to_mask(rle):
             mask: Binary mask of shape (h, w).
     """
     h, w = rle['size']
+    segm = rle['counts']
     mask = np.zeros((w, h), dtype=np.uint8)
+    b = 1
     c = 0
-    b = 0
-    for value in rle['counts']:
-        end = c + value
+    for value in segm:
         if b:
-            start_x, start_y = c // h, c % h
-            end_x, end_y = end // h, end % h
-
-            while start_x < end_x:
-                mask[start_x, start_y:] = 1
-                start_y = 0
-                start_x += 1
-
-            start_x = min(start_x, w - 1)
-            mask[start_x, start_y:end_y] = 1
-        b = int(not b)
-        c += value
-
+            c += value
+        else:
+            i = min(c // h, w - 1)
+            j = c % h
+            while value:
+                mask[i, j] = 1
+                j += 1
+                if j >= h:
+                    j = 0
+                    i += 1
+                value -= 1
+                c += 1
+        b = not b
     return mask.T
 
 
@@ -181,12 +145,15 @@ def rles_to_mask(rles):
     """
     no_rles = len(rles)
     if no_rles == 0:
-        return []
+        return None
+
     h, w = rle[0]['size']
     masks = np.zeros((w, h, no_rles), dtype=np.uint8)
-    for i, rle in enumerate(rles):
+    i = 0
+    for rle in rles:
         mask = rle_to_mask(rle)
         masks[:, :, i] = mask
+        i += 1
     return masks
 
 
@@ -229,7 +196,7 @@ def compute_iou(box, boxes, box_area, boxes_area):
     return iou
 
 
-def compute_overlaps(boxes1, boxes2):
+def compute_overlaps(boxes1, boxes2, iscrowd=None):
     """Computes IoU overlaps between two sets of boxes.
 
         Inputs:
@@ -240,6 +207,8 @@ def compute_overlaps(boxes1, boxes2):
             ious: [N1, N2]
     For better performance, pass the largest set first and the smaller second.
     """
+    boxes1 = np.array(boxes1)
+    boxes2 = np.array(boxes2)
     if len(boxes1) == 0 or len(boxes2) == 0:
         return []
 
@@ -270,20 +239,16 @@ def rle_poly(xy, k, h, w, scale=5):
             rle: Dictionary of run length encoded mask and image size.
 
     """
-    k = len(xy) // 2
-    x = [int(scale * xy[j] + 0.5) for j in range(0, 2 * k, 2)]
-    y = [int(scale * xy[j] + 0.5) for j in range(1, 2 * k, 2)]
-    x.append(x[0])
-    y.append(y[0])
-
-    m = 0
+    x = [0] * (k + 1)
+    y = [0] * (k + 1)
     for j in range(k):
-        m += max(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1
+        x[j] = int(scale * xy[j * 2 + 0] + 0.5)
+        y[j] = int(scale * xy[j * 2 + 1] + 0.5)
+    x[k] = x[0]
+    y[k] = y[0]
 
-    u = [None] * m
-    v = [None] * m
-
-    m = 0
+    u = []
+    v = []
     for j in range(k):
         xs, xe, ys, ye = x[j], x[j + 1], y[j], y[j + 1]
         dx, dy = abs(xe - xs), abs(ys - ye)
@@ -297,20 +262,18 @@ def rle_poly(xy, k, h, w, scale=5):
         if dx >= dy:
             for d in range(0, dx + 1):
                 t = dx - d if flip else d
-                u[m] = t + xs
-                v[m] = int(ys + s * t + 0.5)
-                m += 1
+                u.append(t + xs)
+                v.append(int(ys + s * t + 0.5))
         else:
             for d in range(0, dy + 1):
                 t = dy - d if flip else d
-                v[m] = t + ys
-                u[m] = int(xs + s * t + 0.5)
-                m += 1
+                v.append(t + ys)
+                u.append(int(xs + s * t + 0.5))
 
     k = len(u)
     m = 0
-    x = []
-    y = []
+    x = [0] * k
+    y = [0] * k
     for j in range(1, len(u)):
         if u[j] != u[j - 1]:
             xd = float(u[j] if u[j] < u[j - 1] else u[j] - 1)
@@ -338,7 +301,10 @@ def rle_poly(xy, k, h, w, scale=5):
         y = y[:m]
 
     k = len(x)
-    a = [int(x[j] * int(h) + y[j]) for j in range(k)] + [int(h * w)]
+    a = [0] * (k + 1)
+    for j, value in enumerate(x):
+        a[j] = int(value * int(h) + y[j])
+    a[k] = int(h * w)
     a.sort()
     k += 1
 
@@ -352,8 +318,7 @@ def rle_poly(xy, k, h, w, scale=5):
     j = 1
     while j < k:
         if a[j] > 0:
-            b[jb] = a[j]
-            jb += 1
+            b.append(a[j])
             j += 1
         else:
             j += 1

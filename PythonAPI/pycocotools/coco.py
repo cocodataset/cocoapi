@@ -473,7 +473,7 @@ class COCO:
     def annToRLE(self, ann):
         """
         Convert annotation which can be polygons, uncompressed RLE to RLE.
-        :return: binary mask (numpy 2D array)
+        :return: RLE
         """
         t = self.imgs[ann['image_id']]
         h, w = t['height'], t['width']

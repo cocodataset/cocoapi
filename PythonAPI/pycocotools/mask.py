@@ -59,6 +59,7 @@
 # Data, paper, and tutorials available at:  http://mscoco.org/
 # Code written by Piotr Dollar and Tsung-Yi Lin, 2015.
 # Licensed under the Simplified BSD License [see coco/license.txt]
+from .maskutils import compute_overlaps as iou
 from .maskutils import mask_to_rle, rles_area, rles_to_mask, rlesToBbox
 
 
