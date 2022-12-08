@@ -365,6 +365,7 @@ class COCOeval:
                     # mergesort is used to be consistent as Matlab implementation.
                     inds = np.argsort(-dtScores, kind='mergesort')
                     dtScoresSorted = dtScores[inds]
+                    _, uniq_inds = np.unique(dtScoresSorted, return_index=True)
 
                     dtm  = np.concatenate([e['dtMatches'][:,0:maxDet] for e in E], axis=1)[:,inds]
                     dtIg = np.concatenate([e['dtIgnore'][:,0:maxDet]  for e in E], axis=1)[:,inds]
@@ -380,6 +381,8 @@ class COCOeval:
                     for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum)):
                         tp = np.array(tp)
                         fp = np.array(fp)
+                        tp = tp[uniq_inds]
+                        fp = fp[uniq_inds]
                         nd = len(tp)
                         rc = tp / npig
                         pr = tp / (fp+tp+np.spacing(1))
