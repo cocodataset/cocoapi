@@ -1,3 +1,5 @@
+PythonAPI/venv/
+
 images/
 annotations/
 results/
@@ -14,3 +16,12 @@ PythonAPI/pycocotools/_mask.so
 PythonAPI/pycocotools/coco.pyc
 PythonAPI/pycocotools/cocoeval.pyc
 PythonAPI/pycocotools/mask.pyc
+PythonAPI/pycocotools/_mask.cpython-39-x86_64-linux-gnu.so
+PythonAPI/pycocotools.egg-info/top_level.txt
+PythonAPI/pycocotools.egg-info/SOURCES.txt
+PythonAPI/pycocotools.egg-info/requires.txt
+PythonAPI/pycocotools.egg-info/PKG-INFO
+PythonAPI/pycocotools.egg-info/dependency_links.txt
+PythonAPI/build/temp.linux-x86_64-cpython-39/pycocotools/_mask.o
+PythonAPI/build/lib.linux-x86_64-cpython-39/pycocotools/_mask.cpython-39-x86_64-linux-gnu.so
+PythonAPI/build/common/maskApi.o
