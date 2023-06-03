@@ -44,6 +44,7 @@ cdef extern from "maskApi.h":
     void rleMerge( const RLE *R, RLE *M, siz n, int intersect )
     void rleArea( const RLE *R, siz n, uint *a )
     void rleInvert( const RLE *R_in, RLE *R_out, siz n )
+    void rleCrop(const RLE *R_in, RLE *R_out, siz n, const uint* bbox);
     void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o )
     void bbIou( BB dt, BB gt, siz m, siz n, byte *iscrowd, double *o )
     void rleToBbox( const RLE *R, BB bb, siz n )
@@ -163,18 +164,21 @@ def area(rleObjs):
     rleArea(Rs._R, Rs._n, _a)
     cdef np.npy_intp shape[1]
     shape[0] = <np.npy_intp> Rs._n
-    a = np.array((Rs._n, ), dtype=np.uint8)
     a = np.PyArray_SimpleNewFromData(1, shape, np.NPY_UINT32, _a)
     PyArray_ENABLEFLAGS(a, np.NPY_OWNDATA)
     return a
 
+def crop(rleObjs, np.ndarray[np.uint32_t, ndim=2] bb):
+    cdef RLEs Rs_in = _frString(rleObjs)
+    cdef RLEs Rs_out = RLEs(Rs_in._n)
+    rleCrop(Rs_in._R, Rs_out._R, Rs_in._n, <const uint*> bb.data)
+    return _toString(Rs_out)
+
 def invert(rleObjs):
     cdef RLEs Rs_in = _frString(rleObjs)
-    h, w, n = Rs_in._R[0].h, Rs_in._R[0].w, Rs_in._n
-    cdef RLEs Rs_out = RLEs(n)
-    rleInvert(Rs_in._R, Rs_out._R, n)
-    objs = _toString(Rs_out)
-    return objs
+    cdef RLEs Rs_out = RLEs(Rs_in._n)
+    rleInvert(Rs_in._R, Rs_out._R, Rs_in._n)
+    return _toString(Rs_out)
 
 # iou computation. support function overload (RLEs-RLEs and bbox-bbox).
 def iou( dt, gt, pyiscrowd ):
@@ -254,7 +258,6 @@ def toBbox( rleObjs ):
     rleToBbox( <const RLE*> Rs._R, _bb, n )
     cdef np.npy_intp shape[1]
     shape[0] = <np.npy_intp> 4*n
-    bb = np.array((1,4*n), dtype=np.double)
     bb = np.PyArray_SimpleNewFromData(1, shape, np.NPY_DOUBLE, _bb).reshape((n, 4))
     PyArray_ENABLEFLAGS(bb, np.NPY_OWNDATA)
     return bb

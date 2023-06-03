@@ -32,6 +32,7 @@ classdef MaskApi
   %  nms    - Compute non-maximum suppression between ordered masks.
   %  area   - Compute area of encoded masks.
   %  invert - Compute inverse of encoded masks.
+  %  crop   - Crop encoded masks to given bounding boxes.
   %  toBbox - Get bounding boxes surrounding encoded masks.
   %  frBbox - Convert bounding boxes to encoded masks.
   %  frPoly - Convert polygon to encoded mask.
@@ -44,6 +45,7 @@ classdef MaskApi
   %  keep   = MaskApi.nms( dt, thr )
   %  a      = MaskApi.area( Rs )
   %  Rs     = MaskApi.invert( Rs )
+  %  Rs     = MaskApi.crop( Rs, bbox )
   %  bbs    = MaskApi.toBbox( Rs )
   %  Rs     = MaskApi.frBbox( bbs, h, w )
   %  R      = MaskApi.frPoly( poly, h, w )
@@ -105,7 +107,11 @@ classdef MaskApi
     function Rs_out = invert( Rs )
       Rs_out = maskApiMex( 'invert', Rs );
     end
-    
+
+    function Rs_out = crop( Rs, bbox )
+      Rs_out = maskApiMex( 'crop', Rs, bbox );
+    end
+
     function bbs = toBbox( Rs )
       bbs = maskApiMex( 'toBbox', Rs )';
     end

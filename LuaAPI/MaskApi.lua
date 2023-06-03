@@ -29,6 +29,7 @@ Usage:
   keep   = MaskApi.nms( dt, thr )
   a      = MaskApi.area( Rs )
   Rs     = MaskApi.invert( Rs )
+  Rs     = MaskApi.crop( Rs, bbox )
   bbs    = MaskApi.toBbox( Rs )
   Rs     = MaskApi.frBbox( bbs, h, w )
   R      = MaskApi.frPoly( poly, h, w )
@@ -149,6 +150,15 @@ MaskApi.toBbox = function( Rs )
   libmaskapi.rleToBbox(Qs,bb:data(),n)
   MaskApi._rlesFree(Qs,n)
   return bb
+end
+
+MaskApi.crop = function( Rs, bbox )
+  local Qs, n, h, w = MaskApi._rlesFrLua(Rs)
+  local bb = bbox:type('torch.IntTensor'):contiguous():data()
+  local Ms = MaskApi._rlesInit(n)
+  libmaskapi.rleCrop(Qs[0],Ms[0],n,bb)
+  MaskApi._rlesFree(Qs,n)
+  return MaskApi._rlesToLua(Ms,n)
 end
 
 MaskApi.frBbox = function( bbs, h, w )

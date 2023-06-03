@@ -35,6 +35,9 @@ void rleArea( const RLE *R, siz n, uint *a );
 /* Compute inverse of encoded masks. */
 void rleInvert( const RLE *R, RLE *M, siz n );
 
+/* Crop encoded masks. */
+void rleCrop( const RLE *R, RLE *M, siz n, const uint* bbox);
+
 /* Compute intersection over union between masks. */
 void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o );
 
@@ -61,3 +64,6 @@ char* rleToString( const RLE *R );
 
 /* Convert from compressed string representation of encoded mask. */
 void rleFrString( RLE *R, char *s, siz h, siz w );
+
+/* Remove zero runlengths from RLE encoding, and sum up the neighbors accordingly. */
+void rleEliminateZeroRuns( RLE* R, siz n );
