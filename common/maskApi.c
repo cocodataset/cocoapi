@@ -7,6 +7,7 @@
 #include "maskApi.h"
 #include <math.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 uint umin( uint a, uint b ) { return (a<b) ? a : b; }
 uint umax( uint a, uint b ) { return (a>b) ? a : b; }
@@ -72,6 +73,118 @@ void rleMerge( const RLE *R, RLE *M, siz n, int intersect ) {
 void rleArea( const RLE *R, siz n, uint *a ) {
   siz i, j; for( i=0; i<n; i++ ) {
     a[i]=0; for( j=1; j<R[i].m; j+=2 ) a[i]+=R[i].cnts[j]; }
+}
+
+void rleInvert(const RLE *R, RLE *M, siz n) {
+  siz i, h, w; uint *cnts;
+  for( i=0; i<n; i++ ) if (R[i].m) {
+    h=R[i].h;
+    w=R[i].w;
+    if (R[i].cnts[0] == 0) {
+      rleInit(M+i,h,w,R[i].m-1,R[i].cnts+1);
+    } else {
+      cnts=malloc(sizeof(uint)*(R[i].m+1));
+      cnts[0]=0;
+      memcpy(cnts+1,R[i].cnts,sizeof(uint)*R[i].m);
+      (M + i)->cnts=cnts; (M + i)->h=h; (M + i)->w=w; (M + i)->m=R[i].m + 1;
+    }
+  }
+}
+
+void rleCrop( const RLE *R, RLE *M, siz n, const uint *bbox ) {
+  /* Crop RLEs to a specified bounding box.*/
+  for ( siz i=0; i<n; i++ ) {
+    uint h=R[i].h;
+    uint w=R[i].w;
+    siz m=R[i].m;
+
+    // Clip bbox to image boundary.
+    uint box_x_start=umin(bbox[i*4+0], w);
+    uint box_y_start=umin(bbox[i*4+1], h);
+    uint box_w=umin(bbox[i*4+2], w-box_x_start);
+    uint box_h=umin(bbox[i*4+3], h-box_y_start);
+
+    if ( m==0||box_w==0||box_h==0 ) {
+      // RLE is empty, so just fill in zeros.
+      rleInit(M+i, box_h, box_w, 0, NULL);
+      continue;
+    }
+    rleInit(M+i, box_h, box_w, R[i].m, R[i].cnts);
+
+    uint *cnts=M[i].cnts;
+    uint ignore_until=box_x_start*h+box_y_start;
+    uint final_use_until=(box_x_start+box_w-1)*h+box_h+box_y_start;
+    uint use_until=umin(ignore_until+box_h, final_use_until);
+
+    uint pos=0;
+    uint used_run_part=0;
+    bool ignoring=true;
+
+    for ( siz j=0; j<m; ) {
+      uint next_mode_switch=(ignoring ? ignore_until : use_until);
+      uint unused_run_part=cnts[j]-used_run_part;
+      uint step=umin(unused_run_part, next_mode_switch-pos);
+      pos+=step;
+
+      if ( ignoring ) {
+        // Consumed an ignored section, remove it.
+        cnts[j]-=step;
+      } else {
+        // Consumed a used section, tally it.
+        used_run_part+=step;
+      }
+
+      if ( step==unused_run_part ) {
+        // Reached the end of the current run, move to the next.
+        j++;
+        used_run_part=0; // Reinitialize the used run part for the next run.
+      }
+
+      if ( pos==next_mode_switch ) {
+        // Reached a bounding box boundary, switch modes.
+        if ( ignoring ) {
+          ignore_until+=h; // The next section will be one column away.
+        } else {
+          // The next section will be one column away or at the end of the box.
+          use_until=umin(use_until+h, final_use_until);
+          if ( pos==final_use_until ) {
+            // Reached the end of the bounding box, ignore until end of mask.
+            ignore_until=w*h;
+          }
+        }
+        // Toggle to the other mode.
+        ignoring=!ignoring;
+      }
+    }
+  }
+  // Remove non-initial empty runs, in order to make the RLE encoding valid.
+  rleEliminateZeroRuns(M, n);
+}
+
+
+void rleEliminateZeroRuns( RLE *R, siz n ) {
+  siz i, j, k;
+  for ( i=0; i<n; ++i ) {
+    if ( R[i].m==0 ) {
+      // Already empty.
+      continue;
+    }
+
+    for ( k=0, j=1; j<R[i].m; ++j ) {
+      if ( R[i].cnts[j]>0 ) {
+        R[i].cnts[++k]=R[i].cnts[j];
+      } else if ( j<R[i].m-1 ) {
+        R[i].cnts[k]+=R[i].cnts[++j];
+      }
+    }
+    if ( k==0&&R[i].cnts[0]==0 ) {
+      // Special case: a single run with length zero, so we can remove it altogether.
+      R[i].m=0;
+      rleFree(&R[i]);
+    } else {
+      R[i].m=k+1;
+    }
+  }
 }
 
 void rleIou( RLE *dt, RLE *gt, siz m, siz n, byte *iscrowd, double *o ) {
@@ -229,3 +342,4 @@ void rleFrString( RLE *R, char *s, siz h, siz w ) {
   }
   rleInit(R,h,w,m,cnts); free(cnts);
 }
+

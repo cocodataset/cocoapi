@@ -78,6 +78,10 @@ void mexFunction( int nl, mxArray *pl[], int nr, const mxArray *pr[] )
     pl[0]=mxCreateNumericMatrix(1,n,mxUINT32_CLASS,mxREAL);
     uint *a=(uint*) mxGetPr(pl[0]); rleArea(R,n,a);
     
+  } else if(!strcmp(action,"invert")) {
+    R=frMxArray(pr[0],&n,0);
+    RLE *M; rlesInit(&M,n); rleInvert(R,M,n); pl[0]=toMxArray(M,n);
+    
   } else if(!strcmp(action,"iou")) {
     if(nr>2) checkType(pr[2],mxUINT8_CLASS); siz nDt, nGt;
     byte *iscrowd = nr>2 ? (byte*) mxGetPr(pr[2]) : NULL;

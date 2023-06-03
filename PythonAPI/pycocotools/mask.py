@@ -1,5 +1,6 @@
 __author__ = 'tsungyi'
 
+import numpy as np
 import pycocotools._mask as _mask
 
 # Interface for manipulating masks stored in RLE format.
@@ -33,6 +34,8 @@ import pycocotools._mask as _mask
 #  merge          - Compute union or intersection of encoded masks.
 #  iou            - Compute intersection over union between masks.
 #  area           - Compute area of encoded masks.
+#  invert         - Compute inverse of encoded masks.
+#  crop           - Crop encoded masks to given bounding boxes.
 #  toBbox         - Get bounding boxes surrounding encoded masks.
 #  frPyObjects    - Convert polygon, bbox, and uncompressed RLE to encoded RLE mask.
 #
@@ -42,6 +45,8 @@ import pycocotools._mask as _mask
 #  R      = merge( Rs, intersect=false )
 #  o      = iou( dt, gt, iscrowd )
 #  a      = area( Rs )
+#  Rs     = invert( Rs )
+#  Rs     = crop( Rs, bbox )
 #  bbs    = toBbox( Rs )
 #  Rs     = frPyObjects( [pyObjects], h, w )
 #
@@ -95,6 +100,20 @@ def area(rleObjs):
         return _mask.area(rleObjs)
     else:
         return _mask.area([rleObjs])[0]
+
+def invert(rleObjs):
+    if type(rleObjs) == list:
+        return _mask.invert(rleObjs)
+    else:
+        return _mask.invert([rleObjs])[0]
+
+def crop(rleObjs, bbox):
+    bbox = np.asanyarray(bbox, dtype=np.uint32)
+    if type(rleObjs) == list:
+        return _mask.crop(rleObjs, bbox)
+    else:
+        rleObjs_out = _mask.crop([rleObjs], bbox[np.newaxis])
+        return rleObjs_out[0]
 
 def toBbox(rleObjs):
     if type(rleObjs) == list:
